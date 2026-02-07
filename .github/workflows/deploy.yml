@@ -61,7 +61,7 @@ jobs:
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 部署到 Staging 服务器
         uses: appleboy/ssh-action@v1
@@ -111,7 +111,7 @@ jobs:
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # 生产环境部署前进行健康检查
       - name: 部署前检查

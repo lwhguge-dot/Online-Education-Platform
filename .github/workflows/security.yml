@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 配置 JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
@@ -74,7 +74,7 @@ jobs:
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 初始化 CodeQL
         uses: github/codeql-action/init@v3
@@ -112,7 +112,7 @@ jobs:
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 构建 ${{ matrix.target.name }} 镜像
         id: docker-build
@@ -155,7 +155,7 @@ jobs:
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Maven 依赖检查
       - name: 配置 JDK
