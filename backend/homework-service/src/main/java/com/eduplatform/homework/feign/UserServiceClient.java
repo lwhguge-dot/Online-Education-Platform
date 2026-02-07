@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -18,6 +19,12 @@ public interface UserServiceClient {
 
     @GetMapping("/api/users/{id}")
     Result<UserBriefDTO> getUserById(@PathVariable("id") Long id);
+
+    /**
+     * 批量获取用户简要信息
+     */
+    @PostMapping("/api/users/batch")
+    Result<List<UserBriefDTO>> getUsersByIds(@RequestBody List<Long> ids);
 
     /**
      * 发送通知给指定用户

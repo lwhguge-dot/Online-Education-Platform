@@ -87,6 +87,10 @@ jwt:
 session:
   timeout-seconds: 604800  # 7天，与 JWT 过期时间保持一致
 
+websocket:
+  # 支持多个来源，使用逗号分隔；生产环境请改为实际域名
+  allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:3000}
+
 bootstrap:
   admin:
     enabled: true

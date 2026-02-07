@@ -20,13 +20,11 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
-        
-        <!-- Web 支持 (用于 GlobalExceptionHandler) -->
+
+        <!-- Web 支持（用于 GlobalExceptionHandler） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-            <!-- 标记为 provided 或 optional，避免传递过多不必要的依赖，或者直接 compile 如果我们确定所有依赖 common 的都是 web 服务 -->
-            <!-- 这里直接使用 compile，因为大部分服务都需要它 -->
         </dependency>
 
         <!-- JSON 处理 -->
@@ -35,14 +33,7 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
-        <!-- Hutool 工具箱 (推荐引入，方便常用操作) -->
-        <dependency>
-            <groupId>cn.hutool</groupId>
-            <artifactId>hutool-all</artifactId>
-            <version>5.8.25</version>
-        </dependency>
-
-        <!-- Redis Stream 支持（provided：由具体服务模块引入实际依赖） -->
+        <!-- Redis Stream 支持（由具体服务模块引入实际依赖） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>

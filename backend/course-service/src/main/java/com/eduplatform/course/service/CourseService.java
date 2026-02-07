@@ -3,6 +3,7 @@ package com.eduplatform.course.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.eduplatform.common.result.Result;
 import com.eduplatform.course.dto.UserBriefDTO;
+import com.eduplatform.course.entity.Chapter;
 import com.eduplatform.course.entity.Course;
 import com.eduplatform.course.feign.AuditLogClient;
 import com.eduplatform.course.feign.UserServiceClient;
@@ -15,9 +16,12 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -75,8 +79,30 @@ public class CourseService {
      * @param courses 待填充的课程列表
      */
     private void fillChapterCounts(List<Course> courses) {
+        if (courses == null || courses.isEmpty()) {
+            return;
+        }
+
+        // 批量查询课程章节并按课程ID聚合，避免逐课程 count 的 N+1 查询
+        List<Long> courseIds = courses.stream()
+                .map(Course::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (courseIds.isEmpty()) {
+            return;
+        }
+
+        List<Chapter> chapters = chapterMapper.selectList(
+                new LambdaQueryWrapper<Chapter>()
+                        .select(Chapter::getCourseId)
+                        .in(Chapter::getCourseId, courseIds));
+
+        Map<Long, Long> chapterCountMap = chapters.stream()
+                .filter(chapter -> chapter.getCourseId() != null)
+                .collect(Collectors.groupingBy(Chapter::getCourseId, Collectors.counting()));
+
         for (Course course : courses) {
-            int count = chapterMapper.countByCourseId(course.getId());
+            int count = chapterCountMap.getOrDefault(course.getId(), 0L).intValue();
             course.setTotalChapters(count);
         }
     }
@@ -89,6 +115,61 @@ public class CourseService {
      * @param courses 待填充的课程列表
      */
     private void fillTeacherNames(List<Course> courses) {
+        if (courses == null || courses.isEmpty()) {
+            return;
+        }
+
+        // 优先走批量查询路径，降低远程调用次数；失败时降级到原有逐条查询逻辑
+        boolean optimizedApplied = false;
+        Set<Long> teacherIds = courses.stream()
+                .map(Course::getTeacherId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (!teacherIds.isEmpty()) {
+            try {
+                Result<List<UserBriefDTO>> result = userServiceClient.getUsersByIds(new ArrayList<>(teacherIds));
+                if (result != null && result.getData() != null && !result.getData().isEmpty()) {
+                    Map<Long, String> teacherNameMap = result.getData().stream()
+                            .filter(user -> user != null && user.getId() != null)
+                            .collect(Collectors.toMap(
+                                    UserBriefDTO::getId,
+                                    user -> {
+                                        String teacherName = user.getName();
+                                        if (teacherName == null || teacherName.isBlank()) {
+                                            return user.getUsername();
+                                        }
+                                        return teacherName;
+                                    },
+                                    (left, right) -> left));
+
+                    for (Course course : courses) {
+                        if (course.getTeacherId() == null) {
+                            continue;
+                        }
+                        String teacherName = teacherNameMap.get(course.getTeacherId());
+                        if (teacherName != null && !teacherName.isBlank()) {
+                            course.setTeacherName(teacherName);
+                        }
+                    }
+
+                    optimizedApplied = true;
+                }
+            } catch (Exception ignored) {
+                // 批量查询异常时走降级逻辑
+            }
+        }
+
+        if (optimizedApplied) {
+            // 兜底：仍为空的教师名填充默认值，避免前端出现空白
+            for (Course course : courses) {
+                if (course.getTeacherId() != null && (course.getTeacherName() == null || course.getTeacherName().isBlank())) {
+                    course.setTeacherName("未知教师");
+                }
+            }
+            return;
+        }
+
         for (Course course : courses) {
             if (course.getTeacherId() != null) {
                 try {

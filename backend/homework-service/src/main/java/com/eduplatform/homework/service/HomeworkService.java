@@ -503,10 +503,11 @@ public class HomeworkService {
         List<HomeworkAnswer> answers = answerMapper.selectList(
                 new LambdaQueryWrapper<HomeworkAnswer>()
                         .eq(HomeworkAnswer::getSubmissionId, submission.getId()));
+        Map<Long, HomeworkQuestion> questionMap = buildQuestionMapByAnswers(answers);
 
         List<Map<String, Object>> answerDetails = new ArrayList<>();
         for (HomeworkAnswer answer : answers) {
-            HomeworkQuestion question = questionMapper.selectById(answer.getQuestionId());
+            HomeworkQuestion question = questionMap.get(answer.getQuestionId());
             if (question != null) {
                 Map<String, Object> detail = new HashMap<>();
                 detail.put("questionId", answer.getQuestionId());
@@ -545,11 +546,12 @@ public class HomeworkService {
         List<HomeworkAnswer> answers = answerMapper.selectList(
                 new LambdaQueryWrapper<HomeworkAnswer>()
                         .eq(HomeworkAnswer::getSubmissionId, submission.getId()));
+        Map<Long, HomeworkQuestion> questionMap = buildQuestionMapByAnswers(answers);
 
         List<Map<String, Object>> errorList = new ArrayList<>();
         for (HomeworkAnswer answer : answers) {
             if (answer.getIsCorrect() != null && answer.getIsCorrect() == 0) {
-                HomeworkQuestion question = questionMapper.selectById(answer.getQuestionId());
+                HomeworkQuestion question = questionMap.get(answer.getQuestionId());
                 if (question != null) {
                     Map<String, Object> error = new HashMap<>();
                     error.put("question", convertQuestionToVO(question));
@@ -612,17 +614,18 @@ public class HomeworkService {
             item.put("gradedAt", submission.getGradedAt());
 
             // 获取答案详情
-            List<HomeworkAnswer> answers = answerMapper.selectList(
-                    new LambdaQueryWrapper<HomeworkAnswer>()
-                            .eq(HomeworkAnswer::getSubmissionId, submission.getId()));
+        List<HomeworkAnswer> answers = answerMapper.selectList(
+                new LambdaQueryWrapper<HomeworkAnswer>()
+                        .eq(HomeworkAnswer::getSubmissionId, submission.getId()));
+        Map<Long, HomeworkQuestion> questionMap = buildQuestionMapByAnswers(answers);
 
-            List<Map<String, Object>> answerDetails = new ArrayList<>();
-            boolean hasUngraded = false;
-            for (HomeworkAnswer answer : answers) {
-                HomeworkQuestion question = questionMapper.selectById(answer.getQuestionId());
-                if (question != null) {
-                    Map<String, Object> answerDetail = new HashMap<>();
-                    answerDetail.put("questionId", question.getId());
+        List<Map<String, Object>> answerDetails = new ArrayList<>();
+        boolean hasUngraded = false;
+        for (HomeworkAnswer answer : answers) {
+            HomeworkQuestion question = questionMap.get(answer.getQuestionId());
+            if (question != null) {
+                Map<String, Object> answerDetail = new HashMap<>();
+                answerDetail.put("questionId", question.getId());
                     answerDetail.put("questionType", question.getQuestionType());
                     answerDetail.put("content", question.getContent());
                     answerDetail.put("options", question.getOptions());
@@ -890,6 +893,13 @@ public class HomeworkService {
                         .ne(HomeworkSubmission::getSubmitStatus, "draft")
                         .orderByDesc(HomeworkSubmission::getSubmittedAt));
 
+        // 批量预加载学生姓名，避免循环内逐条远程调用
+        Map<Long, String> studentNameMap = batchGetStudentNameMap(
+                submissions.stream()
+                        .map(HomeworkSubmission::getStudentId)
+                        .filter(Objects::nonNull)
+                        .toList());
+
         List<PendingSubmissionsDTO.SubmissionSummary> summaries = new ArrayList<>();
         int gradedCount = 0;
 
@@ -897,7 +907,7 @@ public class HomeworkService {
             PendingSubmissionsDTO.SubmissionSummary summary = new PendingSubmissionsDTO.SubmissionSummary();
             summary.setId(submission.getId());
             summary.setStudentId(submission.getStudentId());
-            summary.setStudentName(getStudentName(submission.getStudentId()));
+            summary.setStudentName(studentNameMap.getOrDefault(submission.getStudentId(), getStudentName(submission.getStudentId())));
             summary.setSubmittedAt(submission.getSubmittedAt());
             summary.setObjectiveScore(submission.getObjectiveScore());
             summary.setSubjectiveScore(submission.getSubjectiveScore());
@@ -957,10 +967,11 @@ public class HomeworkService {
         List<HomeworkAnswer> answers = answerMapper.selectList(
                 new LambdaQueryWrapper<HomeworkAnswer>()
                         .eq(HomeworkAnswer::getSubmissionId, submissionId));
+        Map<Long, HomeworkQuestion> questionMap = buildQuestionMapByAnswers(answers);
 
         List<SubmissionDetailDTO.AnswerDetail> answerDetails = new ArrayList<>();
         for (HomeworkAnswer answer : answers) {
-            HomeworkQuestion question = questionMapper.selectById(answer.getQuestionId());
+            HomeworkQuestion question = questionMap.get(answer.getQuestionId());
             if (question != null) {
                 SubmissionDetailDTO.AnswerDetail detail = new SubmissionDetailDTO.AnswerDetail();
                 detail.setQuestionId(question.getId());
@@ -1068,6 +1079,7 @@ public class HomeworkService {
         List<HomeworkAnswer> answers = answerMapper.selectList(
                 new LambdaQueryWrapper<HomeworkAnswer>()
                         .eq(HomeworkAnswer::getSubmissionId, submissionId));
+        Map<Long, HomeworkQuestion> questionMap = buildQuestionMapByAnswers(answers);
 
         // 检查是否所有题目都已批改
         boolean allGraded = true;
@@ -1076,7 +1088,7 @@ public class HomeworkService {
         int subjectiveScore = 0;
 
         for (HomeworkAnswer answer : answers) {
-            HomeworkQuestion question = questionMapper.selectById(answer.getQuestionId());
+            HomeworkQuestion question = questionMap.get(answer.getQuestionId());
             if (question == null)
                 continue;
 
@@ -1114,14 +1126,82 @@ public class HomeworkService {
         List<HomeworkAnswer> answers = answerMapper.selectList(
                 new LambdaQueryWrapper<HomeworkAnswer>()
                         .eq(HomeworkAnswer::getSubmissionId, submissionId));
+        Map<Long, HomeworkQuestion> questionMap = buildQuestionMapByAnswers(answers);
 
         for (HomeworkAnswer answer : answers) {
-            HomeworkQuestion question = questionMapper.selectById(answer.getQuestionId());
+            HomeworkQuestion question = questionMap.get(answer.getQuestionId());
             if (question != null && "subjective".equals(question.getQuestionType()) && answer.getScore() == null) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * 批量加载题目信息并构建映射，避免循环内按 ID 单条查询引发 N+1。
+     */
+    private Map<Long, HomeworkQuestion> buildQuestionMapByAnswers(List<HomeworkAnswer> answers) {
+        if (answers == null || answers.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Long> questionIds = answers.stream()
+                .map(HomeworkAnswer::getQuestionId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (questionIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        // 批量查询题目，避免在循环中反复调用 selectById
+        List<HomeworkQuestion> questions = questionMapper.selectBatchIds(questionIds);
+        return questions.stream()
+                .filter(question -> question != null && question.getId() != null)
+                .collect(Collectors.toMap(HomeworkQuestion::getId, question -> question, (left, right) -> left));
+    }
+
+    /**
+     * 批量查询学生信息并构建用户名映射，减少逐个用户的远程调用。
+     */
+    private Map<Long, String> batchGetStudentNameMap(List<Long> studentIds) {
+        if (studentIds == null || studentIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Long> distinctIds = studentIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (distinctIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        try {
+            Result<List<UserBriefDTO>> response = userServiceClient.getUsersByIds(distinctIds);
+            if (response == null || response.getData() == null || response.getData().isEmpty()) {
+                return Collections.emptyMap();
+            }
+
+            return response.getData().stream()
+                    .filter(user -> user != null && user.getId() != null)
+                    .collect(Collectors.toMap(
+                            UserBriefDTO::getId,
+                            user -> {
+                                String name = user.getName();
+                                if (name != null && !name.isBlank()) {
+                                    return name;
+                                }
+                                if (user.getUsername() != null && !user.getUsername().isBlank()) {
+                                    return user.getUsername();
+                                }
+                                return "学生" + user.getId();
+                            },
+                            (left, right) -> left));
+        } catch (Exception e) {
+            log.warn("批量查询学生信息失败，降级为本地占位名: {}", e.getMessage());
+            return Collections.emptyMap();
+        }
     }
 
     /**
@@ -1310,6 +1390,23 @@ public class HomeworkService {
      */
     public List<HomeworkQuestionDiscussionVO> getHomeworkQuestions(Long homeworkId) {
         List<HomeworkQuestionDiscussion> discussions = discussionMapper.findByHomeworkId(homeworkId);
+        Map<Long, String> studentNameMap = batchGetStudentNameMap(
+                discussions.stream()
+                        .map(HomeworkQuestionDiscussion::getStudentId)
+                        .filter(Objects::nonNull)
+                        .toList());
+
+        List<Long> questionIds = discussions.stream()
+                .map(HomeworkQuestionDiscussion::getQuestionId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, HomeworkQuestion> questionMap = questionIds.isEmpty()
+                ? Collections.emptyMap()
+                : questionMapper.selectBatchIds(questionIds).stream()
+                        .filter(question -> question != null && question.getId() != null)
+                        .collect(Collectors.toMap(HomeworkQuestion::getId, question -> question, (left, right) -> left));
+
         List<HomeworkQuestionDiscussionVO> result = new ArrayList<>();
 
         for (HomeworkQuestionDiscussion discussion : discussions) {
@@ -1318,7 +1415,7 @@ public class HomeworkService {
             item.setHomeworkId(discussion.getHomeworkId());
             item.setQuestionId(discussion.getQuestionId());
             item.setStudentId(discussion.getStudentId());
-            item.setStudentName(getStudentName(discussion.getStudentId()));
+            item.setStudentName(studentNameMap.getOrDefault(discussion.getStudentId(), getStudentName(discussion.getStudentId())));
             item.setQuestionContent(discussion.getQuestionContent());
             item.setTeacherReply(discussion.getTeacherReply());
             item.setRepliedBy(discussion.getRepliedBy());
@@ -1327,7 +1424,7 @@ public class HomeworkService {
             item.setCreatedAt(discussion.getCreatedAt());
 
             if (discussion.getQuestionId() != null) {
-                HomeworkQuestion question = questionMapper.selectById(discussion.getQuestionId());
+                HomeworkQuestion question = questionMap.get(discussion.getQuestionId());
                 if (question != null) {
                     item.setQuestionTitle(question.getContent());
                 }
@@ -1344,6 +1441,17 @@ public class HomeworkService {
      */
     public List<HomeworkStudentQuestionVO> getStudentQuestions(Long studentId) {
         List<HomeworkQuestionDiscussion> discussions = discussionMapper.findByStudentId(studentId);
+        List<Long> homeworkIds = discussions.stream()
+                .map(HomeworkQuestionDiscussion::getHomeworkId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, Homework> homeworkMap = homeworkIds.isEmpty()
+                ? Collections.emptyMap()
+                : homeworkMapper.selectBatchIds(homeworkIds).stream()
+                        .filter(homework -> homework != null && homework.getId() != null)
+                        .collect(Collectors.toMap(Homework::getId, homework -> homework, (left, right) -> left));
+
         List<HomeworkStudentQuestionVO> result = new ArrayList<>();
 
         for (HomeworkQuestionDiscussion discussion : discussions) {
@@ -1356,7 +1464,7 @@ public class HomeworkService {
             item.setCreatedAt(discussion.getCreatedAt());
             item.setRepliedAt(discussion.getRepliedAt());
 
-            Homework homework = homeworkMapper.selectById(discussion.getHomeworkId());
+            Homework homework = homeworkMap.get(discussion.getHomeworkId());
             if (homework != null) {
                 item.setHomeworkTitle(homework.getTitle());
             }
