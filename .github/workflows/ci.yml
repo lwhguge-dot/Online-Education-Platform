@@ -156,7 +156,7 @@ jobs:
 
       # 2. 配置 Node.js
       - name: 配置 Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
 
