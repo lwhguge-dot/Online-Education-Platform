@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.connection.stream.StreamRecords;
 import org.springframework.data.redis.connection.stream.StringRecord;
@@ -30,7 +29,6 @@ import java.util.UUID;
  */
 @Slf4j
 @Component
-@ConditionalOnBean(StringRedisTemplate.class)
 public class RedisStreamPublisher {
 
     private final StringRedisTemplate redisTemplate;

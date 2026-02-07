@@ -16,7 +16,7 @@ Write-Host "=============================="
 Write-Host ""
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Resolve-Path (Join-Path $scriptDir "..\\..")
+$repoRoot = Resolve-Path (Join-Path $scriptDir "..\\..\\..")
 Set-Location $repoRoot
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {

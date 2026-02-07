@@ -4,13 +4,20 @@ function Z([string]$s) {
   return [regex]::Replace($s, '\\u([0-9a-fA-F]{4})', { param($m) [char]([Convert]::ToInt32($m.Groups[1].Value, 16)) })
 }
 
+function Pause-IfInteractive([string]$Prompt) {
+  try {
+    Read-Host $Prompt | Out-Null
+  } catch {
+  }
+}
+
 Write-Host "========================================"
 Write-Host (Z '\u667a\u6167\u8bfe\u5802 - Docker \u542f\u52a8\u52a9\u624b')
 Write-Host "========================================"
 Write-Host ""
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Resolve-Path (Join-Path $scriptDir "..\\..")
+$repoRoot = Resolve-Path (Join-Path $scriptDir "..\\..\\..")
 Set-Location $repoRoot
 
 function Run-Step {
@@ -24,7 +31,7 @@ function Run-Step {
   & $Action
   if ($LASTEXITCODE -ne 0) {
     Write-Host $ErrorMessage
-    Read-Host (Z '\u6309\u56de\u8f66\u9000\u51fa')
+    Pause-IfInteractive (Z '\u6309\u56de\u8f66\u9000\u51fa')
     exit 1
   }
   Write-Host (Z '[\u5b8c\u6210]')
@@ -83,4 +90,4 @@ Write-Host '  docker compose logs -f [service]'
 Write-Host '  docker compose restart [service]'
 Write-Host '  docker compose down'
 Write-Host ""
-Read-Host (Z '\u6309\u56de\u8f66\u9000\u51fa')
+Pause-IfInteractive (Z '\u6309\u56de\u8f66\u9000\u51fa')

@@ -149,10 +149,10 @@ docker compose ps
 
 ```bash
 # 双击运行
-tools/scripts/Docker启动.bat
+tools/scripts/docker/Docker启动.bat
 
 # 或命令行执行
-cmd /c tools/scripts/Docker启动.bat
+cmd /c tools/scripts/docker/Docker启动.bat
 ```
 
 启动后各服务访问地址：
@@ -262,8 +262,14 @@ Online-Education-Platform/
 │   └── grafana/                #   Grafana 仪表板与数据源
 │
 ├── tools/scripts/              # 运维脚本 (Windows)
-│   ├── Docker启动.bat          #   一键启动 Docker 服务
-│   └── Git推送.bat             #   一键推送到 GitHub
+│   ├── docker/                 #   Docker 启动相关脚本
+│   │   ├── Docker启动.bat      #     一键启动入口
+│   │   └── Docker启动.ps1      #     启动核心逻辑
+│   ├── upload/                 #   Git 上传相关脚本
+│   │   ├── Git推送.bat         #     一键推送入口
+│   │   └── Git推送.ps1         #     推送核心逻辑
+│   ├── verify_progress.ps1     #   进度上报验证脚本
+│   └── verify_track.ps1        #   学习轨迹验证脚本
 │
 ├── docker-compose.yml          # Docker 编排 (13 个容器)
 ├── .gitignore                  # Git 忽略规则
