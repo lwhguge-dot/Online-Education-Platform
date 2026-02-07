@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-slim as build-stage
+FROM node:25-slim as build-stage
 WORKDIR /app
 
 # 使用淘宝镜像源加速
