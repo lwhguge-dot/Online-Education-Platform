@@ -92,7 +92,7 @@
             <!-- Sentinel WebMVC 适配器 -->
             <dependency>
                 <groupId>com.alibaba.csp</groupId>
-                <artifactId>sentinel-webmvc-adapter</artifactId>
+                <artifactId>sentinel-spring-webmvc-adapter</artifactId>
                 <version>${sentinel.version}</version>
             </dependency>
         </dependencies>
