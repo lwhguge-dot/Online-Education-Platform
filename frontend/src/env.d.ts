@@ -5,10 +5,6 @@ declare module '*.vue' {
   export default component
 }
 
-declare module 'canvas-confetti' {
-  export default function confetti(options?: any): void
-}
-
 // Sentry 环境变量类型定义
 interface ImportMetaEnv {
   readonly VITE_SENTRY_DSN?: string

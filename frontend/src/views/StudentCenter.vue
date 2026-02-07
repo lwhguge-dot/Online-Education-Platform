@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, onMounted, onUnmounted, computed, watch, defineAsyncComponent } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useConfirmStore } from '../stores/confirm'
 import {
@@ -15,16 +15,15 @@ import {
 } from 'lucide-vue-next'
 import { useToastStore } from '../stores/toast'
 
-// 子组件
-import StudentDashboard from './student/StudentDashboard.vue'
-import StudentMyCourses from './student/StudentMyCourses.vue'
-import StudentHomeworks from './student/StudentHomeworks.vue'
-import StudentRecords from './student/StudentRecords.vue'
-import StudentQuestions from './student/StudentQuestions.vue'
-import StudentProfile from './student/StudentProfile.vue'
+// 子组件（按需异步加载，减少主包体积）
+const StudentDashboard = defineAsyncComponent(() => import('./student/StudentDashboard.vue'))
+const StudentMyCourses = defineAsyncComponent(() => import('./student/StudentMyCourses.vue'))
+const StudentHomeworks = defineAsyncComponent(() => import('./student/StudentHomeworks.vue'))
+const StudentRecords = defineAsyncComponent(() => import('./student/StudentRecords.vue'))
+const StudentQuestions = defineAsyncComponent(() => import('./student/StudentQuestions.vue'))
+const StudentProfile = defineAsyncComponent(() => import('./student/StudentProfile.vue'))
 
 const router = useRouter()
-const route = useRoute()
 const authStore = useAuthStore()
 const toast = useToastStore()
 const confirmStore = useConfirmStore()
@@ -326,32 +325,34 @@ const loadEnrolledCourses = async () => {
     
     const res = await enrollmentAPI.getStudentEnrollments(studentId)
     if (res.data && res.data.length > 0) {
-      const coursesData = []
-      for (const e of res.data) {
-        try {
-          const courseRes = await courseAPI.getById(e.courseId)
-          if (courseRes.data) {
+      const coursesData = await Promise.all(
+        res.data.map(async (enrollment) => {
+          try {
+            const courseRes = await courseAPI.getById(enrollment.courseId)
+            if (!courseRes.data) return null
+
             // 检查新章节
             let hasNewChapters = false
             let newChaptersCount = 0
             try {
-              const newChapterRes = await enrollmentAPI.checkNewChapters(studentId, e.courseId)
+              const newChapterRes = await enrollmentAPI.checkNewChapters(studentId, enrollment.courseId)
               if (newChapterRes.data) {
                 hasNewChapters = newChapterRes.data.hasNewChapters || false
                 newChaptersCount = newChapterRes.data.newChaptersCount || 0
               }
             } catch (err) {
-              // 忽略新章节检查错误
+              // 新章节检查失败不影响主流程
+              console.warn(`检查新章节失败(courseId=${enrollment.courseId}):`, err)
             }
-            
-            coursesData.push({
-              id: e.courseId,
+
+            return {
+              id: enrollment.courseId,
               title: courseRes.data.title || '未知课程',
               teacher: courseRes.data.teacherName || '未知教师',
-              progress: e.progress || 0,
+              progress: enrollment.progress || 0,
               totalChapters: 0,
               completedChapters: 0,
-              lastStudy: e.lastStudyAt ? formatTime(e.lastStudyAt) : '暂无记录',
+              lastStudy: enrollment.lastStudyAt ? formatTime(enrollment.lastStudyAt) : '暂无记录',
               chapters: [],
               subject: courseRes.data.subject,
               color: getSubjectColor(courseRes.data.subject),
@@ -364,52 +365,64 @@ const loadEnrolledCourses = async () => {
               lastChapterTitle: null,
               lastPosition: 0,
               // 新章节信息
-              hasNewChapters: hasNewChapters,
-              newChaptersCount: newChaptersCount
-            })
+              hasNewChapters,
+              newChaptersCount
+            }
+          } catch (err) {
+            console.error(`加载课程详情失败(courseId=${enrollment.courseId}):`, err)
+            return null
           }
-        } catch (err) { console.error(err) }
-      }
-      enrolledCourses.value = coursesData
-      
-      // 加载统计所需的章节详情
-      for (const course of enrolledCourses.value) {
-        try {
-           const chaptersRes = await chapterAPI.getByCourse(course.id)
-           if (chaptersRes.data) {
-             const progressRes = await progressAPI.getCourseProgress(course.id, studentId)
-             const progressMap = {}
-             let lastStudiedChapter = null
-             let lastStudyTime = null
-             
-             if (progressRes.data) {
-               progressRes.data.forEach(p => { 
-                 progressMap[p.chapterId] = p
-                 // 找到最近学习的章节
-                 if (p.lastUpdateTime && (!lastStudyTime || new Date(p.lastUpdateTime) > new Date(lastStudyTime))) {
-                   lastStudyTime = p.lastUpdateTime
-                   lastStudiedChapter = p
-                 }
-               })
-             }
-             
-             course.chapters = chaptersRes.data.map(ch => ({
-                id: ch.id, title: ch.title,
+        })
+      )
+
+      enrolledCourses.value = coursesData.filter(Boolean)
+
+      // 加载统计所需的章节详情（并行化，减少等待时间）
+      await Promise.all(
+        enrolledCourses.value.map(async (course) => {
+          try {
+            const [chaptersRes, progressRes] = await Promise.all([
+              chapterAPI.getByCourse(course.id),
+              progressAPI.getCourseProgress(course.id, studentId)
+            ])
+
+            if (chaptersRes.data) {
+              const progressMap = {}
+              let lastStudiedChapter = null
+              let lastStudyTime = null
+
+              if (progressRes.data) {
+                progressRes.data.forEach(p => {
+                  progressMap[p.chapterId] = p
+                  // 找到最近学习的章节
+                  if (p.lastUpdateTime && (!lastStudyTime || new Date(p.lastUpdateTime) > new Date(lastStudyTime))) {
+                    lastStudyTime = p.lastUpdateTime
+                    lastStudiedChapter = p
+                  }
+                })
+              }
+
+              course.chapters = chaptersRes.data.map(ch => ({
+                id: ch.id,
+                title: ch.title,
                 completed: progressMap[ch.id]?.isCompleted === 1
-             }))
-             course.totalChapters = course.chapters.length
-             course.completedChapters = course.chapters.filter(c => c.completed).length
-             
-             // 设置上次学习位置
-             if (lastStudiedChapter) {
-               course.lastChapterId = lastStudiedChapter.chapterId
-               course.lastPosition = lastStudiedChapter.lastPosition || 0
-               const chapterInfo = course.chapters.find(ch => ch.id === lastStudiedChapter.chapterId)
-               course.lastChapterTitle = chapterInfo?.title || '未知章节'
-             }
-           }
-        } catch(e) {}
-      }
+              }))
+              course.totalChapters = course.chapters.length
+              course.completedChapters = course.chapters.filter(c => c.completed).length
+
+              // 设置上次学习位置
+              if (lastStudiedChapter) {
+                course.lastChapterId = lastStudiedChapter.chapterId
+                course.lastPosition = lastStudiedChapter.lastPosition || 0
+                const chapterInfo = course.chapters.find(ch => ch.id === lastStudiedChapter.chapterId)
+                course.lastChapterTitle = chapterInfo?.title || '未知章节'
+              }
+            }
+          } catch (err) {
+            console.error(`加载课程章节进度失败(courseId=${course.id}):`, err)
+          }
+        })
+      )
       
       recentCourses.value = enrolledCourses.value.slice(0, 3).map(c => ({
          id: c.id, name: c.title, progress: c.progress,
@@ -440,6 +453,8 @@ const loadEnrolledCourses = async () => {
       
     } else {
       enrolledCourses.value = []
+      recentCourses.value = []
+      timeline.value = []
     }
   } catch (e) {
     console.error('List enrollments failed', e)
@@ -466,7 +481,9 @@ const loadAvailableCourses = async () => {
           rating: c.rating || 4.5
         }))
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error('加载可报名课程失败:', e)
+  }
 }
 
 const loadHomeworks = async () => {
@@ -505,7 +522,9 @@ const loadHomeworks = async () => {
                 else if (hw.unlocked) pending.push(item)
              })
            }
-         } catch(e) {}
+         } catch(e) {
+           console.error(`加载作业失败(courseId=${course.id}, chapterId=${chapter.id}):`, e)
+         }
       }
     }
     
@@ -534,7 +553,9 @@ const loadHomeworks = async () => {
       }))
     activities.value = gradedActivities
     
-  } catch (e) {}
+  } catch (e) {
+    console.error('加载作业列表失败:', e)
+  }
 }
 
 const loadQuestions = async () => {
@@ -600,7 +621,9 @@ const loadQuestions = async () => {
         : []
 
     myQuestions.value = [...homeworkQuestions, ...commentQuestions].sort((a, b) => parseTime(b.time) - parseTime(a.time))
-  } catch (e) {}
+  } catch (e) {
+    console.error('加载我的提问失败:', e)
+  }
 }
 
 // 加载用户设置
@@ -632,7 +655,9 @@ const loadUserSettings = async () => {
       const savedGoal = localStorage.getItem('study_goal')
       if (savedNotifications) Object.assign(notificationSettings.value, JSON.parse(savedNotifications))
       if (savedGoal) Object.assign(studyGoal.value, JSON.parse(savedGoal))
-    } catch(e) {}
+    } catch(e) {
+      console.warn('本地设置缓存解析失败:', e)
+    }
   } finally {
     settingsReady.value = true
   }
@@ -640,14 +665,24 @@ const loadUserSettings = async () => {
 
 const refreshAll = async () => {
     loading.value = true
-    await loadStudentStats()  // 先加载统计数据
-    await loadBadges()        // 加载徽章
-    await loadEnrolledCourses()
-    await loadAvailableCourses()
-    await loadHomeworks()
-    await loadQuestions()
-    await loadUserSettings()  // 加载用户设置
-    loading.value = false
+    try {
+      // 第一阶段：并行加载无依赖数据
+      await Promise.all([
+        loadStudentStats(),
+        loadBadges(),
+        loadEnrolledCourses(),
+        loadQuestions(),
+        loadUserSettings()
+      ])
+
+      // 第二阶段：依赖已报名课程的数据
+      await Promise.all([
+        loadAvailableCourses(),
+        loadHomeworks()
+      ])
+    } finally {
+      loading.value = false
+    }
 }
 
 // 操作方法
@@ -671,7 +706,10 @@ const handleDrop = async (courseId) => {
    try {
      await enrollmentAPI.drop(authStore.user?.id, courseId)
      await refreshAll()
-   } catch(e) {}
+   } catch(e) {
+     console.error('退课失败:', e)
+     toast.error('退课失败，请稍后重试')
+   }
 }
 
 const handleSubmitQuestion = async (q) => {

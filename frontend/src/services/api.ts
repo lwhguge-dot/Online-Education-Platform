@@ -31,6 +31,10 @@ interface AuthData {
 // 友好错误消息映射类型
 type FriendlyErrorMessages = Record<string, string>
 
+interface RequestError extends Error {
+  handledByToast?: boolean
+}
+
 // ========== 简单内存缓存机制 ==========
 const cache = new Map<string, CacheEntry>()
 const CACHE_DURATION = 30000 // 30秒缓存
@@ -141,8 +145,38 @@ const getFriendlyMessage = (errorMsg: string | undefined): string => {
 // 正在进行的请求，用于防止冲突
 const pendingRequests = new Set<string>()
 
+// 统一提取错误消息，避免 unknown 类型导致的重复判断
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message
+  }
+  return String(error ?? '未知错误')
+}
+
+// 生成请求去重键：非GET请求加入body信息，避免不同提交被误判为重复
+const getRequestKey = (url: string, options: RequestOptions): string => {
+  const method = options.method || 'GET'
+  if (method === 'GET') {
+    return `${method}:${url}`
+  }
+
+  if (options.body instanceof FormData) {
+    return `${method}:${url}:form-data`
+  }
+
+  if (typeof options.body === 'string') {
+    return `${method}:${url}:${options.body}`
+  }
+
+  if (options.body instanceof URLSearchParams) {
+    return `${method}:${url}:${options.body.toString()}`
+  }
+
+  return `${method}:${url}`
+}
+
 const request = async <T = any>(url: string, options: RequestOptions = {}): Promise<Result<T>> => {
-  const requestKey = `${options.method || 'GET'}:${url}`
+  const requestKey = getRequestKey(url, options)
 
   // 对于POST/PUT，防止短时间内的重复请求
   if (options.method && options.method !== 'GET') {
@@ -181,7 +215,9 @@ const request = async <T = any>(url: string, options: RequestOptions = {}): Prom
     if (!response.ok || data.code !== 200) {
       const friendlyMsg = getFriendlyMessage(data.message)
       useToastStore().error(friendlyMsg)
-      throw new Error(friendlyMsg)
+      const businessError: RequestError = new Error(friendlyMsg)
+      businessError.handledByToast = true
+      throw businessError
     }
 
     if (options.method && options.method !== 'GET') {
@@ -189,14 +225,19 @@ const request = async <T = any>(url: string, options: RequestOptions = {}): Prom
     }
 
     return data
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = getErrorMessage(err)
+    const requestError = err as RequestError
+    const sentryError = err instanceof Error ? err : new Error(errorMessage)
     // 捕获 API 错误到 Sentry
-    if (!err.message.includes('权限校验') && !err.message.includes('禁用')) {
-      const friendlyMsg = getFriendlyMessage(err.message)
-      useToastStore().error(friendlyMsg)
+    if (!errorMessage.includes('权限校验') && !errorMessage.includes('禁用')) {
+      const friendlyMsg = getFriendlyMessage(errorMessage)
+      if (!requestError.handledByToast) {
+        useToastStore().error(friendlyMsg)
+      }
 
       // 发送错误到 Sentry
-      SentryService.captureException(err, {
+      SentryService.captureException(sentryError, {
         level: 'error',
         tags: {
           type: 'api_error',
@@ -206,7 +247,7 @@ const request = async <T = any>(url: string, options: RequestOptions = {}): Prom
         extra: {
           requestUrl: `${API_BASE}${url}`,
           friendlyMessage: friendlyMsg,
-          originalMessage: err.message,
+          originalMessage: errorMessage,
         },
       })
     }
@@ -1010,9 +1051,20 @@ export const saveAuth = (token: string, user: User): void => {
 export const getAuth = (): { token: string | null; user: User | null } => {
   const token = sessionStorage.getItem('token')
   const userStr = sessionStorage.getItem('user')
+  let user: User | null = null
+
+  if (userStr) {
+    try {
+      user = JSON.parse(userStr)
+    } catch {
+      // 用户信息损坏时主动清理，避免后续页面反复报错
+      sessionStorage.removeItem('user')
+    }
+  }
+
   return {
     token,
-    user: userStr ? JSON.parse(userStr) : null,
+    user,
   }
 }
 

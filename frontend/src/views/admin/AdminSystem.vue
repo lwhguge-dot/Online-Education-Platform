@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
 import {
   Shield, Database, Activity, HardDrive, Trash2,
   Users, BookOpen, BarChart3, Settings, Play,
@@ -21,10 +21,9 @@ const uptime = ref('...')
 const bootTime = ref(null)
 let timer = null
 
-onMounted(() => {
-  checkHealth()
-  
-  // 启动本地校准计时器
+// 启动运行时计时器（兼容 KeepAlive 激活/失活）
+const startUptimeTimer = () => {
+  if (timer) return
   timer = setInterval(() => {
     if (!bootTime.value) return
     const diff = Math.floor((new Date() - new Date(bootTime.value)) / 1000)
@@ -32,11 +31,26 @@ onMounted(() => {
     else if (diff < 3600) uptime.value = Math.floor(diff / 60) + '分钟'
     else uptime.value = Math.floor(diff / 3600) + '小时 ' + Math.floor((diff % 3600) / 60) + '分钟'
   }, 1000)
+}
+
+// 停止运行时计时器，避免页面缓存时持续运行
+const stopUptimeTimer = () => {
+  if (!timer) return
+  clearInterval(timer)
+  timer = null
+}
+
+onMounted(() => {
+  checkHealth()
+  startUptimeTimer()
 })
 
 onUnmounted(() => {
-  if (timer) clearInterval(timer)
+  stopUptimeTimer()
 })
+
+onActivated(startUptimeTimer)
+onDeactivated(stopUptimeTimer)
 
 // 服务健康状态
 const services = ref([

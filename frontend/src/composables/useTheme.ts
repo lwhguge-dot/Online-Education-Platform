@@ -2,7 +2,7 @@
  * 主题切换 Composable
  * 管理应用的亮色/暗黑模式切换，支持本地存储持久化和跟随系统设置。
  */
-import { ref, watch, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 // 主题模式: 'light' | 'dark' | 'system'
 const theme = ref('system')
@@ -10,6 +10,15 @@ const isDark = ref(false)
 
 // 本地存储键名
 const STORAGE_KEY = 'edu-platform-theme'
+const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+let mediaListenerRegistered = false
+
+// 系统主题变化处理器（用于注册与清理）
+const handleSystemThemeChange = (event: MediaQueryListEvent) => {
+  if (theme.value === 'system') {
+    applyTheme(event.matches)
+  }
+}
 
 /**
  * 应用主题到 DOM
@@ -29,7 +38,7 @@ const applyTheme = (dark) => {
  * @returns {Boolean} 是否为暗黑模式
  */
 const getSystemTheme = () => {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
+  return mediaQuery.matches
 }
 
 /**
@@ -57,11 +66,10 @@ const initTheme = () => {
   updateTheme()
 
   // 监听系统主题变化
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-    if (theme.value === 'system') {
-      applyTheme(e.matches)
-    }
-  })
+  if (!mediaListenerRegistered) {
+    mediaQuery.addEventListener('change', handleSystemThemeChange)
+    mediaListenerRegistered = true
+  }
 }
 
 /**
@@ -95,6 +103,13 @@ const toggleTheme = () => {
 export function useTheme() {
   onMounted(() => {
     initTheme()
+  })
+
+  // 清理系统主题监听，避免重复注册导致内存泄漏
+  onUnmounted(() => {
+    if (!mediaListenerRegistered) return
+    mediaQuery.removeEventListener('change', handleSystemThemeChange)
+    mediaListenerRegistered = false
   })
 
   return {

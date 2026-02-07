@@ -104,6 +104,23 @@ const getSeverityLabel = (rate) => {
   return '基本掌握'
 }
 
+// 安全解析题目选项，避免模板中重复 JSON.parse
+const parseQuestionOptions = (options) => {
+  if (Array.isArray(options)) {
+    return options
+  }
+  if (typeof options === 'string') {
+    try {
+      const parsed = JSON.parse(options)
+      return Array.isArray(parsed) ? parsed : []
+    } catch (error) {
+      console.warn('错题选项解析失败:', error)
+      return []
+    }
+  }
+  return []
+}
+
 // 监听homeworkId变化
 watch(() => props.homeworkId, (newId) => {
   if (newId) {
@@ -214,7 +231,7 @@ onMounted(() => {
                 <!-- 选项（如果是选择题） -->
                 <div v-if="question.options" class="space-y-1">
                   <div
-                    v-for="(option, index) in (typeof question.options === 'string' ? JSON.parse(question.options) : question.options)"
+                    v-for="(option, index) in parseQuestionOptions(question.options)"
                     :key="index"
                     class="flex items-center gap-2 p-2 rounded-lg text-sm"
                     :class="String.fromCharCode(65 + index) === question.correctAnswer ? 'bg-qingsong/10 text-qingsong font-medium' : 'bg-white/50 text-shuimo/70'"

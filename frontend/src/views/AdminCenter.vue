@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, onActivated, onDeactivated, computed, watch, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import {
@@ -16,13 +16,13 @@ import {
 import { useTheme } from '../composables/useTheme'
 import { useKeyboard, keyboardShortcuts } from '../composables/useKeyboard'
 
-// 子组件
-import AdminDashboard from './admin/AdminDashboard.vue'
-import AdminUsers from './admin/AdminUsers.vue'
-import AdminCourses from './admin/AdminCourses.vue'
-import AdminSystem from './admin/AdminSystem.vue'
-import AdminLogs from './admin/AdminLogs.vue'
-import AdminAnnouncements from './admin/AdminAnnouncements.vue'
+// 子组件（按需异步加载，降低主包体积）
+const AdminDashboard = defineAsyncComponent(() => import('./admin/AdminDashboard.vue'))
+const AdminUsers = defineAsyncComponent(() => import('./admin/AdminUsers.vue'))
+const AdminCourses = defineAsyncComponent(() => import('./admin/AdminCourses.vue'))
+const AdminSystem = defineAsyncComponent(() => import('./admin/AdminSystem.vue'))
+const AdminLogs = defineAsyncComponent(() => import('./admin/AdminLogs.vue'))
+const AdminAnnouncements = defineAsyncComponent(() => import('./admin/AdminAnnouncements.vue'))
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -175,14 +175,37 @@ const refreshData = async () => {
 
 // 生命周期
 let refreshTimer = null
+
+// 启动后台数据轮询（兼容 KeepAlive 激活/失活）
+const startRefreshTimer = () => {
+  if (refreshTimer) return
+  refreshTimer = setInterval(refreshData, 30000) // 每 30 秒自动刷新
+}
+
+// 停止后台数据轮询，避免页面缓存时继续请求
+const stopRefreshTimer = () => {
+  if (!refreshTimer) return
+  clearInterval(refreshTimer)
+  refreshTimer = null
+}
+
 onMounted(() => {
   startStatusCheck()
   refreshData()
-  refreshTimer = setInterval(refreshData, 30000) // 每 30 秒自动刷新
+  startRefreshTimer()
 })
 
 onUnmounted(() => {
-  if (refreshTimer) clearInterval(refreshTimer)
+  stopRefreshTimer()
+  stopStatusCheck()
+})
+
+onActivated(() => {
+  startStatusCheck()
+  startRefreshTimer()
+})
+onDeactivated(() => {
+  stopRefreshTimer()
   stopStatusCheck()
 })
 

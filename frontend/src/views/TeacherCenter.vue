@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import {
@@ -13,16 +13,16 @@ import {
   Menu, X, Bell, BarChart3, Megaphone, Calendar
 } from 'lucide-vue-next'
 
-// 视图组件
-import TeacherDashboard from './teacher/TeacherDashboard.vue'
-import TeacherCourses from './teacher/TeacherCourses.vue'
-import TeacherHomeworks from './teacher/TeacherHomeworks.vue'
-import TeacherStudents from './teacher/TeacherStudents.vue'
-import TeacherDiscussion from './teacher/TeacherDiscussion.vue'
-import TeacherProfile from './teacher/TeacherProfile.vue'
-import CourseAnalytics from './teacher/CourseAnalytics.vue'
-import AnnouncementHistory from '../components/teacher/AnnouncementHistory.vue'
-import TeachingCalendar from './teacher/TeachingCalendar.vue'
+// 视图组件（按需异步加载，降低首屏体积）
+const TeacherDashboard = defineAsyncComponent(() => import('./teacher/TeacherDashboard.vue'))
+const TeacherCourses = defineAsyncComponent(() => import('./teacher/TeacherCourses.vue'))
+const TeacherHomeworks = defineAsyncComponent(() => import('./teacher/TeacherHomeworks.vue'))
+const TeacherStudents = defineAsyncComponent(() => import('./teacher/TeacherStudents.vue'))
+const TeacherDiscussion = defineAsyncComponent(() => import('./teacher/TeacherDiscussion.vue'))
+const TeacherProfile = defineAsyncComponent(() => import('./teacher/TeacherProfile.vue'))
+const CourseAnalytics = defineAsyncComponent(() => import('./teacher/CourseAnalytics.vue'))
+const AnnouncementHistory = defineAsyncComponent(() => import('../components/teacher/AnnouncementHistory.vue'))
+const TeachingCalendar = defineAsyncComponent(() => import('./teacher/TeachingCalendar.vue'))
 
 const router = useRouter()
 const authStore = useAuthStore()

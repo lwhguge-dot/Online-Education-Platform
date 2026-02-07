@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, onActivated, onDeactivated } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Search, X, CheckCircle, XCircle, Ban, Eye,
@@ -155,7 +155,9 @@ const getCurrentUser = () => {
   try {
     const userStr = sessionStorage.getItem('user')
     return userStr ? JSON.parse(userStr) : null
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 const updateStatus = async (course, status) => {
@@ -251,7 +253,9 @@ const batchAction = async (action) => {
     try {
       await courseAPI.updateStatus(id, status, currentUser?.id, currentUser?.username)
       patchLocalCourse(id, { status: status == 2 ? 'OFFLINE' : 'PUBLISHED' })
-    } catch (e) {}
+    } catch (e) {
+      console.error('批量更新课程状态失败:', e)
+    }
   }
   selectedCourses.value = []
   emit('refresh')
@@ -273,17 +277,25 @@ const exportCourses = async () => {
 // 每 30 秒触发一次刷新
 let refreshInterval = null
 
-onMounted(() => {
+// 启动轮询（兼容 KeepAlive 激活/失活）
+const startRefreshTimer = () => {
+  if (refreshInterval) return
   refreshInterval = setInterval(() => {
     emit('refresh')
   }, 30000)
-})
+}
 
-onUnmounted(() => {
-  if (refreshInterval) {
-    clearInterval(refreshInterval)
-  }
-})
+// 停止轮询，避免页面缓存时继续请求
+const stopRefreshTimer = () => {
+  if (!refreshInterval) return
+  clearInterval(refreshInterval)
+  refreshInterval = null
+}
+
+onMounted(startRefreshTimer)
+onUnmounted(stopRefreshTimer)
+onActivated(startRefreshTimer)
+onDeactivated(stopRefreshTimer)
 </script>
 
 <template>

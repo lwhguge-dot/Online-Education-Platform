@@ -60,6 +60,23 @@ const isOptionAnimating = (questionId, optionKey) => {
   return animatingOptions[`${questionId}-${optionKey}`]
 }
 
+// 安全解析题目选项，避免模板内反复 JSON.parse 和异常中断
+const parseQuestionOptions = (options) => {
+  if (Array.isArray(options)) {
+    return options
+  }
+  if (typeof options === 'string') {
+    try {
+      const parsed = JSON.parse(options)
+      return Array.isArray(parsed) ? parsed : []
+    } catch (error) {
+      console.warn('题目选项解析失败:', error)
+      return []
+    }
+  }
+  return []
+}
+
 // 判断是否可以提问：必须是查看模式（已提交）且作业已被批改
 const canAskQuestion = computed(() => {
   if (!isViewMode.value || !submissionData.value) return false
@@ -340,7 +357,7 @@ const goBack = () => {
                 <!-- 单选题选项 -->
 
                 <div v-if="question.questionType === 'single'" class="space-y-3">
-                  <div v-for="(option, idx) in JSON.parse(question.options || '[]')" :key="idx" 
+                  <div v-for="(option, idx) in parseQuestionOptions(question.options)" :key="idx" 
                        @click="selectSingleChoice(question.id, String.fromCharCode(65 + idx))"
                        :class="['group relative p-4 rounded-xl border transition-all duration-300 option-item',
                                 !isViewMode && 'cursor-pointer hover:border-qinghua/50 hover:bg-white/80',
@@ -366,7 +383,7 @@ const goBack = () => {
                 <!-- 多选题选项 -->
 
                 <div v-else-if="question.questionType === 'multiple'" class="space-y-3">
-                  <div v-for="(option, idx) in JSON.parse(question.options || '[]')" :key="idx"
+                  <div v-for="(option, idx) in parseQuestionOptions(question.options)" :key="idx"
                        @click="toggleMultipleChoice(question.id, String.fromCharCode(65 + idx))"
                        :class="['group relative p-4 rounded-xl border transition-all duration-300 option-item',
                                 !isViewMode && 'cursor-pointer hover:border-qinghua/50 hover:bg-white/80',

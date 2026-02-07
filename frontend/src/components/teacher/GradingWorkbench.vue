@@ -175,6 +175,23 @@ const formatTime = (dateStr) => {
   })
 }
 
+// 安全解析选项，避免模板内重复 JSON.parse 且降低异常风险
+const parseAnswerOptions = (options) => {
+  if (Array.isArray(options)) {
+    return options
+  }
+  if (typeof options === 'string') {
+    try {
+      const parsed = JSON.parse(options)
+      return Array.isArray(parsed) ? parsed : []
+    } catch (error) {
+      console.warn('答案选项解析失败:', error)
+      return []
+    }
+  }
+  return []
+}
+
 onMounted(() => {
   loadPendingSubmissions()
   window.addEventListener('keydown', handleKeydown)
@@ -310,7 +327,7 @@ onUnmounted(() => {
                 
                 <!-- 选项（客观题） -->
                 <div v-if="answer.options && answer.questionType !== 'subjective'" class="mt-3 space-y-1">
-                  <div v-for="(opt, optIdx) in JSON.parse(answer.options || '[]')" :key="optIdx"
+                  <div v-for="(opt, optIdx) in parseAnswerOptions(answer.options)" :key="optIdx"
                     :class="[
                       'px-3 py-1.5 rounded text-sm',
                       answer.correctAnswer?.includes(String.fromCharCode(65 + optIdx)) ? 'bg-qingsong/10 text-qingsong' : 'text-shuimo/70'

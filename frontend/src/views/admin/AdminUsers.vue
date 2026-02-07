@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted, onActivated, onDeactivated } from 'vue'
 import {
   Search, X, UserX, UserCheck, Shield, Trash2,
   MoreVertical, CheckSquare, Square, Download,
@@ -203,7 +203,9 @@ const getCurrentUser = () => {
   try {
     const userStr = sessionStorage.getItem('user')
     return userStr ? JSON.parse(userStr) : null
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
 const toggleUserStatus = async (user) => {
@@ -274,7 +276,9 @@ const batchAction = async (action) => {
   for (const id of selectedUsers.value) {
     try {
       await userAPI.updateStatus(id, status)
-    } catch (e) {}
+    } catch (e) {
+      console.error('批量更新用户状态失败:', e)
+    }
   }
   selectedUsers.value = []
   emit('refresh')
@@ -292,12 +296,24 @@ watch(() => props.users, () => {
 
 // 每 30 秒自动刷新在线状态
 let onlineStatusTimer = null
-onMounted(() => {
+
+// 启动轮询（兼容 KeepAlive 激活/失活）
+const startOnlineStatusTimer = () => {
+  if (onlineStatusTimer) return
   onlineStatusTimer = setInterval(fetchOnlineStatus, 30000)
-})
-onUnmounted(() => {
-  if (onlineStatusTimer) clearInterval(onlineStatusTimer)
-})
+}
+
+// 停止轮询，避免组件缓存时继续占用资源
+const stopOnlineStatusTimer = () => {
+  if (!onlineStatusTimer) return
+  clearInterval(onlineStatusTimer)
+  onlineStatusTimer = null
+}
+
+onMounted(startOnlineStatusTimer)
+onUnmounted(stopOnlineStatusTimer)
+onActivated(startOnlineStatusTimer)
+onDeactivated(stopOnlineStatusTimer)
 </script>
 
 <template>
