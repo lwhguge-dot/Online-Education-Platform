@@ -1,0 +1,59 @@
+# Prometheus 配置文件
+global:
+  scrape_interval: 15s # 每15秒抓取一次指标
+  evaluation_interval: 15s # 每15秒评估一次规则
+  external_labels:
+    cluster: 'edu-platform'
+    environment: 'development'
+
+# 抓取配置
+scrape_configs:
+  # Prometheus 自身监控
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Gateway 网关服务
+  - job_name: 'gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['gateway:8090']
+        labels:
+          service: 'gateway'
+          application: 'gateway'
+
+  # User Service 用户服务
+  - job_name: 'user-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['user-service:8081']
+        labels:
+          service: 'user-service'
+          application: 'user-service'
+
+  # Course Service 课程服务
+  - job_name: 'course-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['course-service:8082']
+        labels:
+          service: 'course-service'
+          application: 'course-service'
+
+  # Homework Service 作业服务
+  - job_name: 'homework-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['homework-service:8083']
+        labels:
+          service: 'homework-service'
+          application: 'homework-service'
+
+  # Progress Service 进度服务
+  - job_name: 'progress-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['progress-service:8084']
+        labels:
+          service: 'progress-service'
+          application: 'progress-service'

@@ -1,0 +1,101 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: progress-service
+  threads:
+    virtual:
+      enabled: true  # 启用 Java 21 虚拟线程
+  cloud:
+    nacos:
+      discovery:
+        server-addr: "${NACOS_ADDR:nacos:8848}"
+    sentinel:
+      transport:
+        dashboard: sentinel:8858  # Sentinel 控制台地址
+        port: 8719  # 与控制台通信的端口
+      datasource:
+        # 从 Nacos 读取流控规则
+        flow:
+          nacos:
+            server-addr: "${NACOS_ADDR:nacos:8848}"
+            dataId: ${spring.application.name}-flow-rules
+            groupId: SENTINEL_GROUP
+            rule-type: flow
+        # 从 Nacos 读取降级规则
+        degrade:
+          nacos:
+            server-addr: "${NACOS_ADDR:nacos:8848}"
+            dataId: ${spring.application.name}-degrade-rules
+            groupId: SENTINEL_GROUP
+            rule-type: degrade
+      eager: true  # 启动时立即初始化 Sentinel
+      web-context-unify: false  # 关闭 URL 路径聚合，保留完整路径
+  # Redis 配置
+  data:
+    redis:
+      host: "${SPRING_REDIS_HOST:redis}"
+      port: 6379
+      password: "${SPRING_REDIS_PASSWORD:123456}"
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 100 # 连接池最大连接数
+          max-wait: -1ms  # 连接池最大阻塞等待时间
+          max-idle: 20    # 连接池中的最大空闲连接
+          min-idle: 5     # 连接池中的最小空闲连接
+  datasource:
+    url: "${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/edu_platform?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8}"
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 50  # 虚拟线程优化：增加连接池大小
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+# Actuator 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+  info:
+    env:
+      enabled: true
+  tracing:
+    sampling:
+      probability: 1.0  # 采样率 100%（开发环境），生产环境建议 0.1
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces  # Jaeger OTLP endpoint
+
+# OpenTelemetry 配置
+otel:
+  service:
+    name: ${spring.application.name}
+  exporter:
+    otlp:
+      endpoint: http://jaeger:4318

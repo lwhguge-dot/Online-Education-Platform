@@ -1,0 +1,13 @@
+**/*.log
+**/target/
+**/node_modules/
+**/.git/
+**/.idea/
+**/.vscode/
+**/.mvn/
+**/dist/
+**/uploads/
+*.iml
+Dockerfile
+schema.sql
+pom.xml.bak
