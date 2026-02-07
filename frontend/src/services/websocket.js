@@ -1,7 +1,8 @@
 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const host = window.location.host;
-const WS_BASE = `${protocol}//${host}/api/user-service/ws/notification`;
-// Note: We route through gateway now to ensure consistency
+// 通过网关统一转发到 user-service 的 WebSocket 端点
+// 后端注册路径为 /ws/notification（见 user-service 的 WebSocketConfig）
+const WS_BASE = `${protocol}//${host}/ws/notification`;
 
 let ws = null;
 let reconnectTimer = null;

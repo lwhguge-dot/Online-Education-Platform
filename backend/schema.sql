@@ -1,10 +1,10 @@
 -- =====================================================
--- 智慧課堂在線教育平台 - 數據庫表結構
--- 數據庫: PostgreSQL 15+
+-- 智慧课堂在线教育平台 - 数据库表结构
+-- 数据库: PostgreSQL 15+
 -- 字符集: UTF-8
--- 表數量: 30張
--- 帳號密碼: postgres / 123456
--- 最後更新: 2026-02-06
+-- 表数量: 30张
+-- 默认数据库账号密码: postgres / 123456
+-- 最后更新时间: 2026-02-08
 -- =====================================================
 -- 创建数据库（如果需要手动创建，请在psql中执行）
 -- CREATE DATABASE edu_platform WITH ENCODING 'UTF8' LC_COLLATE='zh_CN.UTF-8' LC_CTYPE='zh_CN.UTF-8' TEMPLATE=template0;
@@ -787,9 +787,12 @@ CREATE TABLE IF NOT EXISTS muted_users (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
     course_id BIGINT DEFAULT NULL,
-    operator_id BIGINT NOT NULL,
+    muted_by BIGINT DEFAULT NULL,
+    operator_id BIGINT DEFAULT NULL,
     reason VARCHAR(500) DEFAULT NULL,
+    muted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     mute_until TIMESTAMP DEFAULT NULL,
+    unmuted_at TIMESTAMP DEFAULT NULL,
     status SMALLINT DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -798,9 +801,12 @@ COMMENT ON TABLE muted_users IS '禁言用户表';
 COMMENT ON COLUMN muted_users.id IS '禁言记录ID';
 COMMENT ON COLUMN muted_users.user_id IS '被禁言用户ID';
 COMMENT ON COLUMN muted_users.course_id IS '课程ID（NULL表示全局禁言）';
-COMMENT ON COLUMN muted_users.operator_id IS '操作人ID';
+COMMENT ON COLUMN muted_users.muted_by IS '禁言操作人ID（现行业务字段）';
+COMMENT ON COLUMN muted_users.operator_id IS '操作人ID（历史兼容字段）';
 COMMENT ON COLUMN muted_users.reason IS '禁言原因';
+COMMENT ON COLUMN muted_users.muted_at IS '禁言开始时间（现行业务字段）';
 COMMENT ON COLUMN muted_users.mute_until IS '禁言截止时间（NULL表示永久）';
+COMMENT ON COLUMN muted_users.unmuted_at IS '解除禁言时间（现行业务字段）';
 COMMENT ON COLUMN muted_users.status IS '状态：1生效 0已解除';
 COMMENT ON COLUMN muted_users.created_at IS '创建时间';
 COMMENT ON COLUMN muted_users.updated_at IS '更新时间';
@@ -808,6 +814,27 @@ COMMENT ON COLUMN muted_users.updated_at IS '更新时间';
 CREATE INDEX idx_muted_users_user ON muted_users(user_id);
 CREATE INDEX idx_muted_users_course ON muted_users(course_id);
 CREATE INDEX idx_muted_users_status ON muted_users(status);
+
+-- muted_users 历史兼容迁移（幂等）
+-- 兼容说明：适配旧版本仅包含 operator_id/mute_until 的表结构
+ALTER TABLE IF EXISTS muted_users
+    ADD COLUMN IF NOT EXISTS muted_by BIGINT,
+    ADD COLUMN IF NOT EXISTS muted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS unmuted_at TIMESTAMP DEFAULT NULL;
+
+ALTER TABLE IF EXISTS muted_users
+    ALTER COLUMN operator_id DROP NOT NULL;
+
+-- 历史数据回填（仅在旧版数据存在时生效）
+UPDATE muted_users
+SET muted_by = operator_id
+WHERE muted_by IS NULL
+  AND operator_id IS NOT NULL;
+
+UPDATE muted_users
+SET muted_at = COALESCE(created_at, CURRENT_TIMESTAMP)
+WHERE muted_at IS NULL;
+
 -- 屏蔽词表
 CREATE TABLE IF NOT EXISTS blocked_words (
     id BIGSERIAL PRIMARY KEY,

@@ -22,7 +22,7 @@ public interface MutedUserMapper extends BaseMapper<MutedUser> {
     /**
      * 获取用户禁言信息
      */
-    @Select("SELECT m.*, u.real_name as muted_by_name FROM muted_users m " +
+    @Select("SELECT m.*, u.name as muted_by_name FROM muted_users m " +
             "LEFT JOIN users u ON m.muted_by = u.id " +
             "WHERE m.user_id = #{userId} AND m.course_id = #{courseId} AND m.status = 1")
     Map<String, Object> getMuteInfo(@Param("userId") Long userId, @Param("courseId") Long courseId);
@@ -45,7 +45,7 @@ public interface MutedUserMapper extends BaseMapper<MutedUser> {
     /**
      * 获取课程禁言记录列表
      */
-    @Select("SELECT m.*, u1.real_name as user_name, u2.real_name as muted_by_name " +
+    @Select("SELECT m.*, u1.name as user_name, u2.name as muted_by_name " +
             "FROM muted_users m " +
             "LEFT JOIN users u1 ON m.user_id = u1.id " +
             "LEFT JOIN users u2 ON m.muted_by = u2.id " +

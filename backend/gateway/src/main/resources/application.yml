@@ -25,21 +25,45 @@ spring:
           predicates:
             - Path=/api/auth/**, /api/users/**, /api/stats/admin/**, /api/audit-logs/**, /api/announcements/**, /api/teachers/**, /api/notifications/**
         # 章节评论API路由到course-service（必须在homework-service的/api/comments/**之前）
+        # 显式匹配 unmute，避免被 /api/comments/** 误路由到 homework-service
+        - id: course-service-comments-unmute
+          uri: lb://course-service
+          order: -20
+          predicates:
+            - Path=/api/comments/unmute
+            - Method=POST
         - id: course-service-comments
           uri: lb://course-service
+          order: -19
           predicates:
             - Path=/api/comments/chapter/**, /api/comments/mute**, /api/comments/blocked-words/**, /api/comments/{id}/like, /api/comments/{id}/pin, /api/comments/{id}/replies
-        - id: course-service-comments-post
-          uri: lb://course-service
+        - id: homework-service-comments-post
+          uri: lb://homework-service
+          order: -18
           predicates:
             - Path=/api/comments
-            - Method=POST,DELETE
+            - Method=POST
+            - Query=questionId
+        - id: course-service-comments-post
+          uri: lb://course-service
+          order: -17
+          predicates:
+            - Path=/api/comments
+            - Method=POST
+        - id: course-service-comments-delete
+          uri: lb://course-service
+          order: -16
+          predicates:
+            - Path=/api/comments/{id}
+            - Method=DELETE
+            - Query=userId
         - id: course-service
           uri: lb://course-service
           predicates:
             - Path=/api/courses/**, /api/subjects/**, /api/chapters/**, /api/enrollments/**, /api/files/**
         - id: homework-service
           uri: lb://homework-service
+          order: 100
           predicates:
             - Path=/api/homeworks/**, /api/submissions/**, /api/comments/**, /api/stats/teacher/**, /api/discussions/**, /api/teaching-events/**, /api/calendar/**
         - id: progress-service

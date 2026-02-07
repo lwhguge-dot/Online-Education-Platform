@@ -455,6 +455,9 @@ export const userAPI = {
   // 获取用户在线状态
   getOnlineStatus: () => request('/users/online-status'),
 
+  // 获取用户会话列表（管理员查看登录设备）
+  getSessions: (id: number): Promise<Result<any>> => request(`/users/${id}/sessions`),
+
   // 导出用户数据CSV
   exportCSV: async () => {
     const token = sessionStorage.getItem('token');
@@ -515,6 +518,15 @@ export const teacherProfileAPI = {
 
 // 教学日历API
 export const calendarAPI = {
+  // 按月查询教学日历事件
+  getByMonth: (teacherId, year, month) =>
+    request(`/calendar/teacher/${teacherId}/month?year=${year}&month=${month}`),
+  // 按周查询教学日历事件
+  getByWeek: (teacherId, startDate) =>
+    request(`/calendar/teacher/${teacherId}/week?startDate=${startDate}`),
+  // 按日查询教学日历事件
+  getByDay: (teacherId, date) =>
+    request(`/calendar/teacher/${teacherId}/day?date=${date}`),
   // 创建事件
   createEvent: (data) => request('/calendar/events', { method: 'POST', body: JSON.stringify(data) }),
   // 更新事件
@@ -864,6 +876,16 @@ export const homeworkAPI = {
 
 // 评论API
 export const commentAPI = {
+  // 学生发布答案（解锁主观题问答）
+  publishAnswer: (studentId, questionId, answerContent) =>
+    request(`/comments/publish-answer?studentId=${studentId}&questionId=${questionId}`, {
+      method: 'POST',
+      body: JSON.stringify({ answerContent }),
+    }),
+
+  // 获取学生问答列表（学生中心）
+  getStudentQuestions: (studentId) => request(`/comments/student/${studentId}/questions`),
+
   toggleTop: (commentId) => request(`/comments/${commentId}/toggle-top`, { method: 'PUT' }),
   delete: (commentId) => request(`/comments/${commentId}`, { method: 'DELETE' }),
 };
