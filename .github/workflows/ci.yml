@@ -101,7 +101,7 @@ jobs:
 
       # 5. 编译项目 (不运行测试)
       - name: 编译项目
-        run: mvn compile -B -q -s settings.xml
+        run: mvn compile -B -s settings.xml
 
       # 6. 运行单元测试
       - name: 运行单元测试
@@ -115,7 +115,7 @@ jobs:
 
       # 7. 打包 (跳过测试,已在上一步执行)
       - name: 打包 JAR
-        run: mvn package -DskipTests -B -q -s settings.xml
+        run: mvn package -DskipTests -B -s settings.xml
 
       # 8. 上传构建产物 (供后续 Job 使用)
       - name: 上传构建产物

@@ -54,7 +54,7 @@ jobs:
       # CodeQL 需要实际编译来分析 Java 代码
       - name: 编译项目
         working-directory: backend
-        run: mvn compile -B -q -s settings.xml -DskipTests
+        run: mvn compile -B -s settings.xml -DskipTests
 
       - name: 执行 CodeQL 分析
         uses: github/codeql-action/analyze@v3

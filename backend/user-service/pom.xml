@@ -127,7 +127,7 @@
         </dependency>
         <dependency>
             <groupId>com.alibaba.csp</groupId>
-            <artifactId>sentinel-spring-webmvc-adapter</artifactId>
+            <artifactId>sentinel-spring-webmvc-v6x-adapter</artifactId>
         </dependency>
 
         <!-- Test Dependencies -->

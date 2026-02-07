@@ -1,6 +1,6 @@
 package com.eduplatform.progress.config;
 
-import com.alibaba.csp.sentinel.adapter.spring.webmvc.callback.BlockExceptionHandler;
+import com.alibaba.csp.sentinel.adapter.spring.webmvc_v6x.callback.BlockExceptionHandler;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.alibaba.csp.sentinel.slots.block.authority.AuthorityException;
 import com.alibaba.csp.sentinel.slots.block.degrade.DegradeException;
@@ -47,7 +47,7 @@ public class SentinelConfig {
     public BlockExceptionHandler blockExceptionHandler() {
         return new BlockExceptionHandler() {
             @Override
-            public void handle(HttpServletRequest request, HttpServletResponse response, BlockException e) throws IOException {
+            public void handle(HttpServletRequest request, HttpServletResponse response, String resourceName, BlockException e) throws Exception {
                 Map<String, Object> result = new HashMap<>();
 
                 // 根据异常类型设置不同的错误信息

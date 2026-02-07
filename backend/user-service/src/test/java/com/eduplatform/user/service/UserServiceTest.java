@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,9 +60,8 @@ class UserServiceTest {
         testUser.setEmail("test@example.com");
         testUser.setUsername("testuser");
         testUser.setName("测试用户");
-        // BCrypt 编码后的 "123456"
-        testUser.setPassword("$2a$10$8.UnVuG9HHgffUDAlk8qfOuVGkqRzgVymGe07xd00DMxs.p" +
-                ".Y8GVC");
+        // 动态生成 BCrypt 哈希 (UserService 中 passwordEncoder 是直接创建的,非 Mock)
+        testUser.setPassword(new BCryptPasswordEncoder().encode("123456"));
         testUser.setRole("student");
         testUser.setStatus(1);
     }

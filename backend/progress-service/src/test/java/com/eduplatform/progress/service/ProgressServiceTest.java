@@ -8,6 +8,7 @@ import com.eduplatform.progress.mapper.ChapterMapper;
 import com.eduplatform.progress.mapper.ChapterProgressMapper;
 import com.eduplatform.progress.mapper.ChapterQuizMapper;
 import com.eduplatform.progress.vo.ChapterProgressVO;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,7 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cache.CacheManager;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -62,6 +63,9 @@ class ProgressServiceTest {
     private StringRedisTemplate redisTemplate;
 
     @Mock
+    private ObjectMapper objectMapper;
+
+    @Mock
     private CacheManager cacheManager;
 
     private ChapterProgress testProgress;
@@ -78,9 +82,9 @@ class ProgressServiceTest {
         testProgress.setStudentId(1L);
         testProgress.setChapterId(10L);
         testProgress.setCourseId(100L);
-        testProgress.setVideoProgress(80);
+        testProgress.setVideoRate(new BigDecimal("0.80"));
         testProgress.setQuizScore(75);
-        testProgress.setIsCompleted(false);
+        testProgress.setIsCompleted(0);
     }
 
     // =========================================================================
@@ -104,7 +108,7 @@ class ProgressServiceTest {
 
             assertNotNull(result);
             assertEquals(1, result.size());
-            assertEquals(80, result.get(0).getVideoProgress());
+            assertEquals(new BigDecimal("0.80"), result.get(0).getVideoRate());
         }
 
         @Test
@@ -143,7 +147,7 @@ class ProgressServiceTest {
             assertNotNull(vo);
             assertEquals(1L, vo.getStudentId());
             assertEquals(10L, vo.getChapterId());
-            assertEquals(80, vo.getVideoProgress());
+            assertEquals(new BigDecimal("0.80"), vo.getVideoRate());
             assertEquals(75, vo.getQuizScore());
         }
     }
@@ -158,21 +162,20 @@ class ProgressServiceTest {
         @Test
         @DisplayName("视频观看 >= 90% 且测验 >= 60 分 = 满足解锁条件")
         void meetsUnlockCondition() {
-            // 模拟满足条件的进度
             ChapterProgress completedProgress = new ChapterProgress();
-            completedProgress.setVideoProgress(95);
+            completedProgress.setVideoRate(new BigDecimal("0.95"));
             completedProgress.setQuizScore(85);
-            completedProgress.setIsCompleted(true);
+            completedProgress.setIsCompleted(1);
 
-            assertTrue(completedProgress.getVideoProgress() >= 90);
+            assertTrue(completedProgress.getVideoRate().compareTo(new BigDecimal("0.90")) >= 0);
             assertTrue(completedProgress.getQuizScore() >= 60);
-            assertTrue(completedProgress.getIsCompleted());
+            assertEquals(1, completedProgress.getIsCompleted());
         }
 
         @Test
         @DisplayName("视频观看 < 90% = 不满足解锁条件")
         void videoNotEnough() {
-            assertFalse(testProgress.getVideoProgress() >= 90);
+            assertTrue(testProgress.getVideoRate().compareTo(new BigDecimal("0.90")) < 0);
         }
 
         @Test
