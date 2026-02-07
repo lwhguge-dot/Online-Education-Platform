@@ -1,0 +1,3 @@
+ 想切回“开发模式（看到所有端口）”，在项目根目录执行这条即可：
+
+  docker compose up -d --force-recreate

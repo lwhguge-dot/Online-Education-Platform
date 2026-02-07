@@ -51,8 +51,9 @@ public class RedisStreamConfig {
         // 消费线程池配置
         StreamMessageListenerContainer.StreamMessageListenerContainerOptions<String, MapRecord<String, String, String>> options =
                 StreamMessageListenerContainer.StreamMessageListenerContainerOptions.builder()
-                        .pollTimeout(Duration.ofSeconds(2))
+                        .pollTimeout(Duration.ofSeconds(1))
                         .executor(Executors.newFixedThreadPool(3))
+                        .errorHandler(t -> log.error("user-service Redis Stream 消费异常", t))
                         .build();
 
         StreamMessageListenerContainer<String, MapRecord<String, String, String>> container =

@@ -40,7 +40,7 @@ spring:
   datasource:
     url: "${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/edu_platform?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8}"
     username: postgres
-    password: 123456
+    password: "${SPRING_DATASOURCE_PASSWORD:123456}"
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 50  # 虚拟线程优化：增加连接池大小
@@ -52,22 +52,21 @@ spring:
   # Redis 配置
   data:
     redis:
-      host: redis  # Redis 服务地址 (Docker Service Name)
+      host: "${SPRING_REDIS_HOST:redis}"
       port: 6379   # Redis 端口
-      password: 123456  # Redis 密码 (生产环境建议使用环境变量)
+      password: "${SPRING_REDIS_PASSWORD:123456}"
       database: 0  # 使用 0 号数据库
-      timeout: 3000ms  # 连接超时时间，防止网络抖动卡死
+      timeout: 10s
       lettuce:
         pool:
-          max-active: 8   #最大连接数
-          max-wait: -1ms  # 最大阻塞等待时间
-          max-idle: 8     # 最大空闲连接
-          min-idle: 0     # 最小空闲连接
+          max-active: 32
+          max-wait: 5s
+          max-idle: 16
+          min-idle: 4
 
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       id-type: auto
@@ -77,12 +76,12 @@ mybatis-plus:
 
 minio:
   endpoint: http://minio:9000
-  access-key: minioadmin
-  secret-key: minioadmin
+  access-key: "${MINIO_ACCESS_KEY:minioadmin}"
+  secret-key: "${MINIO_SECRET_KEY:minioadmin}"
   bucket: edu-platform
 
 jwt:
-  secret: "Edu@Platform#Secure$Key%2024^Spring&Cloud*Microservices!Auth_Token_v2"
+  secret: "${JWT_SECRET:change-me-in-prod}"
   expiration: 604800000
 
 session:
@@ -114,7 +113,7 @@ management:
       enabled: true
   tracing:
     sampling:
-      probability: 1.0  # 采样率 100%（开发环境），生产环境建议 0.1
+      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
   otlp:
     tracing:
       endpoint: http://jaeger:4318/v1/traces  # Jaeger OTLP endpoint
