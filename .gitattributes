@@ -1,0 +1,49 @@
+# 统一默认行为：文本文件走规范化，优先按下方规则决定行尾
+* text=auto
+
+# ===== 源码与配置（统一 LF）=====
+*.java text eol=lf
+*.kt text eol=lf
+*.groovy text eol=lf
+
+*.vue text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.less text eol=lf
+
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.xml text eol=lf
+*.properties text eol=lf
+*.sql text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.sh text eol=lf
+*.dockerfile text eol=lf
+Dockerfile text eol=lf
+
+# ===== Windows 脚本（统一 CRLF）=====
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# ===== 常见二进制（禁止文本规范化）=====
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.jar binary
+*.war binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
