@@ -98,6 +98,7 @@ jobs:
       security-events: write
 
     strategy:
+      fail-fast: false
       matrix:
         target:
           - name: backend
@@ -114,16 +115,22 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 构建 ${{ matrix.target.name }} 镜像
+        id: docker-build
         run: |
+          BUILD_ARGS=""
+          if [ -n "${{ matrix.target.args }}" ]; then
+            BUILD_ARGS="--build-arg ${{ matrix.target.args }}"
+          fi
           docker build \
             -f ${{ matrix.target.dockerfile }} \
-            --build-arg ${{ matrix.target.args }} \
+            $BUILD_ARGS \
             -t scan-target:${{ matrix.target.name }} \
-            ${{ matrix.target.path }}
+            ${{ matrix.target.path }} && echo "success=true" >> $GITHUB_OUTPUT || echo "success=false" >> $GITHUB_OUTPUT
         continue-on-error: true
 
-      # Trivy 漏洞扫描
+      # Trivy 漏洞扫描 (仅在镜像构建成功时执行)
       - name: Trivy 漏洞扫描 (${{ matrix.target.name }})
+        if: steps.docker-build.outputs.success == 'true'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'scan-target:${{ matrix.target.name }}'
@@ -135,7 +142,7 @@ jobs:
       # 上传扫描结果到 GitHub Security
       - name: 上传 Trivy 扫描结果
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: steps.docker-build.outputs.success == 'true'
         with:
           sarif_file: 'trivy-${{ matrix.target.name }}.sarif'
 
