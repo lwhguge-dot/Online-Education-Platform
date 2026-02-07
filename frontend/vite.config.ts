@@ -34,7 +34,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vendor': ['vue', 'vue-router', 'pinia'],
-          'element-plus': ['element-plus'],
           'lucide': ['lucide-vue-next']
         }
       }

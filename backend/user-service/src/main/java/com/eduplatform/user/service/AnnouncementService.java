@@ -3,6 +3,9 @@ package com.eduplatform.user.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.eduplatform.common.event.EventType;
+import com.eduplatform.common.event.RedisStreamConstants;
+import com.eduplatform.common.event.RedisStreamPublisher;
 import com.eduplatform.common.result.Result;
 import com.eduplatform.user.dto.AnnouncementStatsDTO;
 import com.eduplatform.user.dto.TeacherAnnouncementDTO;
@@ -40,6 +43,7 @@ public class AnnouncementService {
     private final AnnouncementReadMapper announcementReadMapper;
     private final CourseServiceClient courseServiceClient;
     private final UserMapper userMapper;
+    private final RedisStreamPublisher redisStreamPublisher;
 
     /**
      * 创建公告
@@ -171,6 +175,10 @@ public class AnnouncementService {
         }
         announcement.setUpdatedAt(LocalDateTime.now());
         announcementMapper.updateById(announcement);
+
+        // 即时发布：通过 Redis Stream 发送公告发布事件
+        publishAnnouncementEvent(announcement);
+
         return announcement;
     }
 
@@ -218,6 +226,12 @@ public class AnnouncementService {
         }
 
         announcementMapper.insert(announcement);
+
+        // 如果是即时发布，立即发送公告事件通知用户
+        if ("PUBLISHED".equals(announcement.getStatus())) {
+            publishAnnouncementEvent(announcement);
+        }
+
         return announcement;
     }
 
@@ -466,12 +480,23 @@ public class AnnouncementService {
      * 定时任务：发布定时公告
      * 每分钟执行一次
      * 逻辑：查找状态为 SCHEDULED 且发布时间小于等于当前时间的公告，将其状态改为 PUBLISHED。
+     * 发布成功后，通过 Redis Stream 发布 ANNOUNCEMENT_PUBLISHED 事件，触发 WebSocket 推送。
      */
     @Scheduled(fixedRate = 60000)
     public void publishScheduledAnnouncementsTask() {
+        // 先获取待发布的公告列表（在状态更新前）
+        List<Announcement> scheduledAnnouncements = announcementMapper.selectList(
+                new LambdaQueryWrapper<Announcement>()
+                        .eq(Announcement::getStatus, "SCHEDULED")
+                        .le(Announcement::getPublishTime, LocalDateTime.now()));
+
         int count = announcementMapper.publishScheduledAnnouncements();
         if (count > 0) {
-            // TODO: 可在此处集成通知服务，如 WebSocket 或邮件通知用户
+            log.info("定时发布公告数量: {}", count);
+            // 为每个新发布的公告发送异步事件
+            for (Announcement announcement : scheduledAnnouncements) {
+                publishAnnouncementEvent(announcement);
+            }
         }
     }
 
@@ -482,5 +507,30 @@ public class AnnouncementService {
     @Scheduled(fixedRate = 60000)
     public void updateExpiredAnnouncementsTask() {
         announcementMapper.updateExpiredAnnouncements();
+    }
+
+    /**
+     * 发布公告事件到 Redis Stream
+     * 由消费者端（AnnouncementEventListener）负责 WebSocket 推送。
+     *
+     * @param announcement 已发布的公告实体
+     */
+    private void publishAnnouncementEvent(Announcement announcement) {
+        try {
+            Map<String, Object> data = new HashMap<>();
+            data.put("announcementId", announcement.getId());
+            data.put("title", announcement.getTitle());
+            data.put("content", announcement.getContent());
+            data.put("targetAudience", announcement.getTargetAudience());
+            data.put("courseId", announcement.getCourseId());
+            data.put("createdBy", announcement.getCreatedBy());
+
+            redisStreamPublisher.publish(
+                    EventType.ANNOUNCEMENT_PUBLISHED,
+                    RedisStreamConstants.SERVICE_USER,
+                    data);
+        } catch (Exception e) {
+            log.error("发布公告事件失败: announcementId={}, error={}", announcement.getId(), e.getMessage());
+        }
     }
 }

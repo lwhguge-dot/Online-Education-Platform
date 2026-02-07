@@ -41,5 +41,12 @@
             <artifactId>hutool-all</artifactId>
             <version>5.8.25</version>
         </dependency>
+
+        <!-- Redis Stream 支持（provided：由具体服务模块引入实际依赖） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 </project>

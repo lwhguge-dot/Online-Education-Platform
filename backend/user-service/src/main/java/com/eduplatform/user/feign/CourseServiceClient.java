@@ -37,4 +37,14 @@ public interface CourseServiceClient {
      */
     @GetMapping("/api/enrollments/course/{courseId}/count")
     Result<Long> getCourseStudentCount(@PathVariable("courseId") Long courseId);
+
+    /**
+     * 获取课程详情（含教师ID）
+     * 业务原因：异步消费作业提交事件时，需要通过课程ID获取教师信息以发送通知。
+     *
+     * @param courseId 课程ID
+     * @return 课程详情 Map
+     */
+    @GetMapping("/api/courses/{courseId}")
+    Result<Map<String, Object>> getCourseById(@PathVariable("courseId") Long courseId);
 }

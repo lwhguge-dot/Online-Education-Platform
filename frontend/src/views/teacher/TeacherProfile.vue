@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { Settings, Camera, Edit, Save, Bell, BookOpen, BarChart3, Layout, Upload } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'

@@ -1,6 +1,9 @@
 package com.eduplatform.course.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.eduplatform.common.event.EventType;
+import com.eduplatform.common.event.RedisStreamConstants;
+import com.eduplatform.common.event.RedisStreamPublisher;
 import com.eduplatform.common.result.Result;
 import com.eduplatform.course.config.LearningStatusConfig;
 import com.eduplatform.course.dto.UserBriefDTO;
@@ -45,6 +48,7 @@ public class EnrollmentService {
     private final ChapterMapper chapterMapper;
     private final UserServiceClient userServiceClient;
     private final LearningStatusConfig learningStatusConfig;
+    private final RedisStreamPublisher redisStreamPublisher;
 
     /**
      * 将报名持久层实体转换为视图对象 (VO)
@@ -132,6 +136,9 @@ public class EnrollmentService {
         course.setUpdatedAt(LocalDateTime.now());
         courseMapper.updateById(course);
 
+        // 发布选课事件，由 user-service 异步消费发送通知
+        publishEnrollmentEvent(EventType.COURSE_ENROLLED, studentId, courseId, course.getTitle());
+
         return enrollment;
     }
 
@@ -161,6 +168,10 @@ public class EnrollmentService {
             course.setUpdatedAt(LocalDateTime.now());
             courseMapper.updateById(course);
         }
+
+        // 发布退课事件，由 user-service 异步消费发送通知
+        String courseName = course != null ? course.getTitle() : null;
+        publishEnrollmentEvent(EventType.COURSE_DROPPED, studentId, courseId, courseName);
     }
 
     /**
@@ -836,5 +847,27 @@ public class EnrollmentService {
         }
 
         return Collections.emptyMap();
+    }
+
+    /**
+     * 发布选课/退课事件到 Redis Stream
+     *
+     * @param eventType  事件类型（COURSE_ENROLLED / COURSE_DROPPED）
+     * @param studentId  学生ID
+     * @param courseId   课程ID
+     * @param courseName 课程名称
+     */
+    private void publishEnrollmentEvent(EventType eventType, Long studentId, Long courseId, String courseName) {
+        try {
+            Map<String, Object> data = new HashMap<>();
+            data.put("studentId", studentId);
+            data.put("courseId", courseId);
+            data.put("courseName", courseName);
+
+            redisStreamPublisher.publish(eventType, RedisStreamConstants.SERVICE_COURSE, data);
+        } catch (Exception e) {
+            log.error("发布选课事件失败: type={}, studentId={}, courseId={}, error={}",
+                    eventType, studentId, courseId, e.getMessage());
+        }
     }
 }

@@ -1,6 +1,9 @@
 package com.eduplatform.progress.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.eduplatform.common.event.EventType;
+import com.eduplatform.common.event.RedisStreamConstants;
+import com.eduplatform.common.event.RedisStreamPublisher;
 import com.eduplatform.progress.client.HomeworkServiceClient;
 import com.eduplatform.progress.dto.QuizSubmitDTO;
 import com.eduplatform.progress.dto.VideoProgressDTO;
@@ -49,6 +52,7 @@ public class ProgressService {
         private final ChapterQuizMapper quizMapper;
         private final HomeworkServiceClient homeworkServiceClient;
         private final BadgeService badgeService;
+        private final RedisStreamPublisher redisStreamPublisher;
 
         /** Redis 进度缓存前缀：progress:studentId:chapterId */
         private static final String PROGRESS_KEY_PREFIX = "progress:";
@@ -434,6 +438,10 @@ public class ProgressService {
                         progress.setIsCompleted(1);
                         progress.setCompletedAt(LocalDateTime.now());
                         progressMapper.updateById(progress);
+
+                        // 发布章节完成事件到 Redis Stream
+                        // 由 homework-service 消费（解锁作业）和 user-service 消费（通知）
+                        publishChapterCompletedEvent(progress, chapter);
 
                         try {
                                 homeworkServiceClient.unlockHomework(progress.getStudentId(), progress.getChapterId());
@@ -998,5 +1006,30 @@ public class ProgressService {
                 analytics.put("platformComparison", platformComparison);
 
                 return analytics;
+        }
+
+        /**
+         * 发布章节完成事件到 Redis Stream
+         * 消费者：homework-service（解锁作业）、user-service（通知）
+         *
+         * @param progress 章节进度记录
+         * @param chapter  章节实体
+         */
+        private void publishChapterCompletedEvent(ChapterProgress progress, Chapter chapter) {
+                try {
+                        Map<String, Object> data = new HashMap<>();
+                        data.put("studentId", progress.getStudentId());
+                        data.put("chapterId", progress.getChapterId());
+                        data.put("courseId", progress.getCourseId());
+                        data.put("chapterTitle", chapter.getTitle());
+
+                        redisStreamPublisher.publish(
+                                        EventType.CHAPTER_COMPLETED,
+                                        RedisStreamConstants.SERVICE_PROGRESS,
+                                        data);
+                } catch (Exception e) {
+                        log.error("发布章节完成事件失败: studentId={}, chapterId={}, error={}",
+                                        progress.getStudentId(), progress.getChapterId(), e.getMessage());
+                }
         }
 }

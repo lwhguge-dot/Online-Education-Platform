@@ -98,7 +98,7 @@ class ProgressServiceTest {
         @DisplayName("获取学生课程进度列表")
         void getStudentCourseProgress() {
             List<ChapterProgress> progressList = Arrays.asList(testProgress);
-            when(progressMapper.selectList(any(LambdaQueryWrapper.class)))
+            when(progressMapper.selectList(org.mockito.ArgumentMatchers.<LambdaQueryWrapper<ChapterProgress>>any()))
                     .thenReturn(progressList);
 
             List<ChapterProgress> result = progressMapper.selectList(
@@ -114,7 +114,7 @@ class ProgressServiceTest {
         @Test
         @DisplayName("没有进度记录时返回空列表")
         void emptyProgressList() {
-            when(progressMapper.selectList(any(LambdaQueryWrapper.class)))
+            when(progressMapper.selectList(org.mockito.ArgumentMatchers.<LambdaQueryWrapper<ChapterProgress>>any()))
                     .thenReturn(Collections.emptyList());
 
             List<ChapterProgress> result = progressMapper.selectList(

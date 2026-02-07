@@ -2,6 +2,9 @@ package com.eduplatform.homework.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.event.EventType;
+import com.eduplatform.common.event.RedisStreamConstants;
+import com.eduplatform.common.event.RedisStreamPublisher;
 import com.eduplatform.homework.dto.*;
 import com.eduplatform.homework.entity.*;
 import com.eduplatform.homework.feign.UserServiceClient;
@@ -45,6 +48,7 @@ public class HomeworkService {
     private final HomeworkAnswerMapper answerMapper;
     private final HomeworkQuestionDiscussionMapper discussionMapper;
     private final UserServiceClient userServiceClient;
+    private final RedisStreamPublisher redisStreamPublisher;
 
     /**
      * 将作业领域对象映射为视图层对象 (VO Domain Mapping)
@@ -455,11 +459,28 @@ public class HomeworkService {
     }
 
     /**
-     * 触发异步教师提交流转通知
+     * 通过 Redis Stream 发布作业提交事件
+     * 替代原有的同步 TODO 通知，由 user-service 异步消费后通知教师批改。
      */
     private void sendSubmissionNotification(HomeworkSubmission submission, Homework homework) {
-        log.info("触发邮件/站内信通知教师批改: homeworkId={}, submissionId={}", homework.getId(), submission.getId());
-        // TODO: 调用课程服务获取教师联系方式并推送消息
+        try {
+            Map<String, Object> data = new HashMap<>();
+            data.put("homeworkId", homework.getId());
+            data.put("homeworkTitle", homework.getTitle());
+            data.put("submissionId", submission.getId());
+            data.put("studentId", submission.getStudentId());
+            data.put("courseId", homework.getCourseId());
+            data.put("chapterId", homework.getChapterId());
+
+            redisStreamPublisher.publish(
+                    EventType.HOMEWORK_SUBMITTED,
+                    RedisStreamConstants.SERVICE_HOMEWORK,
+                    data);
+        } catch (Exception e) {
+            // 事件发布失败不影响主业务流程，仅记录日志
+            log.error("发布作业提交事件失败: homeworkId={}, submissionId={}, error={}",
+                    homework.getId(), submission.getId(), e.getMessage());
+        }
     }
 
     /**
@@ -1032,7 +1053,7 @@ public class HomeworkService {
         } catch (Exception e) {
             // 通知发送失败不影响批改流程
             // 记录日志但不抛出异常
-            System.err.println("发送批改通知失败: " + e.getMessage());
+            log.error("发送批改通知失败: {}", e.getMessage());
         }
     }
 
@@ -1280,7 +1301,7 @@ public class HomeworkService {
             userServiceClient.sendNotification(notificationRequest);
         } catch (Exception e) {
             // 通知发送失败不影响回复流程
-            System.err.println("发送回复通知失败: " + e.getMessage());
+            log.error("发送回复通知失败: {}", e.getMessage());
         }
     }
 

@@ -306,8 +306,19 @@ public class StudentStatsService {
             if (response != null && response.get("data") != null) {
                 Object data = response.get("data");
                 if (data instanceof List) {
-                    List<Map<String, Object>> homeworks = (List<Map<String, Object>>) data;
-                    for (Map<String, Object> hw : homeworks) {
+                    List<?> homeworks = (List<?>) data;
+                    for (Object item : homeworks) {
+                        if (!(item instanceof Map<?, ?> rawMap)) {
+                            continue;
+                        }
+
+                        Map<String, Object> hw = new HashMap<>();
+                        rawMap.forEach((k, v) -> {
+                            if (k != null) {
+                                hw.put(k.toString(), v);
+                            }
+                        });
+
                         StudentStatsDTO.UrgentHomeworkDTO dto = new StudentStatsDTO.UrgentHomeworkDTO();
                         dto.setId(hw.get("id") != null ? Long.valueOf(hw.get("id").toString()) : null);
                         dto.setTitle(hw.get("title") != null ? hw.get("title").toString() : "");

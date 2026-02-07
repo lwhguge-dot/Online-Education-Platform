@@ -19,7 +19,7 @@
 | 微服务数量 | 5 个业务服务 + 1 个网关 |
 | API 端点 | 224 个 |
 | 数据库表 | 29 张 |
-| 单元测试用例 | 42 个 |
+| 单元测试用例 | 48 个 |
 | Docker 容器 | 13 个 |
 | Feign 服务间调用 | 9 个客户端 |
 
@@ -139,10 +139,10 @@ git clone https://github.com/lwhguge-dot/Online-Education-Platform.git
 cd Online-Education-Platform
 
 # 2. 一键启动全部 13 个服务
-docker-compose up -d
+docker compose up -d
 
 # 3. 等待所有服务就绪 (约 2-3 分钟)
-docker-compose ps
+docker compose ps
 ```
 
 也可以使用项目内置的一键脚本（Windows）：
@@ -150,6 +150,9 @@ docker-compose ps
 ```bash
 # 双击运行
 tools/scripts/Docker启动.bat
+
+# 或命令行执行
+cmd /c tools/scripts/Docker启动.bat
 ```
 
 启动后各服务访问地址：

@@ -42,4 +42,14 @@ public class CourseServiceClientFallback implements CourseServiceClient {
         log.warn("课程服务不可用，无法获取课程选课人数: courseId={}", courseId);
         return Result.success(0L);
     }
+
+    /**
+     * 获取课程详情的降级处理。
+     * 降级策略：返回 null，消费者将无法获取教师ID，通知发送会被跳过。
+     */
+    @Override
+    public Result<Map<String, Object>> getCourseById(Long courseId) {
+        log.warn("课程服务不可用，无法获取课程详情: courseId={}", courseId);
+        return Result.success(null);
+    }
 }

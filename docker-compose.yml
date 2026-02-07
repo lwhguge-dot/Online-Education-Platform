@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Nacos 注册中心
   nacos:
@@ -64,7 +62,7 @@ services:
     container_name: demo-redis
     ports:
       - "16379:6379"
-    command: redis-server --requirepass 123456
+    command: redis-server --requirepass 123456 --appendonly yes
     healthcheck:
       test: [ "CMD", "redis-cli", "-a", "123456", "ping" ]
       interval: 10s
@@ -123,6 +121,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - edu-net
     restart: always
@@ -145,6 +145,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - edu-net
     restart: always
@@ -166,6 +168,8 @@ services:
       nacos:
         condition: service_healthy
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - edu-net
@@ -190,6 +194,8 @@ services:
       nacos:
         condition: service_healthy
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - edu-net
