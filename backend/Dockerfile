@@ -17,7 +17,7 @@ COPY progress-service/pom.xml progress-service/pom.xml
 COPY . .
 RUN mvn -pl ${MODULE_NAME} -am clean package -DskipTests -Dmaven.test.skip=true -B --no-transfer-progress -s settings.xml
 
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 
 RUN addgroup -S spring && adduser -S spring -G spring
