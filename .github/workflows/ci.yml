@@ -85,7 +85,7 @@ jobs:
 
       # 3. 缓存 Maven 依赖 (加速构建)
       - name: 缓存 Maven 依赖
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('backend/**/pom.xml') }}
@@ -162,7 +162,7 @@ jobs:
 
       # 3. 缓存 npm 依赖
       - name: 缓存 npm 依赖
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: frontend/node_modules
           key: ${{ runner.os }}-npm-${{ hashFiles('frontend/package.json') }}
