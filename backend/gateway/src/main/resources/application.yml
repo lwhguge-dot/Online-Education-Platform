@@ -1,0 +1,136 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: gateway
+  # 注意：Spring Cloud Gateway 基于 WebFlux/Reactor，不兼容虚拟线程
+  # threads:
+  #   virtual:
+  #     enabled: true
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # WebSocket 路由 - 必须配置在其他路由之前以正确处理 WebSocket 升级请求
+        - id: user-service-ws
+          uri: lb:ws://user-service
+          predicates:
+            - Path=/ws/**
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/auth/**, /api/users/**, /api/stats/admin/**, /api/audit-logs/**, /api/announcements/**, /api/teachers/**, /api/notifications/**
+        # 章节评论API路由到course-service（必须在homework-service的/api/comments/**之前）
+        - id: course-service-comments
+          uri: lb://course-service
+          predicates:
+            - Path=/api/comments/chapter/**, /api/comments/mute**, /api/comments/blocked-words/**, /api/comments/{id}/like, /api/comments/{id}/pin, /api/comments/{id}/replies
+        - id: course-service-comments-post
+          uri: lb://course-service
+          predicates:
+            - Path=/api/comments
+            - Method=POST,DELETE
+        - id: course-service
+          uri: lb://course-service
+          predicates:
+            - Path=/api/courses/**, /api/subjects/**, /api/chapters/**, /api/enrollments/**, /api/files/**
+        - id: homework-service
+          uri: lb://homework-service
+          predicates:
+            - Path=/api/homeworks/**, /api/submissions/**, /api/comments/**, /api/stats/teacher/**, /api/discussions/**, /api/teaching-events/**, /api/calendar/**
+        - id: progress-service
+          uri: lb://progress-service
+          predicates:
+            - Path=/api/progress/**, /api/stats/student/**, /api/progress/badges/**
+        # MinIO 对象存储代理
+        - id: minio-oss
+          uri: http://minio:9000
+          predicates:
+            - Path=/oss/**
+          filters:
+            - StripPrefix=1
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: 
+              - "http://localhost:3000"
+              - "http://localhost"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+    nacos:
+      discovery:
+        server-addr: "${NACOS_ADDR:nacos:8848}"
+    sentinel:
+      transport:
+        dashboard: sentinel:8858  # Sentinel 控制台地址
+        port: 8719  # 与控制台通信的端口
+      datasource:
+        # 从 Nacos 读取流控规则
+        flow:
+          nacos:
+            server-addr: "${NACOS_ADDR:nacos:8848}"
+            dataId: ${spring.application.name}-flow-rules
+            groupId: SENTINEL_GROUP
+            rule-type: flow
+        # 从 Nacos 读取降级规则
+        degrade:
+          nacos:
+            server-addr: "${NACOS_ADDR:nacos:8848}"
+            dataId: ${spring.application.name}-degrade-rules
+            groupId: SENTINEL_GROUP
+            rule-type: degrade
+        # 从 Nacos 读取系统规则
+        system:
+          nacos:
+            server-addr: "${NACOS_ADDR:nacos:8848}"
+            dataId: ${spring.application.name}-system-rules
+            groupId: SENTINEL_GROUP
+            rule-type: system
+      eager: true  # 启动时立即初始化 Sentinel
+      filter:
+        enabled: true  # 启用 Sentinel Gateway 过滤器
+
+# Actuator 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,gateway
+  endpoint:
+    health:
+      show-details: when_authorized
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+  info:
+    env:
+      enabled: true
+  tracing:
+    sampling:
+      probability: 1.0  # 采样率 100%（开发环境），生产环境建议 0.1
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces  # Jaeger OTLP endpoint
+
+# OpenTelemetry 配置
+otel:
+  service:
+    name: ${spring.application.name}
+  exporter:
+    otlp:
+      endpoint: http://jaeger:4318

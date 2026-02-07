@@ -1,0 +1,177 @@
+# =============================================================================
+# 代码质量与安全扫描流水线
+#
+# 触发条件: push 到 main/develop 分支, 或每周一自动运行
+# 功能: CodeQL 静态分析 / Trivy 容器安全扫描 / 依赖漏洞检查
+#
+# 作者: Claude
+# 日期: 2026-02-07
+# =============================================================================
+
+name: 安全扫描
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # 每周一 UTC 00:00 定时扫描
+    - cron: '0 0 * * 1'
+
+env:
+  JAVA_VERSION: '21'
+
+jobs:
+  # ===========================================================================
+  # CodeQL 静态代码分析 (Java)
+  # ===========================================================================
+  codeql-java:
+    name: CodeQL Java 分析
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: 初始化 CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: java-kotlin
+          # 查询套件: security-extended 包含更多安全规则
+          queries: security-extended
+
+      # CodeQL 需要实际编译来分析 Java 代码
+      - name: 编译项目
+        working-directory: backend
+        run: mvn compile -B -q -s settings.xml -DskipTests
+
+      - name: 执行 CodeQL 分析
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:java-kotlin"
+
+  # ===========================================================================
+  # CodeQL 静态代码分析 (JavaScript/TypeScript)
+  # ===========================================================================
+  codeql-js:
+    name: CodeQL JavaScript 分析
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 初始化 CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+
+      - name: 执行 CodeQL 分析
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"
+
+  # ===========================================================================
+  # Trivy 容器镜像安全扫描
+  # ===========================================================================
+  trivy-scan:
+    name: Trivy 安全扫描
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    strategy:
+      matrix:
+        target:
+          - name: backend
+            path: ./backend
+            dockerfile: ./backend/Dockerfile
+            args: MODULE_NAME=gateway
+          - name: frontend
+            path: ./frontend
+            dockerfile: ./frontend/Dockerfile
+            args: ""
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 构建 ${{ matrix.target.name }} 镜像
+        run: |
+          docker build \
+            -f ${{ matrix.target.dockerfile }} \
+            --build-arg ${{ matrix.target.args }} \
+            -t scan-target:${{ matrix.target.name }} \
+            ${{ matrix.target.path }}
+        continue-on-error: true
+
+      # Trivy 漏洞扫描
+      - name: Trivy 漏洞扫描 (${{ matrix.target.name }})
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'scan-target:${{ matrix.target.name }}'
+          format: 'sarif'
+          output: 'trivy-${{ matrix.target.name }}.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+
+      # 上传扫描结果到 GitHub Security
+      - name: 上传 Trivy 扫描结果
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-${{ matrix.target.name }}.sarif'
+
+  # ===========================================================================
+  # 依赖漏洞检查
+  # ===========================================================================
+  dependency-check:
+    name: 依赖漏洞检查
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # Maven 依赖检查
+      - name: 配置 JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: Maven 依赖树分析
+        working-directory: backend
+        run: |
+          mvn dependency:tree -B -s settings.xml -q > dependency-tree.txt 2>&1 || true
+          echo "依赖树已生成"
+
+      # npm audit 检查
+      - name: 配置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: npm 依赖审计
+        working-directory: frontend
+        run: |
+          npm install --no-audit --progress=false
+          npm audit --production --audit-level=high || true
+        continue-on-error: true

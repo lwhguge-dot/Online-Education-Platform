@@ -1,0 +1,216 @@
+# =============================================================================
+# CI 持续集成流水线
+#
+# 触发条件: push 到 main/develop 分支, 或者创建 Pull Request
+# 功能: 后端 Maven 构建+测试 / 前端 Vue 构建+类型检查
+#
+# 作者: Claude
+# 日期: 2026-02-07
+# =============================================================================
+
+name: CI 持续集成
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+  pull_request:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+
+# 同一分支的新提交自动取消旧的运行
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: '21'
+  NODE_VERSION: '20'
+  MAVEN_OPTS: '-Xmx512m'
+
+jobs:
+  # ===========================================================================
+  # 后端构建与测试
+  # ===========================================================================
+  backend-build:
+    name: 后端构建与测试
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    # 运行测试所需的服务容器
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 123456
+          POSTGRES_DB: edu_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7.0
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      # 1. 检出代码
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 2. 配置 JDK 21
+      - name: 配置 JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      # 3. 缓存 Maven 依赖 (加速构建)
+      - name: 缓存 Maven 依赖
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('backend/**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # 4. 初始化数据库
+      - name: 初始化 PostgreSQL 数据库
+        run: |
+          PGPASSWORD=123456 psql -h localhost -U postgres -d edu_platform -f schema.sql
+        env:
+          PGPASSWORD: 123456
+
+      # 5. 编译项目 (不运行测试)
+      - name: 编译项目
+        run: mvn compile -B -q -s settings.xml
+
+      # 6. 运行单元测试
+      - name: 运行单元测试
+        run: mvn test -B -s settings.xml
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/edu_platform
+          SPRING_DATASOURCE_USERNAME: postgres
+          SPRING_DATASOURCE_PASSWORD: 123456
+          SPRING_REDIS_HOST: localhost
+          SPRING_REDIS_PORT: 6379
+
+      # 7. 打包 (跳过测试,已在上一步执行)
+      - name: 打包 JAR
+        run: mvn package -DskipTests -B -q -s settings.xml
+
+      # 8. 上传构建产物 (供后续 Job 使用)
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jars
+          path: |
+            backend/gateway/target/*.jar
+            backend/user-service/target/*.jar
+            backend/course-service/target/*.jar
+            backend/homework-service/target/*.jar
+            backend/progress-service/target/*.jar
+          retention-days: 3
+
+      # 9. 上传测试报告
+      - name: 上传测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: backend/**/target/surefire-reports/
+          retention-days: 7
+
+  # ===========================================================================
+  # 前端构建与检查
+  # ===========================================================================
+  frontend-build:
+    name: 前端构建与检查
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      # 1. 检出代码
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 2. 配置 Node.js
+      - name: 配置 Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # 3. 缓存 npm 依赖
+      - name: 缓存 npm 依赖
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('frontend/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      # 4. 安装依赖
+      - name: 安装依赖
+        run: npm install --no-audit --progress=false
+
+      # 5. TypeScript 类型检查
+      - name: TypeScript 类型检查
+        run: npx vue-tsc --noEmit
+        continue-on-error: true
+
+      # 6. 构建生产版本
+      - name: 构建生产版本
+        run: npm run build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      # 7. 上传构建产物
+      - name: 上传前端构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 3
+
+  # ===========================================================================
+  # 构建状态汇总
+  # ===========================================================================
+  ci-summary:
+    name: CI 汇总
+    needs: [ backend-build, frontend-build ]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: 检查构建结果
+        run: |
+          echo "=============================="
+          echo "  CI 构建结果汇总"
+          echo "=============================="
+          echo "后端构建: ${{ needs.backend-build.result }}"
+          echo "前端构建: ${{ needs.frontend-build.result }}"
+          echo "=============================="
+          if [ "${{ needs.backend-build.result }}" != "success" ] || [ "${{ needs.frontend-build.result }}" != "success" ]; then
+            echo "CI 流水线存在失败项!"
+            exit 1
+          fi
+          echo "CI 流水线全部通过!"

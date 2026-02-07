@@ -1,0 +1,128 @@
+server:
+  port: 8081
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: user-service
+  threads:
+    virtual:
+      enabled: true  # 启用 Java 21 虚拟线程
+  cloud:
+    nacos:
+      discovery:
+        server-addr: "${NACOS_ADDR:nacos:8848}"
+    sentinel:
+      transport:
+        dashboard: sentinel:8858  # Sentinel 控制台地址
+        port: 8719  # 与控制台通信的端口
+      datasource:
+        # 从 Nacos 读取流控规则
+        flow:
+          nacos:
+            server-addr: "${NACOS_ADDR:nacos:8848}"
+            dataId: ${spring.application.name}-flow-rules
+            groupId: SENTINEL_GROUP
+            rule-type: flow
+        # 从 Nacos 读取降级规则
+        degrade:
+          nacos:
+            server-addr: "${NACOS_ADDR:nacos:8848}"
+            dataId: ${spring.application.name}-degrade-rules
+            groupId: SENTINEL_GROUP
+            rule-type: degrade
+      eager: true  # 启动时立即初始化 Sentinel
+      web-context-unify: false  # 关闭 URL 路径聚合，保留完整路径
+  datasource:
+    url: "${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/edu_platform?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8}"
+    username: postgres
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 50  # 虚拟线程优化：增加连接池大小
+      minimum-idle: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # Redis 配置
+  data:
+    redis:
+      host: redis  # Redis 服务地址 (Docker Service Name)
+      port: 6379   # Redis 端口
+      password: 123456  # Redis 密码 (生产环境建议使用环境变量)
+      database: 0  # 使用 0 号数据库
+      timeout: 3000ms  # 连接超时时间，防止网络抖动卡死
+      lettuce:
+        pool:
+          max-active: 8   #最大连接数
+          max-wait: -1ms  # 最大阻塞等待时间
+          max-idle: 8     # 最大空闲连接
+          min-idle: 0     # 最小空闲连接
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+minio:
+  endpoint: http://minio:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket: edu-platform
+
+jwt:
+  secret: "Edu@Platform#Secure$Key%2024^Spring&Cloud*Microservices!Auth_Token_v2"
+  expiration: 604800000
+
+session:
+  timeout-seconds: 604800  # 7天，与 JWT 过期时间保持一致
+
+bootstrap:
+  admin:
+    enabled: true
+
+# Actuator 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+  info:
+    env:
+      enabled: true
+  tracing:
+    sampling:
+      probability: 1.0  # 采样率 100%（开发环境），生产环境建议 0.1
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces  # Jaeger OTLP endpoint
+
+# OpenTelemetry 配置
+otel:
+  service:
+    name: ${spring.application.name}
+  exporter:
+    otlp:
+      endpoint: http://jaeger:4318

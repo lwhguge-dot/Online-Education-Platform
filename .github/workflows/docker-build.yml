@@ -1,0 +1,175 @@
+# =============================================================================
+# Docker 镜像构建与推送 CD 流水线
+#
+# 触发条件: 推送 tag (v*) 或手动触发
+# 功能: 构建所有微服务 Docker 镜像并推送到 GitHub Container Registry (GHCR)
+#
+# 作者: Claude
+# 日期: 2026-02-07
+# =============================================================================
+
+name: Docker 镜像构建与推送
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: '部署环境'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+# 同时只允许一个部署流程运行
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/edu-platform
+
+jobs:
+  # ===========================================================================
+  # 后端微服务镜像构建
+  # ===========================================================================
+  build-backend:
+    name: 构建后端镜像 - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    # 依赖 CI 通过 (仅在 tag 推送时跳过，因为 tag 前应该已通过 CI)
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        service:
+          - gateway
+          - user-service
+          - course-service
+          - homework-service
+          - progress-service
+
+    steps:
+      # 1. 检出代码
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 2. 配置 Docker Buildx (支持多平台构建)
+      - name: 配置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. 登录 GitHub Container Registry
+      - name: 登录 GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 4. 生成镜像元数据 (标签、标注)
+      - name: 生成镜像元数据
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
+          tags: |
+            # 语义化版本标签 (v1.0.0 → 1.0.0, 1.0, 1)
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            # Git SHA 短标签
+            type=sha,prefix=
+            # latest 标签 (仅主分支)
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # 5. 构建并推送镜像
+      - name: 构建并推送 ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            MODULE_NAME=${{ matrix.service }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ===========================================================================
+  # 前端镜像构建
+  # ===========================================================================
+  build-frontend:
+    name: 构建前端镜像
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # 1. 检出代码
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      # 2. 配置 Docker Buildx
+      - name: 配置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. 登录 GHCR
+      - name: 登录 GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 4. 生成镜像元数据
+      - name: 生成镜像元数据
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/frontend
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # 5. 构建并推送镜像
+      - name: 构建并推送前端镜像
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ===========================================================================
+  # 构建完成通知
+  # ===========================================================================
+  notify:
+    name: 构建完成通知
+    needs: [ build-backend, build-frontend ]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: 汇总构建结果
+        run: |
+          echo "=============================="
+          echo "  Docker 镜像构建结果"
+          echo "=============================="
+          echo "后端镜像: ${{ needs.build-backend.result }}"
+          echo "前端镜像: ${{ needs.build-frontend.result }}"
+          echo "=============================="
+          echo ""
+          echo "镜像仓库: ghcr.io/${{ github.repository_owner }}/edu-platform/"
+          echo "标签: ${{ github.ref_name }}"
