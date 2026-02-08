@@ -273,7 +273,7 @@ const loadCourse = async () => {
     
     if (authStore.user?.id) {
       try {
-        const enrollResult = await enrollmentAPI.check(authStore.user.id, courseId)
+        const enrollResult = await enrollmentAPI.check(courseId, authStore.user.id)
         if (enrollResult.code === 200 && enrollResult.data) {
           isEnrolled.value = enrollResult.data?.enrolled || false
         }
@@ -296,7 +296,7 @@ const handleEnroll = async () => {
   
   enrolling.value = true
   try {
-    const result = await enrollmentAPI.enroll(authStore.user.id, course.value.id)
+    const result = await enrollmentAPI.enroll(course.value.id, authStore.user.id)
     if (result.code === 200) {
       isEnrolled.value = true
       course.value.studentCount = (course.value.studentCount || 0) + 1
@@ -322,7 +322,7 @@ const handleDrop = async () => {
   if (!confirmed) return
   
   try {
-    const result = await enrollmentAPI.drop(authStore.user.id, course.value.id)
+    const result = await enrollmentAPI.drop(course.value.id, authStore.user.id)
     if (result.code === 200) {
       isEnrolled.value = false
       course.value.studentCount = Math.max(0, (course.value.studentCount || 1) - 1)

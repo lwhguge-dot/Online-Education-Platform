@@ -173,6 +173,47 @@ const shouldForceLogoutOnForbidden = (message?: string): boolean => {
     ))
 }
 
+/**
+ * 从会话中读取当前登录用户ID。
+ */
+const getSessionUserId = (): number | null => {
+  const userStr = sessionStorage.getItem('user')
+  if (!userStr) {
+    return null
+  }
+
+  try {
+    const user = JSON.parse(userStr)
+    const rawId = user?.id
+    if (rawId === null || rawId === undefined || rawId === '') {
+      return null
+    }
+    const parsedId = Number(rawId)
+    return Number.isNaN(parsedId) ? null : parsedId
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 优先使用显式传入ID；未传时自动回退到当前登录用户ID。
+ */
+const resolveUserId = (inputId: unknown, roleLabel = '用户'): number => {
+  if (inputId !== null && inputId !== undefined && inputId !== '') {
+    const parsedId = Number(inputId)
+    if (!Number.isNaN(parsedId)) {
+      return parsedId
+    }
+  }
+
+  const sessionUserId = getSessionUserId()
+  if (sessionUserId !== null) {
+    return sessionUserId
+  }
+
+  throw new Error(`缺少${roleLabel}ID，请重新登录后重试`)
+}
+
 // 生成请求去重键：非GET请求加入body信息，避免不同提交被误判为重复
 const getRequestKey = (url: string, options: RequestOptions): string => {
   const method = options.method || 'GET'
@@ -506,57 +547,85 @@ export const userAPI = {
 // 教师资料API
 export const teacherProfileAPI = {
   // 获取教师资料
-  getProfile: (userId) => request(`/teachers/${userId}/profile`),
+  getProfile: (userId = null) => {
+    const resolvedTeacherId = resolveUserId(userId, '教师')
+    return request(`/teachers/${resolvedTeacherId}/profile`)
+  },
   // 更新教师资料
-  updateProfile: (userId, data) => request(`/teachers/${userId}/profile`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
+  updateProfile: (userId = null, data) => {
+    const resolvedTeacherId = resolveUserId(userId, '教师')
+    return request(`/teachers/${resolvedTeacherId}/profile`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
+  },
   // 上传头像
-  uploadAvatar: async (userId, file) => {
+  uploadAvatar: async (userId = null, file) => {
+    const resolvedTeacherId = resolveUserId(userId, '教师')
     const formData = new FormData();
     formData.append('file', file);
-    return request(`/teachers/${userId}/avatar`, {
+    return request(`/teachers/${resolvedTeacherId}/avatar`, {
       method: 'POST',
       body: formData,
     });
   },
   // 更新通知设置
-  updateNotificationSettings: (userId, settings) => request(`/teachers/${userId}/notification-settings`, {
-    method: 'PUT',
-    body: JSON.stringify(settings)
-  }),
+  updateNotificationSettings: (userId = null, settings) => {
+    const resolvedTeacherId = resolveUserId(userId, '教师')
+    return request(`/teachers/${resolvedTeacherId}/notification-settings`, {
+      method: 'PUT',
+      body: JSON.stringify(settings)
+    })
+  },
   // 更新评分标准
-  updateGradingCriteria: (userId, criteria) => request(`/teachers/${userId}/grading-criteria`, {
-    method: 'PUT',
-    body: JSON.stringify(criteria)
-  }),
+  updateGradingCriteria: (userId = null, criteria) => {
+    const resolvedTeacherId = resolveUserId(userId, '教师')
+    return request(`/teachers/${resolvedTeacherId}/grading-criteria`, {
+      method: 'PUT',
+      body: JSON.stringify(criteria)
+    })
+  },
   // 更新仪表盘布局
-  updateDashboardLayout: (userId, layout) => request(`/teachers/${userId}/dashboard-layout`, {
-    method: 'PUT',
-    body: JSON.stringify(layout)
-  }),
+  updateDashboardLayout: (userId = null, layout) => {
+    const resolvedTeacherId = resolveUserId(userId, '教师')
+    return request(`/teachers/${resolvedTeacherId}/dashboard-layout`, {
+      method: 'PUT',
+      body: JSON.stringify(layout)
+    })
+  },
 };
 
 // 教学日历API
 export const calendarAPI = {
   // 按月查询教学日历事件
-  getByMonth: (teacherId, year, month) =>
-    request(`/calendar/teacher/${teacherId}/month?year=${year}&month=${month}`),
+  getByMonth: (teacherId = null, year, month) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/calendar/teacher/${resolvedTeacherId}/month?year=${year}&month=${month}`)
+  },
   // 按周查询教学日历事件
-  getByWeek: (teacherId, startDate) =>
-    request(`/calendar/teacher/${teacherId}/week?startDate=${startDate}`),
+  getByWeek: (teacherId = null, startDate) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/calendar/teacher/${resolvedTeacherId}/week?startDate=${startDate}`)
+  },
   // 按日查询教学日历事件
-  getByDay: (teacherId, date) =>
-    request(`/calendar/teacher/${teacherId}/day?date=${date}`),
+  getByDay: (teacherId = null, date) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/calendar/teacher/${resolvedTeacherId}/day?date=${date}`)
+  },
   // 创建事件
   createEvent: (data) => request('/calendar/events', { method: 'POST', body: JSON.stringify(data) }),
   // 更新事件
   updateEvent: (id, data) => request(`/calendar/events/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   // 删除事件（后端要求 teacherId 参与鉴权）
-  deleteEvent: (id, teacherId) => request(`/calendar/events/${id}?teacherId=${teacherId}`, { method: 'DELETE' }),
+  deleteEvent: (id, teacherId = null) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/calendar/events/${id}?teacherId=${resolvedTeacherId}`, { method: 'DELETE' })
+  },
   // 导出iCal
-  exportICal: (teacherId, year, month) => `${API_BASE}/calendar/teacher/${teacherId}/export?year=${year}&month=${month}`,
+  exportICal: (teacherId = null, year, month) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return `${API_BASE}/calendar/teacher/${resolvedTeacherId}/export?year=${year}&month=${month}`
+  },
 };
 
 export const courseAPI = {
@@ -680,44 +749,63 @@ export const courseAPI = {
 
 // 报名API
 export const enrollmentAPI = {
-  enroll: (studentId, courseId) =>
-    request(`/enrollments/enroll?studentId=${studentId}&courseId=${courseId}`, {
+  enroll: (courseId, studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/enrollments/enroll?studentId=${resolvedStudentId}&courseId=${courseId}`, {
       method: 'POST',
-    }),
-  drop: (studentId, courseId) =>
-    request(`/enrollments/drop?studentId=${studentId}&courseId=${courseId}`, {
+    })
+  },
+  drop: (courseId, studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/enrollments/drop?studentId=${resolvedStudentId}&courseId=${courseId}`, {
       method: 'POST',
-    }),
-  check: (studentId, courseId) =>
-    request(`/enrollments/check?studentId=${studentId}&courseId=${courseId}`),
-  getStudentEnrollments: (studentId) =>
-    request(`/enrollments/student/${studentId}`),
-  getStudentEnrollmentsWithNewChapters: (studentId) =>
-    request(`/enrollments/student/${studentId}/with-new-chapters`),
-  checkNewChapters: (studentId, courseId) =>
-    request(`/enrollments/check-new-chapters?studentId=${studentId}&courseId=${courseId}`),
+    })
+  },
+  check: (courseId, studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/enrollments/check?studentId=${resolvedStudentId}&courseId=${courseId}`)
+  },
+  getStudentEnrollments: (studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/enrollments/student/${resolvedStudentId}`)
+  },
+  getStudentEnrollmentsWithNewChapters: (studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/enrollments/student/${resolvedStudentId}/with-new-chapters`)
+  },
+  checkNewChapters: (courseId, studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/enrollments/check-new-chapters?studentId=${resolvedStudentId}&courseId=${courseId}`)
+  },
   getCourseEnrollments: (courseId) =>
     request(`/enrollments/course/${courseId}`),
-  updateProgress: (studentId, courseId, progress) =>
-    request(`/enrollments/progress?studentId=${studentId}&courseId=${courseId}&progress=${progress}`, {
+  updateProgress: (courseId, progress, studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/enrollments/progress?studentId=${resolvedStudentId}&courseId=${courseId}&progress=${progress}`, {
       method: 'PUT',
-    }),
+    })
+  },
   // 获取教师所有课程的学生列表（聚合数据，支持分页）
-  getTeacherStudents: (teacherId, page = 1, size = 20) =>
-    request(`/enrollments/teacher/${teacherId}/students?page=${page}&size=${size}`),
+  getTeacherStudents: (teacherId = null, page = 1, size = 20) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/enrollments/teacher/${resolvedTeacherId}/students?page=${page}&size=${size}`)
+  },
   // 获取教师所有课程的学生概览（按课程分组）
-  getTeacherStudentsOverview: (teacherId) =>
-    request(`/enrollments/teacher/${teacherId}/students/overview`),
+  getTeacherStudentsOverview: (teacherId = null) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/enrollments/teacher/${resolvedTeacherId}/students/overview`)
+  },
   // 获取课程学生列表（含学情状态）
   getCourseStudentsWithStatus: (courseId, page = 1, size = 20, status = 'all') =>
     request(`/enrollments/course/${courseId}/students?page=${page}&size=${size}&status=${status}`),
 
   // 导出教师学生数据CSV
-  exportStudentsCSV: async (teacherId, courseId = null) => {
+  exportStudentsCSV: async (teacherId = null, courseId = null) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
     const token = sessionStorage.getItem('token');
     const url = courseId
-      ? `${API_BASE}/enrollments/teacher/${teacherId}/students/export?courseId=${courseId}`
-      : `${API_BASE}/enrollments/teacher/${teacherId}/students/export`;
+      ? `${API_BASE}/enrollments/teacher/${resolvedTeacherId}/students/export?courseId=${courseId}`
+      : `${API_BASE}/enrollments/teacher/${resolvedTeacherId}/students/export`;
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -798,17 +886,32 @@ export const progressAPI = {
     body: JSON.stringify({ ...data, clientTimestamp: Date.now() })
   }),
   submitQuiz: (data) => request('/progress/quiz/submit', { method: 'POST', body: JSON.stringify(data) }),
-  getChapterProgress: (chapterId, studentId) => request(`/progress/chapter/${chapterId}?studentId=${studentId}`),
-  getCourseProgress: (courseId, studentId) => request(`/progress/course/${courseId}?studentId=${studentId}`),
-  checkUnlock: (studentId, chapterId) => request(`/progress/check-unlock?studentId=${studentId}&chapterId=${chapterId}`),
+  getChapterProgress: (chapterId, studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/progress/chapter/${chapterId}?studentId=${resolvedStudentId}`)
+  },
+  getCourseProgress: (courseId, studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/progress/course/${courseId}?studentId=${resolvedStudentId}`)
+  },
+  checkUnlock: (chapterId, studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/progress/check-unlock?studentId=${resolvedStudentId}&chapterId=${chapterId}`)
+  },
   // 更新进度（自动携带时间戳用于防作弊校验）
   updateProgress: (data) => request('/progress/video/report', {
     method: 'POST',
     body: JSON.stringify({ ...data, clientTimestamp: Date.now() })
   }),
   // 学习轨迹和知识点掌握度（真实数据）
-  getLearningTrack: (studentId) => request(`/progress/student/${studentId}/learning-track`),
-  getKnowledgeMastery: (studentId) => request(`/progress/student/${studentId}/mastery`),
+  getLearningTrack: (studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/progress/student/${resolvedStudentId}/learning-track`)
+  },
+  getKnowledgeMastery: (studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/progress/student/${resolvedStudentId}/mastery`)
+  },
   // 教师端：获取学生在特定课程的学习轨迹
   getLearningTrajectory: (courseId, studentId) => request(`/progress/course/${courseId}/student/${studentId}/trajectory`),
   // 教师端：获取学生在特定课程的测验分数趋势
@@ -824,17 +927,32 @@ export const homeworkAPI = {
   create: (homework) => request('/homeworks', { method: 'POST', body: JSON.stringify(homework) }),
   getDetail: (id) => request(`/homeworks/${id}`),
   getByChapter: (chapterId) => request(`/homeworks/chapter/${chapterId}`),
-  getStudentHomeworks: (studentId, chapterId) => request(`/homeworks/student?studentId=${studentId}&chapterId=${chapterId}`),
+  getStudentHomeworks: (chapterId, studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/homeworks/student?studentId=${resolvedStudentId}&chapterId=${chapterId}`)
+  },
   unlock: (studentId, chapterId) => request(`/homeworks/unlock?studentId=${studentId}&chapterId=${chapterId}`, { method: 'POST' }),
   submit: (data) => request('/homeworks/submit', { method: 'POST', body: JSON.stringify(data) }),
-  getSubmission: (homeworkId, studentId) => request(`/homeworks/${homeworkId}/submission?studentId=${studentId}`),
-  getReport: (homeworkId, studentId) => request(`/homeworks/${homeworkId}/report?studentId=${studentId}`),
+  getSubmission: (homeworkId, studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/homeworks/${homeworkId}/submission?studentId=${resolvedStudentId}`)
+  },
+  getReport: (homeworkId, studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/homeworks/${homeworkId}/report?studentId=${resolvedStudentId}`)
+  },
   getSubmissions: (homeworkId) => request(`/homeworks/${homeworkId}/submissions`),
   gradeSubjective: (submissionId, questionId, score, feedback) =>
     request(`/homeworks/grade-subjective?submissionId=${submissionId}&questionId=${questionId}&score=${score}&feedback=${feedback || ''}`, { method: 'POST' }),
   // 教师待办事项和活动（真实数据）
-  getTeacherTodos: (teacherId) => request(`/homeworks/teacher/${teacherId}/todos`),
-  getTeacherActivities: (teacherId) => request(`/homeworks/teacher/${teacherId}/activities`),
+  getTeacherTodos: (teacherId = null) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/homeworks/teacher/${resolvedTeacherId}/todos`)
+  },
+  getTeacherActivities: (teacherId = null) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/homeworks/teacher/${resolvedTeacherId}/activities`)
+  },
 
   // 批改工作台相关API
   getPendingSubmissions: (homeworkId) => request(`/homeworks/${homeworkId}/submissions/pending`),
@@ -861,41 +979,54 @@ export const homeworkAPI = {
 
   // ==================== 作业问答相关API ====================
   // 学生提问
-  askQuestion: (homeworkId, studentId, questionId, content) =>
-    request(`/homeworks/${homeworkId}/questions?studentId=${studentId}${questionId ? `&questionId=${questionId}` : ''}&content=${encodeURIComponent(content)}`, {
+  askQuestion: (homeworkId, questionId, content, studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/homeworks/${homeworkId}/questions?studentId=${resolvedStudentId}${questionId ? `&questionId=${questionId}` : ''}&content=${encodeURIComponent(content)}`, {
       method: 'POST',
-    }),
+    })
+  },
 
   // 教师回复问题
-  replyQuestion: (discussionId, teacherId, reply) =>
-    request(`/homeworks/questions/${discussionId}/reply?teacherId=${teacherId}&reply=${encodeURIComponent(reply)}`, {
+  replyQuestion: (discussionId, reply, teacherId = null) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/homeworks/questions/${discussionId}/reply?teacherId=${resolvedTeacherId}&reply=${encodeURIComponent(reply)}`, {
       method: 'POST',
-    }),
+    })
+  },
 
   // 获取作业的所有问答
   getHomeworkQuestions: (homeworkId) =>
     request(`/homeworks/${homeworkId}/questions`),
 
   // 获取学生的所有提问
-  getStudentQuestions: (studentId) =>
-    request(`/homeworks/student/${studentId}/questions`),
+  getStudentQuestions: (studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/homeworks/student/${resolvedStudentId}/questions`)
+  },
 
   // 获取教师待回复的问题数量
-  getTeacherPendingQuestionsCount: (teacherId) =>
-    request(`/homeworks/teacher/${teacherId}/pending-questions-count`),
+  getTeacherPendingQuestionsCount: (teacherId = null) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/homeworks/teacher/${resolvedTeacherId}/pending-questions-count`)
+  },
 };
 
 // 评论API
 export const commentAPI = {
   // 学生发布答案（解锁主观题问答）
-  publishAnswer: (studentId, questionId, answerContent) =>
-    request(`/comments/publish-answer?studentId=${studentId}&questionId=${questionId}`, {
+  publishAnswer: (questionId, answerContent, studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/comments/publish-answer?studentId=${resolvedStudentId}&questionId=${questionId}`, {
       method: 'POST',
       body: JSON.stringify({ answerContent }),
-    }),
+    })
+  },
 
   // 获取学生问答列表（学生中心）
-  getStudentQuestions: (studentId) => request(`/comments/student/${studentId}/questions`),
+  getStudentQuestions: (studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/comments/student/${resolvedStudentId}/questions`)
+  },
 
   toggleTop: (commentId) => request(`/comments/${commentId}/toggle-top`, { method: 'PUT' }),
   delete: (commentId) => request(`/comments/${commentId}`, { method: 'DELETE' }),
@@ -904,9 +1035,15 @@ export const commentAPI = {
 // 讨论API（教师中心增强版）
 export const discussionAPI = {
   // 获取教师的所有讨论（按课程/章节分组）
-  getTeacherDiscussions: (teacherId) => request(`/discussions/teacher/${teacherId}`),
+  getTeacherDiscussions: (teacherId = null) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/discussions/teacher/${resolvedTeacherId}`)
+  },
   // 获取讨论统计
-  getStats: (teacherId) => request(`/discussions/teacher/${teacherId}/stats`),
+  getStats: (teacherId = null) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/discussions/teacher/${resolvedTeacherId}/stats`)
+  },
   // 按课程获取讨论
   getByCourse: (courseId) => request(`/discussions/course/${courseId}`),
   // 更新回答状态
@@ -926,34 +1063,43 @@ export const discussionAPI = {
 // 统计API
 export const statsAPI = {
   // 教师仪表盘统计（带课程数据）
-  getTeacherDashboard: (teacherId, courses = []) => {
+  getTeacherDashboard: (teacherId = null, courses = []) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
     if (courses.length > 0) {
-      return request(`/stats/teacher/dashboard?teacherId=${teacherId}`, {
+      return request(`/stats/teacher/dashboard?teacherId=${resolvedTeacherId}`, {
         method: 'POST',
         body: JSON.stringify(courses),
       });
     }
-    return request(`/stats/teacher/dashboard?teacherId=${teacherId}`);
+    return request(`/stats/teacher/dashboard?teacherId=${resolvedTeacherId}`);
   },
 
   // 教师待办事项
-  getTeacherTodos: (teacherId) =>
-    request(`/homeworks/teacher/${teacherId}/todos`),
+  getTeacherTodos: (teacherId = null) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/homeworks/teacher/${resolvedTeacherId}/todos`)
+  },
 
   // 教师最近活动
-  getTeacherActivities: (teacherId) =>
-    request(`/homeworks/teacher/${teacherId}/activities`),
+  getTeacherActivities: (teacherId = null) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/homeworks/teacher/${resolvedTeacherId}/activities`)
+  },
 
   // 管理员仪表盘
   getAdminDashboard: () => request('/stats/admin/dashboard'),
 
   // 学生学习统计
-  getStudentDashboard: (studentId) =>
-    request(`/stats/student/${studentId}/dashboard`),
+  getStudentDashboard: (studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/stats/student/${resolvedStudentId}/dashboard`)
+  },
 
   // 获取教师今日新增学生数
-  getTeacherTodayEnrollments: (teacherId) =>
-    request(`/enrollments/teacher/${teacherId}/today`),
+  getTeacherTodayEnrollments: (teacherId = null) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/enrollments/teacher/${resolvedTeacherId}/today`)
+  },
 
   // 获取用户增长趋势数据（管理员仪表盘图表）
   getUserTrends: (days = 7) =>
@@ -963,14 +1109,18 @@ export const statsAPI = {
 // 徽章API
 export const badgeAPI = {
   // 获取学生徽章（包含已解锁和未解锁）
-  getStudentBadges: (studentId) =>
-    request(`/progress/badges/student/${studentId}`),
+  getStudentBadges: (studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/progress/badges/student/${resolvedStudentId}`)
+  },
 
   // 检查并授予符合条件的徽章
-  checkAndAwardBadges: (studentId) =>
-    request(`/progress/badges/student/${studentId}/check`, {
+  checkAndAwardBadges: (studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/progress/badges/student/${resolvedStudentId}/check`, {
       method: 'POST',
-    }),
+    })
+  },
 };
 
 // 审计日志API
@@ -1023,26 +1173,33 @@ export const announcementAPI = {
 
   // ========== 教师公告相关API ==========
   // 教师发布公告
-  createByTeacher: (teacherId, announcement) =>
-    request(`/announcements/teachers/${teacherId}`, {
+  createByTeacher: (teacherId = null, announcement) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/announcements/teachers/${resolvedTeacherId}`, {
       method: 'POST',
       body: JSON.stringify(announcement),
-    }),
+    })
+  },
   // 教师更新公告
-  updateByTeacher: (teacherId, announcementId, announcement) =>
-    request(`/announcements/teachers/${teacherId}/${announcementId}`, {
+  updateByTeacher: (teacherId = null, announcementId, announcement) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/announcements/teachers/${resolvedTeacherId}/${announcementId}`, {
       method: 'PUT',
       body: JSON.stringify(announcement),
-    }),
+    })
+  },
   // 教师删除公告
-  deleteByTeacher: (teacherId, announcementId) =>
-    request(`/announcements/teachers/${teacherId}/${announcementId}`, {
+  deleteByTeacher: (teacherId = null, announcementId) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/announcements/teachers/${resolvedTeacherId}/${announcementId}`, {
       method: 'DELETE',
-    }),
+    })
+  },
   // 查询教师发布的公告列表
-  getByTeacher: (teacherId, params = {}) => {
+  getByTeacher: (teacherId = null, params = {}) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
     const query = new URLSearchParams(params).toString();
-    return request(`/announcements/teachers/${teacherId}?${query}`);
+    return request(`/announcements/teachers/${resolvedTeacherId}?${query}`);
   },
   // 获取公告阅读统计
   getStats: (id) => request(`/announcements/${id}/stats`),
@@ -1054,10 +1211,12 @@ export const announcementAPI = {
     });
   },
   // 置顶/取消置顶公告
-  togglePin: (teacherId, announcementId) =>
-    request(`/announcements/teachers/${teacherId}/${announcementId}/toggle-pin`, {
+  togglePin: (teacherId = null, announcementId) => {
+    const resolvedTeacherId = resolveUserId(teacherId, '教师')
+    return request(`/announcements/teachers/${resolvedTeacherId}/${announcementId}/toggle-pin`, {
       method: 'POST',
-    }),
+    })
+  },
 };
 
 // 通知API

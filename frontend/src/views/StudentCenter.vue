@@ -335,7 +335,7 @@ const loadEnrolledCourses = async () => {
             let hasNewChapters = false
             let newChaptersCount = 0
             try {
-              const newChapterRes = await enrollmentAPI.checkNewChapters(studentId, enrollment.courseId)
+              const newChapterRes = await enrollmentAPI.checkNewChapters(enrollment.courseId, studentId)
               if (newChapterRes.data) {
                 hasNewChapters = newChapterRes.data.hasNewChapters || false
                 newChaptersCount = newChapterRes.data.newChaptersCount || 0
@@ -502,7 +502,7 @@ const loadHomeworks = async () => {
          if (!chapter.completed) continue
          
          try {
-           const res = await homeworkAPI.getStudentHomeworks(studentId, chapter.id)
+           const res = await homeworkAPI.getStudentHomeworks(chapter.id, studentId)
            if (res.data) {
              res.data.forEach(hw => {
                 const item = {
@@ -688,7 +688,7 @@ const refreshAll = async () => {
 // 操作方法
 const handleEnroll = async (course) => {
   try {
-     await enrollmentAPI.enroll(authStore.user?.id, course.id)
+     await enrollmentAPI.enroll(course.id, authStore.user?.id)
      await refreshAll()
      toast.success('报名成功')
   } catch (e) { toast.error(e.message) }
@@ -704,7 +704,7 @@ const handleDrop = async (courseId) => {
    })
    if (!confirmed) return
    try {
-     await enrollmentAPI.drop(authStore.user?.id, courseId)
+     await enrollmentAPI.drop(courseId, authStore.user?.id)
      await refreshAll()
    } catch(e) {
      console.error('退课失败:', e)
@@ -723,7 +723,7 @@ const handleSubmitQuestion = async (q) => {
      // 调用后端API保存问题
      // 如果关联了章节，使用章节ID作为questionId
      const questionId = q.chapterId || 0
-     const res = await commentAPI.publishAnswer(studentId, questionId, q.content)
+     const res = await commentAPI.publishAnswer(questionId, q.content, studentId)
      
      if (res.code === 200) {
        // 添加到本地列表

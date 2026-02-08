@@ -45,7 +45,7 @@ const submitReply = async (discussionId) => {
   }
   
   try {
-    await homeworkAPI.replyQuestion(discussionId, props.teacherId, reply)
+    await homeworkAPI.replyQuestion(discussionId, reply, props.teacherId)
     toast.success('回复成功')
     replyContent.value[discussionId] = ''
     await loadQuestions()

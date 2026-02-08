@@ -47,9 +47,9 @@ const submitQuestion = async () => {
   try {
     await homeworkAPI.askQuestion(
       props.homeworkId,
-      props.studentId,
       selectedQuestionId.value,
-      newQuestion.value
+      newQuestion.value,
+      props.studentId
     )
     toast.success('提问成功，等待教师回复')
     newQuestion.value = ''
