@@ -37,8 +37,25 @@ git diff --quiet --cached --exit-code | Out-Null
 $staged = $LASTEXITCODE
 $untracked = @(git ls-files --others --exclude-standard).Count
 
+# 检查是否有本地已提交但未推送的记录
+$unpushed = @(git cherry -v 2>$null).Count
+
 if ($unstaged -eq 0 -and $staged -eq 0 -and $untracked -eq 0) {
-  Write-Host (Z '\u6ca1\u6709\u4efb\u4f55\u6587\u4ef6\u53d8\u52a8\uff0c\u65e0\u9700\u63a8\u9001\u3002')
+  if ($unpushed -gt 0) {
+    Write-Host (Z "[\u63d0\u793a] \u68c0\u6d4b\u5230\u6709 $unpushed \u4e2a\u672c\u5730\u63d0\u4ea4\u5c1a\u672a\u63a8\u9001\u3002")
+    $retryPush = Read-Host (Z '\u662f\u5426\u5c1d\u8bd5\u91cd\u65b0\u63a8\u9001\uff1f[y/N]')
+    if ($retryPush.ToUpperInvariant() -eq "Y") {
+        Write-Host ""
+        Write-Host (Z '[6/7] \u6b63\u5728\u91cd\u8bd5\u63a8\u9001...')
+        git push
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host (Z '[\u5b8c\u6210] \u63a8\u9001\u6210\u529f\u3002')
+            Read-Host (Z '\u6309\u56de\u8f66\u9000\u51fa')
+            exit 0
+        }
+    }
+  }
+  Write-Host (Z '\u6ca1\u6709\u4efb\u4f55\u6587\u4ef6\uff0c\u4e5f\u65e0\u5f85\u63a8\u9001\u7684\u63d0\u4ea4\u3002')
   Read-Host (Z '\u6309\u56de\u8f66\u9000\u51fa')
   exit 0
 }
