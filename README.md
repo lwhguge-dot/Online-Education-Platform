@@ -6,7 +6,8 @@
 
 - Docker 启动链路已支持 `.env` 强校验（缺失/弱密码会拒绝启动）。
 - 生产覆盖模式默认收口端口（宿主机只暴露 `80` 与 `8090`）。
-- 启动脚本支持：`-ForceRecreate`（强制重建）与 `-CheckOnly`（仅预检）。
+- 启动脚本支持：`-CheckOnly`、`-ForceRecreate`、`-Prod`、`-AutoProd:$false`、`-EnvFile`、`-TimeoutSeconds`、`-IntervalSeconds`。
+- `tools/scripts/docker/Docker启动.bat` 会透传全部参数到 `Docker启动.ps1`，并在失败时自动暂停窗口。
 - `docker-compose.yml` 关键密码变量改为必填（fail-fast）。
 
 ## 目录结构
@@ -39,6 +40,9 @@ Copy-Item .env.example .env -Force
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\scripts\docker\Docker启动.ps1 -CheckOnly
+
+# 或直接使用 bat（参数会透传给 ps1）
+tools\scripts\docker\Docker启动.bat -CheckOnly
 ```
 
 预检会校验：
@@ -59,6 +63,16 @@ powershell -ExecutionPolicy Bypass -File .\tools\scripts\docker\Docker启动.ps1
 
 默认会自动启用生产覆盖模式（若存在 `docker-compose.prod.yml`）。
 
+## 启动脚本参数速查
+
+- `-CheckOnly`：只做环境预检，不启动容器。
+- `-ForceRecreate`：对 `docker compose up` 追加 `--force-recreate`。
+- `-Prod`：显式启用 `docker-compose.prod.yml` 覆盖。
+- `-AutoProd:$false`：关闭“自动启用生产覆盖”逻辑。
+- `-EnvFile <path>`：指定环境变量文件（默认 `.env`）。
+- `-TimeoutSeconds <N>`：健康检查总超时秒数（默认 `180`）。
+- `-IntervalSeconds <N>`：健康检查轮询间隔秒数（默认 `5`）。
+
 ## 运行模式说明
 
 ### 生产覆盖模式（默认推荐）
@@ -66,18 +80,21 @@ powershell -ExecutionPolicy Bypass -File .\tools\scripts\docker\Docker启动.ps1
 - 入口：前端 `http://localhost`
 - 网关：`http://localhost:8090`
 - 其余中间件/运维端口不暴露到宿主机
+- 启动脚本末尾会打印完整地址清单，其中中间件地址在该模式下默认不可从宿主机直接访问
 
 ### 开发模式（需要暴露全部端口时）
 
 ```powershell
-docker compose up -d --force-recreate
-```
-
-或使用启动脚本显式关闭自动生产覆盖：
-
-```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\scripts\docker\Docker启动.ps1 -AutoProd:$false -ForceRecreate
 ```
+
+或使用 compose 直接拉起：
+
+```powershell
+docker compose -f docker-compose.yml --env-file .env up -d --force-recreate
+```
+
+开发模式下，除前端与网关外，常用中间件端口也会映射到宿主机（如 `8848`、`8858`、`9001`、`9090`、`3000`、`16686` 等）。
 
 ## 改密与生效流程（必读）
 
