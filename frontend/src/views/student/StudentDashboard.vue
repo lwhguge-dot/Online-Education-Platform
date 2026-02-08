@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import {
   BookOpen, Clock, FileText, Flame,
   Target, Play, Award, Lock,
@@ -58,6 +58,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['navigate', 'start-study'])
+
+// 当前鼠标悬浮的徽章ID：用于确保同一时刻只展示一个提示框
+const hoveredBadgeId = ref(null)
 
 /**
  * 根据当前时间段返回问候语和图标
@@ -299,13 +302,21 @@ const displayName = computed(() => props.username || '同学')
           <div
             v-for="(badge, index) in badges"
             :key="badge.id"
-            class="p-3 rounded-xl text-center transition-all border relative group cursor-default stagger-item"
+            class="p-3 rounded-xl text-center transition-all border relative cursor-default stagger-item"
+            @mouseenter="hoveredBadgeId = badge.id"
+            @mouseleave="hoveredBadgeId = null"
             :class="[
               badge.unlocked
-                ? 'bg-gradient-to-br from-white to-slate-50 border-slate-100 shadow-md hover:shadow-xl hover:scale-105 badge-unlocked-glow'
+                ? hoveredBadgeId === badge.id
+                  ? 'bg-gradient-to-br from-white to-slate-50 border-slate-100 shadow-xl scale-105 badge-unlocked-glow'
+                  : 'bg-gradient-to-br from-white to-slate-50 border-slate-100 shadow-md badge-unlocked-glow'
                 : badge.nearUnlock
-                  ? 'bg-zhizi/5 border-zhizi/30 hover:border-zhizi/50 badge-near-unlock'
-                  : 'bg-slate-50 border-transparent badge-locked hover:opacity-80'
+                  ? hoveredBadgeId === badge.id
+                    ? 'bg-zhizi/5 border-zhizi/50 badge-near-unlock'
+                    : 'bg-zhizi/5 border-zhizi/30 badge-near-unlock'
+                  : hoveredBadgeId === badge.id
+                    ? 'bg-slate-50 border-transparent badge-locked opacity-80'
+                    : 'bg-slate-50 border-transparent badge-locked'
             ]"
             :style="{ animationDelay: `${index * 0.08}s` }"
           >
@@ -338,10 +349,11 @@ const displayName = computed(() => props.username || '同学')
             >
               <component
                 :is="badge.icon"
-                class="w-6 h-6 transition-all group-hover:scale-110"
+                class="w-6 h-6 transition-all"
                 :class="[
                   badge.unlocked ? badge.color : badge.nearUnlock ? 'text-zhizi/70' : 'text-slate-400',
-                  badge.unlocked ? 'drop-shadow-lg' : ''
+                  badge.unlocked ? 'drop-shadow-lg' : '',
+                  hoveredBadgeId === badge.id ? 'scale-110' : ''
                 ]"
               />
             </div>
@@ -371,7 +383,10 @@ const displayName = computed(() => props.username || '同学')
             </div>
 
             <!-- Tooltip on hover -->
-            <div class="absolute -top-12 left-1/2 -translate-x-1/2 bg-shuimo text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-10 shadow-lg transform group-hover:scale-100 scale-95">
+            <div
+              v-if="hoveredBadgeId === badge.id"
+              class="absolute -top-12 left-1/2 -translate-x-1/2 bg-shuimo text-white text-xs px-3 py-1.5 rounded-lg pointer-events-none whitespace-nowrap z-10 shadow-lg"
+            >
               {{ badge.description || badge.name }}
               <span v-if="badge.nearUnlock && !badge.unlocked" class="block text-zhizi font-medium">即将解锁！冲刺吧~</span>
               <span v-if="badge.unlocked && badge.unlockedAt" class="block text-tianlv/80 text-[10px]">解锁于 {{ badge.unlockedAt }}</span>
