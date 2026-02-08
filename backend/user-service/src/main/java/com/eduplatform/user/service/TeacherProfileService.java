@@ -9,7 +9,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.minio.MinioClient;
+import io.minio.BucketExistsArgs;
+import io.minio.MakeBucketArgs;
 import io.minio.PutObjectArgs;
+import io.minio.SetBucketPolicyArgs;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -164,6 +167,9 @@ public class TeacherProfileService {
             throw new IOException("头像文件不能为空");
         }
 
+        // 上传前确保桶存在，避免首次部署时因桶缺失导致 500。
+        ensureBucketExists();
+
         String objectName = buildObjectName("avatars", file.getOriginalFilename());
         try (InputStream inputStream = file.getInputStream()) {
             PutObjectArgs args = PutObjectArgs.builder()
@@ -185,6 +191,30 @@ public class TeacherProfileService {
         }
 
         return avatarUrl;
+    }
+
+    /**
+     * 确保对象存储桶存在。
+     * 设计说明：新环境首次启动时 MinIO 可能尚未创建业务桶，
+     * 这里做一次幂等检查并按需创建，避免上传接口直接失败。
+     */
+    private void ensureBucketExists() throws IOException {
+        try {
+            boolean exists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
+            if (!exists) {
+                minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
+            }
+
+            // 头像属于公开静态资源，统一设置桶只读公开策略，便于前端直接渲染。
+            String publicReadPolicy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::"
+                    + bucketName + "/*\"]}]}";
+            minioClient.setBucketPolicy(SetBucketPolicyArgs.builder()
+                    .bucket(bucketName)
+                    .config(publicReadPolicy)
+                    .build());
+        } catch (Exception exception) {
+            throw new IOException("初始化对象存储桶失败", exception);
+        }
     }
 
     /**

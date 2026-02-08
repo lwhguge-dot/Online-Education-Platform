@@ -70,6 +70,10 @@ export const clearCache = (): void => cache.clear()
 export const getImageUrl = (path: string | undefined | null): string => {
   if (!path) return ''
   if (path.startsWith('http')) return path
+  // OSS 资源统一走网关转发，避免被误拼到 user-service 端口
+  if (path.startsWith('/oss/')) {
+    return path
+  }
   // 头像文件在 user-service
   if (path.includes('/avatars/')) {
     return USER_STATIC_BASE + path
@@ -526,6 +530,16 @@ export const userAPI = {
       method: 'PUT',
       body: JSON.stringify(settings),
     }),
+
+  // 上传用户头像（学生/教师通用）
+  uploadAvatar: (id: number, file: File): Promise<Result<{ avatarUrl: string }>> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return request<{ avatarUrl: string }>(`/users/${id}/avatar`, {
+      method: 'POST',
+      body: formData,
+    })
+  },
 
   // 获取用户在线状态
   getOnlineStatus: () => request('/users/online-status'),

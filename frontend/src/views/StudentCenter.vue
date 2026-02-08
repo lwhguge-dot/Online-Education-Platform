@@ -1146,6 +1146,7 @@ const handleLogout = async () => {
                 enrolledCourses: enrolledCourses
               } : {}),
               ...(activeMenu === 'settings' ? {
+                userId: authStore.user?.id,
                 profile: studentProfile,
                 notificationSettings: notificationSettings,
                 studyGoal: studyGoal

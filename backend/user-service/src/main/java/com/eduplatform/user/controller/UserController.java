@@ -5,6 +5,7 @@ import com.eduplatform.user.dto.UserProfileDTO;
 import com.eduplatform.user.dto.UserSettingsDTO;
 import com.eduplatform.user.entity.User;
 import com.eduplatform.user.service.StudentProfileService;
+import com.eduplatform.user.service.TeacherProfileService;
 import com.eduplatform.user.service.UserCascadeDeleteService;
 import com.eduplatform.user.service.UserService;
 import com.eduplatform.user.service.UserSessionService;
@@ -14,6 +15,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -39,6 +41,7 @@ public class UserController {
 
     private final UserService userService;
     private final StudentProfileService studentProfileService;
+    private final TeacherProfileService teacherProfileService;
     private final UserSessionService sessionService;
     private final UserCascadeDeleteService userCascadeDeleteService;
 
@@ -324,6 +327,33 @@ public class UserController {
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestBody UserSettingsDTO settings) {
         return updateUserSettings(id, currentUserIdStr, currentUserRole, settings);
+    }
+
+    /**
+     * 上传或更换用户头像（学生/教师通用）。
+     * 业务说明：
+     * 1. 仅允许本人或管理员上传，避免越权修改他人头像。
+     * 2. 复用既有对象存储上传逻辑，确保头像路径与访问策略一致。
+     *
+     * @param id                用户 ID
+     * @param file              图片文件
+     * @param currentUserIdStr  网关注入的当前用户 ID
+     * @param currentUserRole   网关注入的当前用户角色
+     * @return 新头像 URL
+     */
+    @PostMapping("/{id}/avatar")
+    public Result<Map<String, String>> uploadAvatar(
+            @PathVariable("id") Long id,
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdStr,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) throws IOException {
+        Long currentUserId = parseUserId(currentUserIdStr);
+        if (!hasSelfOrAdminAccess(id, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅本人或管理员可上传头像");
+        }
+
+        String avatarUrl = teacherProfileService.uploadAvatar(id, file);
+        return Result.success("头像上传成功", Map.of("avatarUrl", avatarUrl));
     }
 
     /**

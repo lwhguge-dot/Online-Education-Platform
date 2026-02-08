@@ -2,17 +2,23 @@
 import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { User, Mail, Phone, Bell, Target, Save, Edit, Camera, Calendar, ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
+import { userAPI, getImageUrl } from '../../services/api'
+import { useToastStore } from '../../stores/toast'
 
 const props = defineProps({
+  userId: { type: [Number, String], default: null },
   profile: { type: Object, default: () => ({}) },
   notificationSettings: { type: Object, default: () => ({}) },
   studyGoal: { type: Object, default: () => ({}) }
 })
 
 const emit = defineEmits(['save'])
+const toast = useToastStore()
 
 const isEditing = ref(false)
 const formData = ref({ ...props.profile })
+const avatarInput = ref(null)
+const avatarUploading = ref(false)
 
 // 日期选择器状态
 const showDatePicker = ref(false)
@@ -123,6 +129,43 @@ const toggleEdit = () => {
   } else {
     formData.value = { ...props.profile }
     isEditing.value = true
+  }
+}
+
+// 触发头像上传文件选择
+const triggerAvatarUpload = () => {
+  if (avatarUploading.value) return
+  avatarInput.value?.click()
+}
+
+// 处理头像文件上传，并将返回的头像地址写入表单
+const handleAvatarChange = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  const resolvedUserId = Number(props.userId)
+  if (!resolvedUserId || Number.isNaN(resolvedUserId)) {
+    toast.error('缺少用户ID，无法上传头像')
+    event.target.value = ''
+    return
+  }
+
+  avatarUploading.value = true
+  try {
+    const res = await userAPI.uploadAvatar(resolvedUserId, file)
+    if (res.code === 200 && res.data?.avatarUrl) {
+      formData.value.avatar = res.data.avatarUrl
+      toast.success('头像上传成功')
+    } else {
+      toast.error(res.message || '头像上传失败')
+    }
+  } catch (error) {
+    console.error('头像上传失败:', error)
+    toast.error('头像上传失败，请稍后重试')
+  } finally {
+    avatarUploading.value = false
+    // 清空已选文件，便于重复选择同一张图触发 change
+    event.target.value = ''
   }
 }
 
@@ -306,8 +349,12 @@ const getGenderLabel = (value) => {
           <div class="flex flex-col md:flex-row gap-8">
              <!-- Avatar -->
              <div class="flex flex-col items-center gap-3">
-                <div class="w-24 h-24 rounded-full bg-slate-100 border-4 border-white shadow-lg overflow-hidden relative group cursor-pointer avatar-hover">
-                   <img v-if="formData.avatar" :src="formData.avatar" class="w-full h-full object-cover" />
+                <div
+                  class="w-24 h-24 rounded-full bg-slate-100 border-4 border-white shadow-lg overflow-hidden relative group cursor-pointer avatar-hover"
+                  :class="{ 'opacity-70': avatarUploading }"
+                  @click="triggerAvatarUpload"
+                >
+                   <img v-if="formData.avatar" :src="getImageUrl(formData.avatar)" class="w-full h-full object-cover" />
                    <div v-else class="w-full h-full flex items-center justify-center text-3xl font-bold text-slate-300">
                       {{ formData.username?.[0] || '学' }}
                    </div>
@@ -315,8 +362,14 @@ const getGenderLabel = (value) => {
                       <Camera class="w-8 h-8 text-white transform group-hover:scale-110 transition-transform" />
                    </div>
                 </div>
-                <span class="text-xs text-shuimo/50">点击更换头像</span>
-             </div>
+                <input
+                  ref="avatarInput"
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                  @change="handleAvatarChange"
+                />
+              </div>
 
              <!-- Form -->
              <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
