@@ -29,7 +29,16 @@ public class TeacherProfileController {
      * @return 封装好的 TeacherProfileDTO 资料数据
      */
     @GetMapping("/{userId}/profile")
-    public Result<TeacherProfileDTO> getProfile(@PathVariable("userId") Long userId) {
+    public Result<TeacherProfileDTO> getProfile(
+            @PathVariable("userId") Long userId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 教师档案仅允许本人、教师管理角色或管理员访问
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!canManageTeacherProfile(userId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师本人或管理员可查看教师档案");
+        }
+
         TeacherProfileDTO profile = profileService.getProfile(userId);
         return Result.success(profile);
     }
@@ -44,7 +53,15 @@ public class TeacherProfileController {
     @PutMapping("/{userId}/profile")
     public Result<Void> updateProfile(
             @PathVariable("userId") Long userId,
-            @RequestBody TeacherProfileDTO dto) {
+            @RequestBody TeacherProfileDTO dto,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 更新教师档案仅允许本人或管理员
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!canManageTeacherProfile(userId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师本人或管理员可更新教师档案");
+        }
+
         profileService.updateProfile(userId, dto);
         return Result.success("教师职业资料更新成功", null);
     }
@@ -61,7 +78,15 @@ public class TeacherProfileController {
     @PostMapping("/{userId}/avatar")
     public Result<Map<String, String>> uploadAvatar(
             @PathVariable("userId") Long userId,
-            @RequestParam("file") MultipartFile file) throws IOException {
+            @RequestParam("file") MultipartFile file,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) throws IOException {
+        // 上传头像仅允许本人或管理员
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!canManageTeacherProfile(userId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师本人或管理员可上传头像");
+        }
+
         String avatarUrl = profileService.uploadAvatar(userId, file);
         return Result.success("教师头像上传成功", Map.of("avatarUrl", avatarUrl));
     }
@@ -73,7 +98,15 @@ public class TeacherProfileController {
     @PutMapping("/{userId}/notification-settings")
     public Result<Void> updateNotificationSettings(
             @PathVariable("userId") Long userId,
-            @RequestBody TeacherProfileDTO.NotificationSettings settings) {
+            @RequestBody TeacherProfileDTO.NotificationSettings settings,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 通知设置仅允许本人或管理员
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!canManageTeacherProfile(userId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师本人或管理员可更新通知设置");
+        }
+
         profileService.updateNotificationSettings(userId, settings);
         return Result.success("教师通知推送设置已同步更新", null);
     }
@@ -85,7 +118,15 @@ public class TeacherProfileController {
     @PutMapping("/{userId}/grading-criteria")
     public Result<Void> updateGradingCriteria(
             @PathVariable("userId") Long userId,
-            @RequestBody TeacherProfileDTO.GradingCriteria criteria) {
+            @RequestBody TeacherProfileDTO.GradingCriteria criteria,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 评分标准仅允许本人或管理员
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!canManageTeacherProfile(userId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师本人或管理员可更新评分标准");
+        }
+
         profileService.updateGradingCriteria(userId, criteria);
         return Result.success("作业评分标准已持久化", null);
     }
@@ -97,8 +138,43 @@ public class TeacherProfileController {
     @PutMapping("/{userId}/dashboard-layout")
     public Result<Void> updateDashboardLayout(
             @PathVariable("userId") Long userId,
-            @RequestBody TeacherProfileDTO.DashboardLayout layout) {
+            @RequestBody TeacherProfileDTO.DashboardLayout layout,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 工作台布局仅允许本人或管理员更新
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!canManageTeacherProfile(userId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师本人或管理员可更新工作台布局");
+        }
+
         profileService.updateDashboardLayout(userId, layout);
         return Result.success("工作台个性化布局已保存", null);
+    }
+
+    /**
+     * 解析网关注入的用户ID，非法值返回 null。
+     */
+    private Long parseUserId(String currentUserIdHeader) {
+        if (currentUserIdHeader == null || currentUserIdHeader.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(currentUserIdHeader);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    /**
+     * 判断是否允许管理教师档案：管理员可跨账号操作，教师仅允许操作本人档案。
+     */
+    private boolean canManageTeacherProfile(Long targetUserId, Long currentUserId, String currentUserRole) {
+        if (currentUserRole != null && "admin".equalsIgnoreCase(currentUserRole)) {
+            return true;
+        }
+        return currentUserRole != null
+                && "teacher".equalsIgnoreCase(currentUserRole)
+                && currentUserId != null
+                && currentUserId.equals(targetUserId);
     }
 }

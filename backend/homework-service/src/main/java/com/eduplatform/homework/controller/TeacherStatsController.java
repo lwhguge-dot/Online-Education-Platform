@@ -32,8 +32,16 @@ public class TeacherStatsController {
     @PostMapping("/dashboard")
     public Result<TeacherDashboardDTO> getTeacherDashboard(
             @RequestParam("teacherId") Long teacherId,
-            @RequestBody List<Map<String, Object>> courses) {
+            @RequestBody List<Map<String, Object>> courses,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         try {
+            // 仪表盘仅允许教师本人或管理员访问，避免 teacherId 越权读取
+            Long currentUserId = parseUserId(currentUserIdHeader);
+            if (!canAccessTeacherDashboard(teacherId, currentUserId, currentUserRole)) {
+                return Result.failure(403, "权限不足，仅教师本人或管理员可访问教师仪表盘");
+            }
+
             log.info("获取教师仪表盘数据, teacherId={}, coursesCount={}", teacherId, courses.size());
             TeacherDashboardDTO dashboard = teacherStatsService.getTeacherDashboard(teacherId, courses);
             return Result.success(dashboard);
@@ -49,8 +57,16 @@ public class TeacherStatsController {
      */
     @GetMapping("/dashboard")
     public Result<TeacherDashboardDTO> getTeacherDashboardSimple(
-            @RequestParam("teacherId") Long teacherId) {
+            @RequestParam("teacherId") Long teacherId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         try {
+            // 简版仪表盘同样执行身份校验
+            Long currentUserId = parseUserId(currentUserIdHeader);
+            if (!canAccessTeacherDashboard(teacherId, currentUserId, currentUserRole)) {
+                return Result.failure(403, "权限不足，仅教师本人或管理员可访问教师仪表盘");
+            }
+
             log.info("获取教师仪表盘基础数据, teacherId={}", teacherId);
             // 返回空课程列表的基础数据
             TeacherDashboardDTO dashboard = teacherStatsService.getTeacherDashboard(teacherId, List.of());
@@ -59,5 +75,32 @@ public class TeacherStatsController {
             log.error("获取教师仪表盘数据失败", e);
             return Result.error("获取仪表盘数据失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 解析网关注入的用户ID，非法值返回 null。
+     */
+    private Long parseUserId(String currentUserIdHeader) {
+        if (currentUserIdHeader == null || currentUserIdHeader.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(currentUserIdHeader);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    /**
+     * 判断是否允许访问教师仪表盘：管理员可跨账号访问，教师仅可访问本人数据。
+     */
+    private boolean canAccessTeacherDashboard(Long targetTeacherId, Long currentUserId, String currentUserRole) {
+        if (currentUserRole != null && "admin".equalsIgnoreCase(currentUserRole)) {
+            return true;
+        }
+        return currentUserRole != null
+                && "teacher".equalsIgnoreCase(currentUserRole)
+                && currentUserId != null
+                && currentUserId.equals(targetTeacherId);
     }
 }

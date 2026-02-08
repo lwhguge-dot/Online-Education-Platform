@@ -200,6 +200,7 @@ $requiredKeys = @(
   'POSTGRES_PASSWORD',
   'REDIS_PASSWORD',
   'JWT_SECRET',
+  'INTERNAL_API_TOKEN',
   'MINIO_ROOT_USER',
   'MINIO_ROOT_PASSWORD',
   'MINIO_ACCESS_KEY',
@@ -220,6 +221,7 @@ $minLengthRules = @{
   POSTGRES_PASSWORD = 12
   REDIS_PASSWORD = 12
   JWT_SECRET = 32
+  INTERNAL_API_TOKEN = 32
   MINIO_ROOT_PASSWORD = 16
   MINIO_SECRET_KEY = 16
   GRAFANA_ADMIN_PASSWORD = 12
@@ -233,6 +235,7 @@ $weakValues = @(
   'change-postgres-password',
   'change-redis-password',
   'change-jwt-secret',
+  'change-internal-api-token',
   'change-minio-password',
   'change-minio-secret',
   'change-grafana-password'

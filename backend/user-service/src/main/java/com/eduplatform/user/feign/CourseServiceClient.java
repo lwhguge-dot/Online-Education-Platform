@@ -1,6 +1,7 @@
 package com.eduplatform.user.feign;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.user.config.InternalApiFeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,7 +14,7 @@ import java.util.Map;
  * 课程服务Feign客户端
  * 用于 user-service 跨服务调用 course-service 的远程接口。
  */
-@FeignClient(name = "course-service", fallback = CourseServiceClientFallback.class)
+@FeignClient(name = "course-service", fallback = CourseServiceClientFallback.class, configuration = InternalApiFeignConfig.class)
 public interface CourseServiceClient {
 
     /**

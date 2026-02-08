@@ -63,7 +63,15 @@ public class AuthController {
      * @return true 若状态正常 (status=1)
      */
     @GetMapping("/check-status/{userId}")
-    public Result<Boolean> checkUserStatus(@PathVariable("userId") Long userId) {
+    public Result<Boolean> checkUserStatus(
+            @PathVariable("userId") Long userId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdStr,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        Long currentUserId = parseUserId(currentUserIdStr);
+        if (!hasSelfOrAdminAccess(userId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅本人或管理员可查询账号状态");
+        }
+
         var user = userService.getById(userId);
         if (user == null) {
             return Result.error("用户不存在");
@@ -114,7 +122,14 @@ public class AuthController {
     @GetMapping("/validate-token/{userId}")
     public Result<Boolean> validateToken(
             @PathVariable("userId") Long userId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdStr,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        Long currentUserId = parseUserId(currentUserIdStr);
+        if (!hasSelfOrAdminAccess(userId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅本人或管理员可校验会话");
+        }
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             return Result.error("令牌格式错误");
@@ -185,7 +200,12 @@ public class AuthController {
      * @param userId 待强制下线的用户 ID
      */
     @PostMapping("/force-logout/{userId}")
-    public Result<Boolean> forceLogout(@PathVariable("userId") Long userId) {
+    public Result<Boolean> forceLogout(
+            @PathVariable("userId") Long userId,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可强制下线用户");
+        }
         sessionService.forceOfflineUser(userId);
         return Result.success("已强制剔除该用户的所有活动会话", true);
     }
@@ -198,5 +218,36 @@ public class AuthController {
     public Result<Boolean> resetPassword(@RequestBody ResetPasswordRequest request) {
         userService.resetPassword(request);
         return Result.success("管理员已重置您的登录密码", true);
+    }
+
+    /**
+     * 解析网关注入的用户ID。
+     */
+    private Long parseUserId(String userIdHeader) {
+        if (userIdHeader == null || userIdHeader.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(userIdHeader);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * 判断是否管理员角色。
+     */
+    private boolean isAdminRole(String role) {
+        return role != null && "admin".equalsIgnoreCase(role);
+    }
+
+    /**
+     * 判断是否具备本人或管理员访问权限。
+     */
+    private boolean hasSelfOrAdminAccess(Long targetUserId, Long currentUserId, String currentUserRole) {
+        if (isAdminRole(currentUserRole)) {
+            return true;
+        }
+        return currentUserId != null && currentUserId.equals(targetUserId);
     }
 }

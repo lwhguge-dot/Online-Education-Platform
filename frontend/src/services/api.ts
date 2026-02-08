@@ -153,6 +153,26 @@ const getErrorMessage = (error: unknown): string => {
   return String(error ?? '未知错误')
 }
 
+/**
+ * 仅在“账号状态异常/令牌失效”时触发强制登出。
+ * 严格模式下大量接口会返回权限不足(403)，此类业务拒绝不应直接清会话。
+ */
+const shouldForceLogoutOnForbidden = (message?: string): boolean => {
+  if (!message) {
+    return false
+  }
+
+  const lowerMessage = message.toLowerCase()
+  return message.includes('账号已被禁用')
+    || message.includes('账户已被禁用')
+    || (lowerMessage.includes('token') && (
+      message.includes('失效')
+      || message.includes('过期')
+      || message.includes('无效')
+      || message.includes('重新登录')
+    ))
+}
+
 // 生成请求去重键：非GET请求加入body信息，避免不同提交被误判为重复
 const getRequestKey = (url: string, options: RequestOptions): string => {
   const method = options.method || 'GET'
@@ -206,9 +226,11 @@ const request = async <T = any>(url: string, options: RequestOptions = {}): Prom
     const response = await fetch(`${API_BASE}${url}`, config)
     const data: Result<T> = await response.json()
 
-    // 处理 Token 失效或被禁用的情况 (401/403)
-    if (response.status === 401 || response.status === 403 || data.code === 401 || data.code === 403) {
-      forceLogout(data.message || (response.status === 403 ? '您的账号已被禁用' : '登录已过期'))
+    // 仅对明确的认证失败触发强制登出；普通权限不足(403)保留在当前页并提示
+    const isUnauthorized = response.status === 401 || data.code === 401
+    const isForbiddenNeedLogout = (response.status === 403 || data.code === 403) && shouldForceLogoutOnForbidden(data.message)
+    if (isUnauthorized || isForbiddenNeedLogout) {
+      forceLogout(data.message || '登录已过期')
       throw new Error(data.message || '权限校验失败')
     }
 
@@ -531,8 +553,8 @@ export const calendarAPI = {
   createEvent: (data) => request('/calendar/events', { method: 'POST', body: JSON.stringify(data) }),
   // 更新事件
   updateEvent: (id, data) => request(`/calendar/events/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  // 删除事件
-  deleteEvent: (id) => request(`/calendar/events/${id}`, { method: 'DELETE' }),
+  // 删除事件（后端要求 teacherId 参与鉴权）
+  deleteEvent: (id, teacherId) => request(`/calendar/events/${id}?teacherId=${teacherId}`, { method: 'DELETE' }),
   // 导出iCal
   exportICal: (teacherId, year, month) => `${API_BASE}/calendar/teacher/${teacherId}/export?year=${year}&month=${month}`,
 };
@@ -561,23 +583,14 @@ export const courseAPI = {
       body: JSON.stringify(course),
     }),
 
-  updateStatus: async (id, status, operatorId, operatorName) => {
-    const token = sessionStorage.getItem('token');
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-    };
-    if (operatorId) headers['X-User-Id'] = operatorId.toString();
-    if (operatorName) headers['X-User-Name'] = operatorName;
-    const response = await fetch(`${API_BASE}/courses/${id}/status`, {
+  // 课程状态变更（严格模式：仅管理员可调用）
+  updateStatus: async (id, status) => {
+    const data = await request(`/courses/${id}/status`, {
       method: 'PUT',
-      headers,
       body: JSON.stringify({ status }),
-    });
-    const data = await response.json();
-    if (data.code !== 200) throw new Error(data.message);
-    clearCache();
-    return data;
+    })
+    clearCache()
+    return data
   },
 
   delete: (id) =>
@@ -605,10 +618,11 @@ export const courseAPI = {
       method: 'POST',
     }),
 
-  audit: (id, action, remark, auditBy) =>
+  // 课程审核（严格模式：后端优先使用网关注入身份，不再信任请求体 auditBy）
+  audit: (id, action, remark) =>
     request(`/courses/${id}/audit`, {
       method: 'POST',
-      body: JSON.stringify({ action, remark, auditBy }),
+      body: JSON.stringify({ action, remark }),
     }),
 
   // 导出课程数据CSV
@@ -641,29 +655,26 @@ export const courseAPI = {
     }),
 
   // 复制课程
-  duplicate: (id, title, teacherId) =>
-    request(`/courses/${id}/duplicate`, {
+  // 复制课程（严格模式：教师侧 teacherId 由后端按当前身份确定，管理员可显式指定）
+  duplicate: (id, title, teacherId = null) => {
+    const payload: Record<string, any> = { title }
+    if (teacherId !== null && teacherId !== undefined) {
+      payload.teacherId = teacherId
+    }
+    return request(`/courses/${id}/duplicate`, {
       method: 'POST',
-      body: JSON.stringify({ title, teacherId }),
-    }),
+      body: JSON.stringify(payload),
+    })
+  },
 
   // 管理员强制下线违规课程
-  offline: async (id, operatorId, operatorName) => {
-    const token = sessionStorage.getItem('token');
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-    };
-    if (operatorId) headers['X-User-Id'] = operatorId.toString();
-    if (operatorName) headers['X-User-Name'] = operatorName;
-    const response = await fetch(`${API_BASE}/courses/${id}/offline`, {
+  // 强制下线课程（严格模式：仅管理员可调用）
+  offline: async (id) => {
+    const data = await request(`/courses/${id}/offline`, {
       method: 'POST',
-      headers,
-    });
-    const data = await response.json();
-    if (data.code !== 200) throw new Error(data.message);
-    clearCache();
-    return data;
+    })
+    clearCache()
+    return data
   },
 };
 
@@ -1035,11 +1046,13 @@ export const announcementAPI = {
   },
   // 获取公告阅读统计
   getStats: (id) => request(`/announcements/${id}/stats`),
-  // 记录用户阅读公告
-  recordRead: (id, userId) =>
-    request(`/announcements/${id}/read?userId=${userId}`, {
+  // 记录用户阅读公告（默认以网关注入身份为准）
+  recordRead: (id, userId = null) => {
+    const query = userId ? `?userId=${userId}` : '';
+    return request(`/announcements/${id}/read${query}`, {
       method: 'POST',
-    }),
+    });
+  },
   // 置顶/取消置顶公告
   togglePin: (teacherId, announcementId) =>
     request(`/announcements/teachers/${teacherId}/${announcementId}/toggle-pin`, {
@@ -1109,8 +1122,8 @@ export const chapterCommentAPI = {
       body: JSON.stringify(data),
     }),
   // 点赞/取消点赞
-  toggleLike: (commentId, userId) =>
-    request(`/comments/${commentId}/like?userId=${userId}`, {
+  toggleLike: (commentId, _userId) =>
+    request(`/comments/${commentId}/like`, {
       method: 'POST',
     }),
   // 置顶/取消置顶
@@ -1119,13 +1132,13 @@ export const chapterCommentAPI = {
       method: 'POST',
     }),
   // 删除评论
-  deleteComment: (commentId, userId, isAdmin = false) =>
-    request(`/comments/${commentId}?userId=${userId}&isAdmin=${isAdmin}`, {
+  deleteComment: (commentId, _userId, _isAdmin = false) =>
+    request(`/comments/${commentId}`, {
       method: 'DELETE',
     }),
   // 获取评论回复
-  getReplies: (commentId, userId) =>
-    request(`/comments/${commentId}/replies?userId=${userId}`),
+  getReplies: (commentId, _userId) =>
+    request(`/comments/${commentId}/replies`),
   // 禁言用户
   muteUser: (data) =>
     request('/comments/mute', {

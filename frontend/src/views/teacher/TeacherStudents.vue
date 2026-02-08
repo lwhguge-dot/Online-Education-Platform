@@ -167,11 +167,17 @@ const openStudentDetail = (student) => {
  * 根据当前选择的课程导出学生列表
  */
 const exportStudents = async () => {
+  const userId = authStore.user?.id
+  if (!userId) {
+    toast.error('请先登录')
+    return
+  }
+
   exporting.value = true
   try {
     if (selectedCourseId.value) {
       // 导出特定课程的学生
-      await enrollmentAPI.exportStudentsCSV(selectedCourseId.value)
+      await enrollmentAPI.exportStudentsCSV(userId, selectedCourseId.value)
       toast.success('学生数据导出成功')
     } else {
       // 导出所有学生（需要后端支持）

@@ -34,13 +34,17 @@ public class ChapterCommentController {
     @GetMapping("/chapter/{chapterId}")
     public Result<Map<String, Object>> getComments(
             @PathVariable("chapterId") Long chapterId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestParam(name = "userId", required = false) Long userId,
             @RequestParam(name = "sort", defaultValue = "time") String sort,
             @RequestParam(name = "page", defaultValue = "1") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
+        // 优先使用网关注入身份，避免信任可伪造的查询参数
+        Long effectiveUserId = resolveUserId(currentUserIdHeader, userId);
+
         log.info("获取章节评论, chapterId={}, sort={}, page={}", chapterId, sort, page);
-        Map<String, Object> data = commentService.getComments(chapterId, userId, sort, page, size);
+        Map<String, Object> data = commentService.getComments(chapterId, effectiveUserId, sort, page, size);
         return Result.success(data);
     }
 
@@ -49,10 +53,15 @@ public class ChapterCommentController {
      * 业务原因：写入前需要校验禁言状态与屏蔽词策略。
      */
     @PostMapping
-    public Result<CommentDTO> createComment(@RequestBody Map<String, Object> body) {
+    public Result<CommentDTO> createComment(
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestBody Map<String, Object> body) {
         Long chapterId = Long.valueOf(body.get("chapterId").toString());
         Long courseId = Long.valueOf(body.get("courseId").toString());
-        Long userId = Long.valueOf(body.get("userId").toString());
+        Long userId = resolveUserId(currentUserIdHeader, null);
+        if (userId == null) {
+            return Result.failure(401, "身份认证失败");
+        }
         String content = (String) body.get("content");
         Long parentId = body.get("parentId") != null ? Long.valueOf(body.get("parentId").toString()) : null;
 
@@ -80,7 +89,13 @@ public class ChapterCommentController {
     @PostMapping("/{id}/like")
     public Result<Map<String, Object>> toggleLike(
             @PathVariable("id") Long id,
-            @RequestParam("userId") Long userId) {
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestParam(name = "userId", required = false) Long ignoredUserId) {
+
+        Long userId = resolveUserId(currentUserIdHeader, ignoredUserId);
+        if (userId == null) {
+            return Result.failure(401, "身份认证失败");
+        }
 
         log.info("点赞/取消点赞, commentId={}, userId={}", id, userId);
         boolean isLiked = commentService.toggleLike(id, userId);
@@ -94,7 +109,12 @@ public class ChapterCommentController {
      * 说明：便于教师突出高价值讨论。
      */
     @PostMapping("/{id}/pin")
-    public Result<Void> togglePin(@PathVariable("id") Long id) {
+    public Result<Void> togglePin(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRoleHeader) {
+        if (!isTeacherOrAdmin(currentUserRoleHeader)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可置顶评论");
+        }
         log.info("置顶/取消置顶评论, commentId={}", id);
         commentService.togglePin(id);
         return Result.success("操作成功", null);
@@ -107,8 +127,16 @@ public class ChapterCommentController {
     @DeleteMapping("/{id}")
     public Result<Void> deleteComment(
             @PathVariable("id") Long id,
-            @RequestParam("userId") Long userId,
-            @RequestParam(name = "isAdmin", defaultValue = "false") boolean isAdmin) {
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRoleHeader,
+            @RequestParam(name = "userId", required = false) Long ignoredUserId,
+            @RequestParam(name = "isAdmin", required = false) Boolean ignoredIsAdmin) {
+
+        Long userId = resolveUserId(currentUserIdHeader, ignoredUserId);
+        if (userId == null) {
+            return Result.failure(401, "身份认证失败");
+        }
+        boolean isAdmin = isAdmin(currentUserRoleHeader);
 
         log.info("删除评论, commentId={}, userId={}, isAdmin={}", id, userId, isAdmin);
         commentService.deleteComment(id, userId, isAdmin);
@@ -121,10 +149,13 @@ public class ChapterCommentController {
     @GetMapping("/{id}/replies")
     public Result<List<CommentDTO>> getReplies(
             @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestParam(name = "userId", required = false) Long userId) {
 
+        Long effectiveUserId = resolveUserId(currentUserIdHeader, userId);
+
         log.info("获取评论回复, commentId={}", id);
-        List<CommentDTO> replies = commentService.getReplies(id, userId);
+        List<CommentDTO> replies = commentService.getReplies(id, effectiveUserId);
         return Result.success(replies);
     }
 
@@ -135,10 +166,19 @@ public class ChapterCommentController {
      * 业务原因：对违规内容进行即时管控。
      */
     @PostMapping("/mute")
-    public Result<Void> muteUser(@RequestBody Map<String, Object> body) {
+    public Result<Void> muteUser(
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRoleHeader,
+            @RequestBody Map<String, Object> body) {
+        if (!isTeacherOrAdmin(currentUserRoleHeader)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可禁言");
+        }
         Long userId = Long.valueOf(body.get("userId").toString());
         Long courseId = Long.valueOf(body.get("courseId").toString());
-        Long mutedBy = Long.valueOf(body.get("mutedBy").toString());
+        Long mutedBy = resolveUserId(currentUserIdHeader, null);
+        if (mutedBy == null) {
+            return Result.failure(401, "身份认证失败");
+        }
         String reason = (String) body.get("reason");
 
         log.info("禁言用户, userId={}, courseId={}, mutedBy={}", userId, courseId, mutedBy);
@@ -155,7 +195,12 @@ public class ChapterCommentController {
      * 解除禁言。
      */
     @PostMapping("/unmute")
-    public Result<Void> unmuteUser(@RequestBody Map<String, Object> body) {
+    public Result<Void> unmuteUser(
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRoleHeader,
+            @RequestBody Map<String, Object> body) {
+        if (!isTeacherOrAdmin(currentUserRoleHeader)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可解除禁言");
+        }
         Long userId = Long.valueOf(body.get("userId").toString());
         Long courseId = Long.valueOf(body.get("courseId").toString());
 
@@ -174,8 +219,16 @@ public class ChapterCommentController {
      */
     @GetMapping("/mute-status")
     public Result<Map<String, Object>> getMuteStatus(
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRoleHeader,
             @RequestParam("userId") Long userId,
             @RequestParam("courseId") Long courseId) {
+
+        Long currentUserId = resolveUserId(currentUserIdHeader, null);
+        // 学生仅允许查询自己的禁言状态，教师与管理员可查询任意用户
+        if (isStudent(currentUserRoleHeader) && currentUserId != null) {
+            userId = currentUserId;
+        }
 
         log.info("检查禁言状态, userId={}, courseId={}", userId, courseId);
         Map<String, Object> muteInfo = muteService.getMuteInfo(userId, courseId);
@@ -213,11 +266,20 @@ public class ChapterCommentController {
      * 业务原因：避免敏感内容进入讨论区。
      */
     @PostMapping("/blocked-words")
-    public Result<BlockedWordVO> addBlockedWord(@RequestBody Map<String, Object> body) {
+    public Result<BlockedWordVO> addBlockedWord(
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRoleHeader,
+            @RequestBody Map<String, Object> body) {
+        if (!isTeacherOrAdmin(currentUserRoleHeader)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可添加屏蔽词");
+        }
         String word = (String) body.get("word");
         String scope = (String) body.getOrDefault("scope", "global");
         Long courseId = body.get("courseId") != null ? Long.valueOf(body.get("courseId").toString()) : null;
-        Long createdBy = Long.valueOf(body.get("createdBy").toString());
+        Long createdBy = resolveUserId(currentUserIdHeader, null);
+        if (createdBy == null) {
+            return Result.failure(401, "身份认证失败");
+        }
 
         log.info("添加屏蔽词, word={}, scope={}, courseId={}", word, scope, courseId);
 
@@ -234,7 +296,12 @@ public class ChapterCommentController {
      * 删除屏蔽词。
      */
     @DeleteMapping("/blocked-words/{id}")
-    public Result<Void> deleteBlockedWord(@PathVariable("id") Long id) {
+    public Result<Void> deleteBlockedWord(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRoleHeader) {
+        if (!isTeacherOrAdmin(currentUserRoleHeader)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可删除屏蔽词");
+        }
         log.info("删除屏蔽词, id={}", id);
 
         try {
@@ -256,5 +323,41 @@ public class ChapterCommentController {
         log.info("检查屏蔽词, content长度={}, courseId={}", content.length(), courseId);
         Map<String, Object> checkResult = blockedWordService.checkContent(content, courseId);
         return Result.success(checkResult);
+    }
+
+    /**
+     * 解析当前登录用户ID。
+     * 规则：优先使用网关注入身份，其次兼容历史参数。
+     */
+    private Long resolveUserId(String currentUserIdHeader, Long fallbackUserId) {
+        if (currentUserIdHeader != null && !currentUserIdHeader.isBlank()) {
+            try {
+                return Long.valueOf(currentUserIdHeader);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return fallbackUserId;
+    }
+
+    /**
+     * 判断是否为管理员角色。
+     */
+    private boolean isAdmin(String role) {
+        return role != null && "admin".equalsIgnoreCase(role);
+    }
+
+    /**
+     * 判断是否为学生角色。
+     */
+    private boolean isStudent(String role) {
+        return role != null && "student".equalsIgnoreCase(role);
+    }
+
+    /**
+     * 判断是否具备教学管理权限（教师或管理员）。
+     */
+    private boolean isTeacherOrAdmin(String role) {
+        return role != null && ("teacher".equalsIgnoreCase(role) || "admin".equalsIgnoreCase(role));
     }
 }

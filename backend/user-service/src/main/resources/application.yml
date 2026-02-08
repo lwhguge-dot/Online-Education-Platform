@@ -40,7 +40,7 @@ spring:
   datasource:
     url: "${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/edu_platform?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8}"
     username: postgres
-    password: "${SPRING_DATASOURCE_PASSWORD:123456}"
+    password: "${SPRING_DATASOURCE_PASSWORD}"
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 50  # 虚拟线程优化：增加连接池大小
@@ -54,7 +54,7 @@ spring:
     redis:
       host: "${SPRING_REDIS_HOST:redis}"
       port: 6379   # Redis 端口
-      password: "${SPRING_REDIS_PASSWORD:123456}"
+      password: "${SPRING_REDIS_PASSWORD}"
       database: 0  # 使用 0 号数据库
       timeout: 10s
       lettuce:
@@ -76,12 +76,12 @@ mybatis-plus:
 
 minio:
   endpoint: http://minio:9000
-  access-key: "${MINIO_ACCESS_KEY:minioadmin}"
-  secret-key: "${MINIO_SECRET_KEY:minioadmin}"
+  access-key: "${MINIO_ACCESS_KEY}"
+  secret-key: "${MINIO_SECRET_KEY}"
   bucket: edu-platform
 
 jwt:
-  secret: "${JWT_SECRET:change-me-in-prod}"
+  secret: "${JWT_SECRET}"
   expiration: 604800000
 
 session:
@@ -129,3 +129,7 @@ otel:
   exporter:
     otlp:
       endpoint: http://jaeger:4318
+
+security:
+  # 服务间内部调用令牌（用于调用级联删除接口）
+  internal-token: "${INTERNAL_API_TOKEN}"

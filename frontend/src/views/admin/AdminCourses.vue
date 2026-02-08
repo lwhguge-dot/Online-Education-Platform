@@ -150,16 +150,6 @@ const toggleSelectCourse = (id) => {
   else selectedCourses.value.push(id)
 }
 
-// 操作方法
-const getCurrentUser = () => {
-  try {
-    const userStr = sessionStorage.getItem('user')
-    return userStr ? JSON.parse(userStr) : null
-  } catch {
-    return null
-  }
-}
-
 const updateStatus = async (course, status) => {
   const actionText = (() => {
     if (isPublished(course?.status)) return '下架'
@@ -176,9 +166,8 @@ const updateStatus = async (course, status) => {
   })
   if (!confirmed) return
 
-  const currentUser = getCurrentUser()
   try {
-    await courseAPI.updateStatus(course.id, status, currentUser?.id, currentUser?.username)
+    await courseAPI.updateStatus(course.id, status)
     patchLocalCourse(course.id, { status: status == 2 ? 'OFFLINE' : 'PUBLISHED' })
     statusFilter.value = status == 2 ? '2' : '1'
     emit('refresh')
@@ -199,9 +188,8 @@ const auditCourse = async (course, action) => {
   })
   if (!confirmed) return
 
-  const currentUser = getCurrentUser()
   try {
-    await courseAPI.audit(course.id, action, '', currentUser?.id)
+    await courseAPI.audit(course.id, action, '')
     patchLocalCourse(course.id, { status: action === 'APPROVE' ? 'PUBLISHED' : 'REJECTED' })
     statusFilter.value = action === 'APPROVE' ? '1' : '2'
     emit('refresh')
@@ -222,9 +210,8 @@ const offlineCourse = async (course) => {
   })
   if (!confirmed) return
 
-  const currentUser = getCurrentUser()
   try {
-    await courseAPI.offline(course.id, currentUser?.id, currentUser?.username)
+    await courseAPI.offline(course.id)
     patchLocalCourse(course.id, { status: 'OFFLINE' })
     statusFilter.value = '2'
     emit('refresh')
@@ -247,11 +234,10 @@ const batchAction = async (action) => {
   })
   if (!confirmed) return
   
-  const currentUser = getCurrentUser()
   const status = action === 'publish' ? 1 : 2
   for (const id of selectedCourses.value) {
     try {
-      await courseAPI.updateStatus(id, status, currentUser?.id, currentUser?.username)
+      await courseAPI.updateStatus(id, status)
       patchLocalCourse(id, { status: status == 2 ? 'OFFLINE' : 'PUBLISHED' })
     } catch (e) {
       console.error('批量更新课程状态失败:', e)

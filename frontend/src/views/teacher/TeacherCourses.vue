@@ -175,7 +175,6 @@ const saveCourse = async () => {
     } else {
       await courseAPI.create({
         ...data,
-        teacherId: currentUser.id, // 添加教师ID
         status: 'DRAFT' // 默认草稿
       })
     }
@@ -188,16 +187,16 @@ const saveCourse = async () => {
 }
 
 const updateStatus = async (id, status) => {
-  const nextStatus = {
-    'DRAFT': 'REVIEWING',
-    'REVIEWING': 'DRAFT', // 取消审核
-    'PUBLISHED': 'OFFLINE',
-    'OFFLINE': 'REVIEWING',
-    'REJECTED': 'REVIEWING'
-  }[status] || status
-  
   try {
-    await courseAPI.updateStatus(id, nextStatus)
+    // 严格模式：教师提审/撤审走专用接口；上下线由管理员处理
+    if (status === 'DRAFT') {
+      await courseAPI.submitReview(id)
+    } else if (status === 'REVIEWING') {
+      await courseAPI.withdrawReview(id)
+    } else {
+      toast.warning('该状态请联系管理员处理')
+      return
+    }
     emit('refresh')
     toast.success('状态更新成功')
   } catch (e) {
@@ -496,9 +495,9 @@ const deleteQuiz = async (quizId) => {
                <button v-if="course.status === 'DRAFT'" @click="updateStatus(course.id, course.status)" class="text-xs font-bold text-tianlv hover:underline px-2">
                  发布
                </button>
-               <button v-if="course.status === 'PUBLISHED'" @click="updateStatus(course.id, course.status)" class="text-xs font-bold text-yanzhi hover:underline px-2">
-                 下线
-               </button>
+                <button v-if="course.status === 'REVIEWING'" @click="updateStatus(course.id, course.status)" class="text-xs font-bold text-yanzhi hover:underline px-2">
+                  撤审
+                </button>
              </div>
            </div>
         </div>

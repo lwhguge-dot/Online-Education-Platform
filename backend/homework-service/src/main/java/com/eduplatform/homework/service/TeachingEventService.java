@@ -68,9 +68,14 @@ public class TeachingEventService {
     }
     
     @Transactional
-    public TeachingEventDTO updateEvent(Long id, TeachingEventDTO dto) {
+    public TeachingEventDTO updateEvent(Long id, TeachingEventDTO dto, Long operatorUserId, boolean isAdmin) {
         TeachingEvent event = eventMapper.selectById(id);
         if (event == null) return null;
+
+        // 安全校验：非管理员仅允许修改本人事件，避免通过事件ID越权修改他人日历
+        if (!isAdmin && (operatorUserId == null || !operatorUserId.equals(event.getTeacherId()))) {
+            throw new RuntimeException("权限不足，仅可修改本人教学事件");
+        }
         
         event.setTitle(dto.getTitle());
         event.setDescription(dto.getDescription());
@@ -86,9 +91,13 @@ public class TeachingEventService {
     }
     
     @Transactional
-    public void deleteEvent(Long id) {
+    public void deleteEvent(Long id, Long operatorUserId, boolean isAdmin) {
         TeachingEvent event = eventMapper.selectById(id);
         if (event != null) {
+            // 安全校验：非管理员仅允许删除本人事件，避免通过事件ID越权删除他人日历
+            if (!isAdmin && (operatorUserId == null || !operatorUserId.equals(event.getTeacherId()))) {
+                throw new RuntimeException("权限不足，仅可删除本人教学事件");
+            }
             event.setStatus("cancelled");
             eventMapper.updateById(event);
         }

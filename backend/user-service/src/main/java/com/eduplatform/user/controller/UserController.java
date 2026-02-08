@@ -169,22 +169,27 @@ public class UserController {
             @PathVariable("id") Long id,
             @RequestBody Map<String, Object> body,
             @RequestHeader(value = "X-User-Id", required = false) String operatorIdStr,
+            @RequestHeader(value = "X-User-Role", required = false) String operatorRole,
             @RequestHeader(value = "X-User-Name", required = false) String operatorName,
             @RequestHeader(value = "X-Real-IP", required = false) String ipAddress) {
+
+        // 仅管理员允许修改账号状态，避免普通用户越权禁用他人
+        if (!isAdminRole(operatorRole)) {
+            return Result.failure(403, "权限不足，仅管理员可修改用户状态");
+        }
 
         Integer status = body.get("status") instanceof Integer
                 ? (Integer) body.get("status")
                 : Integer.parseInt(body.get("status").toString());
 
-        Long operatorId = operatorIdStr != null ? Long.parseLong(operatorIdStr) : null;
-        if (operatorId != null && operatorName != null) {
-            // 带有审计记录的更新
-            userService.updateStatus(id, status, operatorId, operatorName,
-                    ipAddress != null ? ipAddress : "unknown");
-        } else {
-            // 内部逻辑静默更新
-            userService.updateStatusInternal(id, status);
+        Long operatorId = parseUserId(operatorIdStr);
+        if (operatorId == null || operatorName == null) {
+            return Result.failure(401, "身份认证失败");
         }
+
+        // 统一走审计链路，禁止公开接口进入无审计更新分支
+        userService.updateStatus(id, status, operatorId, operatorName,
+                ipAddress != null ? ipAddress : "unknown");
         return Result.success("状态更新成功", null);
     }
 
@@ -201,10 +206,19 @@ public class UserController {
     public Result<Void> delete(
             @PathVariable("id") Long id,
             @RequestHeader(value = "X-User-Id", required = false) String operatorIdStr,
+            @RequestHeader(value = "X-User-Role", required = false) String operatorRole,
             @RequestHeader(value = "X-User-Name", required = false) String operatorName,
             @RequestHeader(value = "X-Real-IP", required = false) String ipAddress) {
 
-        Long operatorId = operatorIdStr != null ? Long.parseLong(operatorIdStr) : null;
+        // 高危删除操作仅允许管理员执行
+        if (!isAdminRole(operatorRole)) {
+            return Result.failure(403, "权限不足，仅管理员可删除用户");
+        }
+
+        Long operatorId = parseUserId(operatorIdStr);
+        if (operatorId == null || operatorName == null) {
+            return Result.failure(401, "身份认证失败");
+        }
         userCascadeDeleteService.cascadeDeleteUser(id, operatorId, operatorName,
                 ipAddress != null ? ipAddress : "unknown");
         return Result.success("用户及相关数据已级联注销", null);
@@ -219,7 +233,17 @@ public class UserController {
      * @return 更新后的完整 UserVO
      */
     @PutMapping("/{id}/profile")
-    public Result<UserVO> updateProfile(@PathVariable("id") Long id, @RequestBody UserProfileDTO profileDTO) {
+    public Result<UserVO> updateProfile(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdStr,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
+            @RequestBody UserProfileDTO profileDTO) {
+        // 仅本人或管理员可修改资料
+        Long currentUserId = parseUserId(currentUserIdStr);
+        if (!hasSelfOrAdminAccess(id, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅本人或管理员可修改资料");
+        }
+
         User user = userService.getById(id);
         if (user == null) {
             return Result.error("用户不存在");
@@ -261,7 +285,14 @@ public class UserController {
      * 包括系统的通知偏好设置、周期性学习目标等扩展配置。
      */
     @GetMapping("/{id}/settings")
-    public Result<UserSettingsDTO> getUserSettings(@PathVariable("id") Long id) {
+    public Result<UserSettingsDTO> getUserSettings(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdStr,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        Long currentUserId = parseUserId(currentUserIdStr);
+        if (!hasSelfOrAdminAccess(id, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅本人或管理员可查看设置");
+        }
         UserSettingsDTO settings = studentProfileService.getUserSettings(id);
         return Result.success(settings);
     }
@@ -272,7 +303,13 @@ public class UserController {
     @PutMapping("/{id}/settings")
     public Result<UserSettingsDTO> updateUserSettings(
             @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdStr,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestBody UserSettingsDTO settings) {
+        Long currentUserId = parseUserId(currentUserIdStr);
+        if (!hasSelfOrAdminAccess(id, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅本人或管理员可修改设置");
+        }
         UserSettingsDTO updated = studentProfileService.updateUserSettings(id, settings);
         return Result.success("个性化设置已保存", updated);
     }
@@ -283,7 +320,13 @@ public class UserController {
      */
     @GetMapping("/{id}/sessions")
     public Result<List<com.eduplatform.user.vo.UserSessionVO>> getUserSessions(
-            @PathVariable("id") Long id) {
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdStr,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        Long currentUserId = parseUserId(currentUserIdStr);
+        if (!hasSelfOrAdminAccess(id, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅本人或管理员可查看会话");
+        }
         java.util.List<com.eduplatform.user.entity.UserSession> sessions = sessionService.getUserSessions(id);
         return Result.success(sessionService.convertToVOList(sessions));
     }
@@ -292,7 +335,11 @@ public class UserController {
      * 获取全系统当前的在线用户 ID 列表 (管理员/仪表盘使用)
      */
     @GetMapping("/online-status")
-    public Result<List<Long>> getAllOnlineUserIds() {
+    public Result<List<Long>> getAllOnlineUserIds(
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可查看在线状态");
+        }
         List<Long> onlineUserIds = sessionService.getAllOnlineUserIds();
         return Result.success(onlineUserIds);
     }
@@ -309,7 +356,16 @@ public class UserController {
     public void exportUsers(
             @RequestParam(name = "format", defaultValue = "csv") String format,
             @RequestParam(name = "role", required = false) String role,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             HttpServletResponse response) throws IOException {
+
+        // 导出全量用户数据属于管理员能力
+        if (!isAdminRole(currentUserRole)) {
+            response.setStatus(403);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":403,\"message\":\"权限不足，仅管理员可导出用户数据\",\"data\":null}");
+            return;
+        }
 
         List<User> users = userService.getSimpleList(role);
 
@@ -362,5 +418,36 @@ public class UserController {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
         return value;
+    }
+
+    /**
+     * 解析网关注入用户ID。
+     */
+    private Long parseUserId(String userIdHeader) {
+        if (userIdHeader == null || userIdHeader.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(userIdHeader);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * 判断是否管理员角色。
+     */
+    private boolean isAdminRole(String role) {
+        return role != null && "admin".equalsIgnoreCase(role);
+    }
+
+    /**
+     * 判断是否具备“本人或管理员”访问权限。
+     */
+    private boolean hasSelfOrAdminAccess(Long targetUserId, Long currentUserId, String currentUserRole) {
+        if (isAdminRole(currentUserRole)) {
+            return true;
+        }
+        return currentUserId != null && currentUserId.equals(targetUserId);
     }
 }

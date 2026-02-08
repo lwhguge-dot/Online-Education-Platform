@@ -19,11 +19,16 @@ public interface AnnouncementReadMapper extends BaseMapper<AnnouncementRead> {
     /**
      * 获取公告的阅读统计
      */
-    @Select("SELECT ar.announcement_id, COUNT(*) as read_count " +
+    @Select("<script>" +
+            "SELECT ar.announcement_id, COUNT(*) as read_count " +
             "FROM announcement_reads ar " +
-            "WHERE ar.announcement_id IN (${announcementIds}) " +
-            "GROUP BY ar.announcement_id")
-    List<Map<String, Object>> getReadStatsByAnnouncementIds(@Param("announcementIds") String announcementIds);
+            "WHERE ar.announcement_id IN " +
+            "<foreach item='id' collection='announcementIds' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach> " +
+            "GROUP BY ar.announcement_id" +
+            "</script>")
+    List<Map<String, Object>> getReadStatsByAnnouncementIds(@Param("announcementIds") List<Long> announcementIds);
     
     /**
      * 检查用户是否已阅读公告

@@ -4,6 +4,8 @@ import com.eduplatform.common.result.Result;
 import com.eduplatform.user.websocket.NotificationWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -18,6 +20,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class NotificationController {
 
+    private static final String HEADER_INTERNAL_TOKEN = "X-Internal-Token";
+
+    @Value("${security.internal-token}")
+    private String internalToken;
+
     private final NotificationWebSocketHandler notificationHandler;
 
     /**
@@ -25,7 +32,15 @@ public class NotificationController {
      * 逻辑说明：控制层只负责参数解析与异常兜底，具体推送由 WebSocket 处理器完成。
      */
     @PostMapping("/send")
-    public Result<Void> sendNotification(@RequestBody Map<String, Object> request) {
+    public Result<Void> sendNotification(
+            @RequestBody Map<String, Object> request,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
+            @RequestHeader(value = HEADER_INTERNAL_TOKEN, required = false) String requestInternalToken) {
+        // 发送通知属于教师/管理员操作；服务间调用可通过内部令牌放行
+        if (!hasTeacherManageRole(currentUserRole) && !hasValidInternalToken(requestInternalToken)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可发送通知");
+        }
+
         Long userId = Long.valueOf(request.get("userId").toString());
         String title = (String) request.get("title");
         String content = (String) request.get("content");
@@ -44,7 +59,15 @@ public class NotificationController {
      * 业务原因：后台运营类场景需要一次性推送给多个用户，便于公告触达与活动提醒。
      */
     @PostMapping("/send-batch")
-    public Result<Map<String, Object>> sendBatchNotification(@RequestBody Map<String, Object> request) {
+    public Result<Map<String, Object>> sendBatchNotification(
+            @RequestBody Map<String, Object> request,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
+            @RequestHeader(value = HEADER_INTERNAL_TOKEN, required = false) String requestInternalToken) {
+        // 批量通知风险更高，仅允许教师/管理员或内部服务调用
+        if (!hasTeacherManageRole(currentUserRole) && !hasValidInternalToken(requestInternalToken)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可批量发送通知");
+        }
+
         @SuppressWarnings("unchecked")
         java.util.List<Long> userIds = (java.util.List<Long>) request.get("userIds");
         String title = (String) request.get("title");
@@ -77,8 +100,57 @@ public class NotificationController {
      * 用于前端判断是否需要即时推送或进入离线消息队列。
      */
     @GetMapping("/online/{userId}")
-    public Result<Boolean> isUserOnline(@PathVariable Long userId) {
+    public Result<Boolean> isUserOnline(
+            @PathVariable Long userId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 在线状态仅允许本人、教师或管理员查询
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!canQueryOnlineStatus(userId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅本人、教师或管理员可查询在线状态");
+        }
+
         boolean online = notificationHandler.isUserOnline(userId);
         return Result.success(online);
+    }
+
+    /**
+     * 判断是否具备通知管理权限（教师或管理员）。
+     */
+    private boolean hasTeacherManageRole(String role) {
+        return role != null && ("teacher".equalsIgnoreCase(role) || "admin".equalsIgnoreCase(role));
+    }
+
+    /**
+     * 解析网关注入的用户ID，非法值返回 null。
+     */
+    private Long parseUserId(String currentUserIdHeader) {
+        if (currentUserIdHeader == null || currentUserIdHeader.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(currentUserIdHeader);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    /**
+     * 在线状态查询权限：本人可查，教师和管理员可查任意用户。
+     */
+    private boolean canQueryOnlineStatus(Long targetUserId, Long currentUserId, String currentUserRole) {
+        if (hasTeacherManageRole(currentUserRole)) {
+            return true;
+        }
+        return currentUserId != null && currentUserId.equals(targetUserId);
+    }
+
+    /**
+     * 校验内部调用令牌，支持服务间可信调用场景。
+     */
+    private boolean hasValidInternalToken(String requestInternalToken) {
+        return StringUtils.hasText(internalToken)
+                && StringUtils.hasText(requestInternalToken)
+                && internalToken.equals(requestInternalToken);
     }
 }

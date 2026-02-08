@@ -289,7 +289,7 @@ const deleteEvent = async (event) => {
   })
   if (!confirmed) return
   try {
-    await calendarAPI.deleteEvent(event.id)
+    await calendarAPI.deleteEvent(event.id, authStore.user?.id)
     loadEvents()
   } catch (e) {
     console.error('删除事件失败', e)

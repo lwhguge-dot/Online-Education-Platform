@@ -38,12 +38,20 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
             String type = (String) msg.get("type");
             
             if ("REGISTER".equals(type)) {
-                Long userId = Long.valueOf(msg.get("userId").toString());
-                userSessions.put(userId, session);
-                session.getAttributes().put("userId", userId);
-                log.info("用户注册 WebSocket: userId={}", userId);
-                
-                sendMessage(session, Map.of("type", "REGISTERED", "message", "连接成功"));
+                // 出于安全考虑，不再信任客户端上报的 userId。
+                Long userId = getUserIdFromSession(session);
+                if (userId != null) {
+                    userSessions.put(userId, session);
+                    log.info("用户确认 WebSocket 会话: userId={}", userId);
+                    sendMessage(session, Map.of("type", "REGISTERED", "message", "连接成功"));
+                } else {
+                    sendMessage(session, Map.of("type", "ERROR", "message", "身份认证失败"));
+                }
+                return;
+            }
+
+            if ("PING".equals(type)) {
+                sendMessage(session, Map.of("type", "PONG", "timestamp", System.currentTimeMillis()));
             }
         } catch (Exception e) {
             log.error("处理消息失败: {}", e.getMessage());

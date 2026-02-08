@@ -8,6 +8,7 @@ import com.eduplatform.course.service.CourseService;
 import com.eduplatform.course.vo.CourseVO;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -27,6 +28,9 @@ import java.util.Map;
 @RequestMapping("/api/courses")
 @RequiredArgsConstructor
 public class CourseController {
+
+    @Value("${security.internal-token}")
+    private String internalToken;
 
     private final CourseService courseService;
     private final CourseCascadeDeleteService courseCascadeDeleteService;
@@ -106,7 +110,24 @@ public class CourseController {
      * @return 成功消息
      */
     @PostMapping
-    public Result<String> createCourse(@RequestBody CourseDTO courseDTO) {
+    public Result<String> createCourse(
+            @RequestBody CourseDTO courseDTO,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 创建课程仅允许教师或管理员，且教师只能以本人身份创建
+        if (!hasTeacherManageRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可创建课程");
+        }
+
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!isAdminRole(currentUserRole)) {
+            if (currentUserId == null) {
+                return Result.failure(403, "权限不足，无法识别当前教师身份");
+            }
+            // 非管理员强制绑定当前教师ID，避免伪造 teacherId
+            courseDTO.setTeacherId(currentUserId);
+        }
+
         try {
             courseService.createCourse(courseDTO);
             return Result.success("课程创建成功", null);
@@ -124,7 +145,25 @@ public class CourseController {
      * @return 成功消息
      */
     @PutMapping("/{id}")
-    public Result<String> updateCourse(@PathVariable("id") Long id, @RequestBody CourseDTO courseDTO) {
+    public Result<String> updateCourse(
+            @PathVariable("id") Long id,
+            @RequestBody CourseDTO courseDTO,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 更新课程仅允许教师或管理员，教师仅可操作本人课程
+        if (!hasTeacherManageRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可更新课程");
+        }
+
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!isAdminRole(currentUserRole)) {
+            if (!canManageCourse(id, currentUserId, currentUserRole)) {
+                return Result.failure(403, "权限不足，仅课程所属教师可更新该课程");
+            }
+            // 非管理员强制使用当前教师身份，避免伪造 teacherId
+            courseDTO.setTeacherId(currentUserId);
+        }
+
         try {
             courseService.updateCourse(id, courseDTO);
             return Result.success("课程更新成功", null);
@@ -142,8 +181,14 @@ public class CourseController {
             @PathVariable("id") Long id,
             @RequestBody Map<String, Object> body,
             @RequestHeader(value = "X-User-Id", required = false) String operatorIdStr,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestHeader(value = "X-User-Name", required = false) String operatorName,
             @RequestHeader(value = "X-Real-IP", required = false) String ipAddress) {
+        // 通用状态更新属于管理操作，仅管理员可执行
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可更新课程状态");
+        }
+
         try {
             String status = body.get("status").toString();
             Long operatorId = operatorIdStr != null ? Long.parseLong(operatorIdStr) : null;
@@ -163,7 +208,20 @@ public class CourseController {
      * 业务原因：教师发布前需完成审核流程。
      */
     @PostMapping("/{id}/submit-review")
-    public Result<String> submitReview(@PathVariable("id") Long id) {
+    public Result<String> submitReview(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 提交审核仅允许教师或管理员，教师仅可提交本人课程
+        if (!hasTeacherManageRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可提交课程审核");
+        }
+
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!isAdminRole(currentUserRole) && !canManageCourse(id, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅课程所属教师可提交审核");
+        }
+
         try {
             courseService.submitReview(id);
             return Result.success("已提交审核", null);
@@ -177,7 +235,20 @@ public class CourseController {
      * 说明：避免错误提交导致课程误审。
      */
     @PostMapping("/{id}/withdraw-review")
-    public Result<String> withdrawReview(@PathVariable("id") Long id) {
+    public Result<String> withdrawReview(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 撤回审核仅允许教师或管理员，教师仅可撤回本人课程
+        if (!hasTeacherManageRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可撤回课程审核");
+        }
+
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!isAdminRole(currentUserRole) && !canManageCourse(id, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅课程所属教师可撤回审核");
+        }
+
         try {
             courseService.withdrawReview(id);
             return Result.success("已撤回审核", null);
@@ -195,15 +266,23 @@ public class CourseController {
             @PathVariable("id") Long id,
             @RequestBody Map<String, Object> body,
             @RequestHeader(value = "X-User-Id", required = false) String operatorIdStr,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestHeader(value = "X-User-Name", required = false) String operatorName,
-            @RequestHeader(value = "X-Real-IP", required = false) String ipAddress) {
+            @RequestHeader(value = "X-Real-IP", required = false) String ipAddress,
+            @RequestHeader(value = "X-Internal-Token", required = false) String requestInternalToken) {
+        // 审核操作仅允许管理员或内部服务
+        if (!isAdminRole(currentUserRole) && !hasValidInternalToken(requestInternalToken)) {
+            return Result.failure(403, "权限不足，仅管理员或内部服务可审核课程");
+        }
+
         try {
             String action = body.get("action").toString();
             String remark = body.get("remark") != null ? body.get("remark").toString() : "";
-            Long auditBy = body.get("auditBy") != null ? Long.parseLong(body.get("auditBy").toString()) : null;
+            Long auditByFromBody = body.get("auditBy") != null ? Long.parseLong(body.get("auditBy").toString()) : null;
 
-            // 优先使用请求头中的操作人信息
-            Long operatorId = operatorIdStr != null ? Long.parseLong(operatorIdStr) : auditBy;
+            // 优先使用网关注入身份，避免信任请求体中的 auditBy
+            Long operatorId = parseUserId(operatorIdStr);
+            Long auditBy = operatorId != null ? operatorId : auditByFromBody;
             String opName = operatorName != null ? operatorName : "admin";
 
             if (operatorId != null) {
@@ -225,10 +304,16 @@ public class CourseController {
     public Result<String> offlineCourse(
             @PathVariable("id") Long id,
             @RequestHeader(value = "X-User-Id", required = false) String operatorIdStr,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestHeader(value = "X-User-Name", required = false) String operatorName,
             @RequestHeader(value = "X-Real-IP", required = false) String ipAddress) {
+        // 强制下线属于高风险治理动作，仅管理员可执行
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可下线课程");
+        }
+
         try {
-            Long operatorId = operatorIdStr != null ? Long.parseLong(operatorIdStr) : null;
+            Long operatorId = parseUserId(operatorIdStr);
             courseService.offlineCourse(id, operatorId, operatorName, ipAddress);
             return Result.success("课程已下线", null);
         } catch (Exception e) {
@@ -243,7 +328,16 @@ public class CourseController {
      * @return 课程列表
      */
     @GetMapping("/teacher/{teacherId}")
-    public Result<List<CourseVO>> getTeacherCourses(@PathVariable("teacherId") Long teacherId) {
+    public Result<List<CourseVO>> getTeacherCourses(
+            @PathVariable("teacherId") Long teacherId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 教师课程列表仅允许教师本人或管理员访问
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!canAccessTeacherData(teacherId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师本人或管理员可查看教师课程列表");
+        }
+
         List<Course> courses = courseService.getTeacherCourses(teacherId);
         return Result.success(courseService.convertToVOList(courses));
     }
@@ -254,7 +348,13 @@ public class CourseController {
      * @return 审核中课程列表
      */
     @GetMapping("/reviewing")
-    public Result<List<CourseVO>> getReviewingCourses() {
+    public Result<List<CourseVO>> getReviewingCourses(
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 审核中列表为管理视图，仅管理员可查看
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可查看审核中课程");
+        }
+
         List<Course> courses = courseService.getReviewingCourses();
         return Result.success(courseService.convertToVOList(courses));
     }
@@ -264,7 +364,20 @@ public class CourseController {
      * 业务原因：课程关联章节、资源等多表数据，需要统一清理。
      */
     @DeleteMapping("/{id}")
-    public Result<Void> deleteCourse(@PathVariable("id") Long id) {
+    public Result<Void> deleteCourse(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 删除课程仅允许管理员或课程所属教师
+        if (!hasTeacherManageRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可删除课程");
+        }
+
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!isAdminRole(currentUserRole) && !canManageCourse(id, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅课程所属教师可删除该课程");
+        }
+
         try {
             // 使用级联删除服务，删除课程及其所有相关数据
             courseCascadeDeleteService.cascadeDeleteCourse(id);
@@ -280,8 +393,13 @@ public class CourseController {
     @DeleteMapping("/cascade/user/{userId}")
     public Result<Void> deleteUserRelatedData(
             @PathVariable("userId") Long userId,
-            @RequestParam("role") String role) {
+            @RequestParam("role") String role,
+            @RequestHeader(value = "X-Internal-Token", required = false) String requestInternalToken) {
         try {
+            // 内部高危接口：仅允许服务间令牌调用
+            if (!hasValidInternalToken(requestInternalToken)) {
+                return Result.failure(403, "禁止外部访问内部级联接口");
+            }
             courseCascadeDeleteService.deleteUserRelatedData(userId, role);
             return Result.success("用户相关课程数据已删除", null);
         } catch (Exception e) {
@@ -297,7 +415,15 @@ public class CourseController {
     public void exportCourses(
             @RequestParam(name = "format", defaultValue = "csv") String format,
             @RequestParam(name = "status", required = false) String status,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             HttpServletResponse response) throws IOException {
+        // 导出课程数据仅允许管理员执行
+        if (!isAdminRole(currentUserRole)) {
+            response.setStatus(403);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":403,\"message\":\"权限不足，仅管理员可导出课程数据\",\"data\":null}");
+            return;
+        }
 
         List<Course> courses = courseService.getAllCourses(null, status);
 
@@ -356,8 +482,14 @@ public class CourseController {
     public Result<Map<String, Object>> batchUpdateStatus(
             @RequestBody Map<String, Object> body,
             @RequestHeader(value = "X-User-Id", required = false) String operatorIdStr,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestHeader(value = "X-User-Name", required = false) String operatorName,
             @RequestHeader(value = "X-Real-IP", required = false) String ipAddress) {
+        // 批量状态变更仅允许管理员执行
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可批量更新课程状态");
+        }
+
         try {
             @SuppressWarnings("unchecked")
             List<Number> courseIdNumbers = (List<Number>) body.get("courseIds");
@@ -394,17 +526,99 @@ public class CourseController {
     @PostMapping("/{id}/duplicate")
     public Result<CourseVO> duplicateCourse(
             @PathVariable("id") Long id,
-            @RequestBody(required = false) Map<String, Object> body) {
+            @RequestBody(required = false) Map<String, Object> body,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 复制课程仅允许教师或管理员，教师仅可复制本人课程
+        if (!hasTeacherManageRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可复制课程");
+        }
+
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!isAdminRole(currentUserRole) && !canManageCourse(id, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅课程所属教师可复制该课程");
+        }
+
         try {
             String newTitle = body != null ? (String) body.get("title") : null;
-            Long teacherId = body != null && body.get("teacherId") != null
-                    ? Long.parseLong(body.get("teacherId").toString())
-                    : null;
+            Long teacherId = null;
+            if (isAdminRole(currentUserRole)) {
+                teacherId = body != null && body.get("teacherId") != null
+                        ? Long.parseLong(body.get("teacherId").toString())
+                        : null;
+            } else {
+                // 非管理员强制复制到当前教师名下，避免伪造 teacherId
+                teacherId = currentUserId;
+            }
 
             Course newCourse = courseService.duplicateCourse(id, newTitle, teacherId);
             return Result.success("课程复制成功", courseService.convertToVO(newCourse));
         } catch (Exception e) {
             return Result.error("复制失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 解析网关注入的用户ID，非法值返回 null。
+     */
+    private Long parseUserId(String currentUserIdHeader) {
+        if (currentUserIdHeader == null || currentUserIdHeader.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(currentUserIdHeader);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    /**
+     * 判断是否为管理员角色。
+     */
+    private boolean isAdminRole(String currentUserRole) {
+        return currentUserRole != null && "admin".equalsIgnoreCase(currentUserRole);
+    }
+
+    /**
+     * 判断是否具备教师管理权限（教师或管理员）。
+     */
+    private boolean hasTeacherManageRole(String currentUserRole) {
+        return currentUserRole != null
+                && ("teacher".equalsIgnoreCase(currentUserRole) || "admin".equalsIgnoreCase(currentUserRole));
+    }
+
+    /**
+     * 校验内部服务调用令牌。
+     */
+    private boolean hasValidInternalToken(String requestInternalToken) {
+        return requestInternalToken != null && requestInternalToken.equals(internalToken);
+    }
+
+    /**
+     * 课程管理权限校验：管理员可管理全部，教师仅可管理本人课程。
+     */
+    private boolean canManageCourse(Long courseId, Long currentUserId, String currentUserRole) {
+        if (isAdminRole(currentUserRole)) {
+            return true;
+        }
+        if (currentUserId == null || !"teacher".equalsIgnoreCase(currentUserRole)) {
+            return false;
+        }
+
+        Course course = courseService.getById(courseId);
+        return course != null && course.getTeacherId() != null && course.getTeacherId().equals(currentUserId);
+    }
+
+    /**
+     * 教师数据访问控制：管理员可跨账号访问，教师仅可访问本人数据。
+     */
+    private boolean canAccessTeacherData(Long targetTeacherId, Long currentUserId, String currentUserRole) {
+        if (currentUserRole != null && "admin".equalsIgnoreCase(currentUserRole)) {
+            return true;
+        }
+        return currentUserRole != null
+                && "teacher".equalsIgnoreCase(currentUserRole)
+                && currentUserId != null
+                && currentUserId.equals(targetTeacherId);
     }
 }

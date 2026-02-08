@@ -35,7 +35,7 @@ spring:
   datasource:
     url: "${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/edu_platform?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8}"
     username: postgres
-    password: "${SPRING_DATASOURCE_PASSWORD:123456}"
+    password: "${SPRING_DATASOURCE_PASSWORD}"
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 50  # 虚拟线程优化：增加连接池大小
@@ -49,7 +49,7 @@ spring:
     redis:
       host: "${SPRING_REDIS_HOST:redis}"
       port: 6379
-      password: "${SPRING_REDIS_PASSWORD:123456}"
+      password: "${SPRING_REDIS_PASSWORD}"
       database: 0
       timeout: 10s
       lettuce:
@@ -100,3 +100,7 @@ otel:
   exporter:
     otlp:
       endpoint: http://jaeger:4318
+
+security:
+  # 内部高危接口令牌（用于 /cascade/* 服务间鉴权）
+  internal-token: "${INTERNAL_API_TOKEN}"

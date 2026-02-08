@@ -1,5 +1,6 @@
 package com.eduplatform.progress.client;
 
+import com.eduplatform.progress.config.InternalApiFeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -9,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.List;
 import java.util.Map;
 
-@FeignClient(name = "homework-service", fallback = HomeworkServiceClientFallback.class)
+@FeignClient(name = "homework-service", configuration = InternalApiFeignConfig.class, fallback = HomeworkServiceClientFallback.class)
 public interface HomeworkServiceClient {
     
     @PostMapping("/api/homeworks/unlock")

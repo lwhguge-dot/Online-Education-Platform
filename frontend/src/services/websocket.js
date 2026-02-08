@@ -20,8 +20,15 @@ export const connectWebSocket = (userId) => {
     return;
   }
 
+  const token = sessionStorage.getItem('token');
+  if (!token) {
+    console.warn('WebSocket 连接失败：缺少登录 token');
+    return;
+  }
+
   try {
-    ws = new WebSocket(WS_BASE);
+    const wsUrl = `${WS_BASE}?token=${encodeURIComponent(token)}`;
+    ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
       console.log('WebSocket 连接成功');

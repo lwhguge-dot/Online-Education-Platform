@@ -157,6 +157,14 @@ gateway:
     cache-expire-minutes: ${GATEWAY_RATE_LIMIT_CACHE_EXPIRE_MINUTES:30}
     cache-max-size: ${GATEWAY_RATE_LIMIT_CACHE_MAX_SIZE:100000}
 
+jwt:
+  # 必须由环境变量注入，避免默认密钥导致鉴权被绕过
+  secret: "${JWT_SECRET}"
+
+security:
+  # 内部高危接口令牌：仅用于服务间调用 /cascade/* 接口
+  internal-token: "${INTERNAL_API_TOKEN}"
+
 # OpenTelemetry 配置
 otel:
   service:

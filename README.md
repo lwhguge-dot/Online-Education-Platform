@@ -125,4 +125,4 @@ docker compose down
 
 - 后端优化验收：`docs/backend-optimization-acceptance.md`
 - 环境变量与改密 Runbook：`docs/env-rotation-runbook.md`
-
+- 安全加固说明：`docs/security-hardening-guide.md`

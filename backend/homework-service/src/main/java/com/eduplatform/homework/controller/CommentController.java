@@ -31,9 +31,14 @@ public class CommentController {
      */
     @PostMapping("/publish-answer")
     public Result<SubjectiveAnswerPermissionVO> publishAnswer(
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestParam Long studentId,
             @RequestParam Long questionId,
             @RequestBody Map<String, String> body) {
+        if (!hasSelfOrAdminAccess(studentId, currentUserIdHeader, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅本人或管理员可发布答案");
+        }
         try {
             String answerContent = body.get("answerContent");
             return Result.success("答案已发布，评论区已解锁",
@@ -51,8 +56,13 @@ public class CommentController {
     @GetMapping("/question/{questionId}")
     public Result<Map<String, Object>> getComments(
             @PathVariable Long questionId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestParam Long userId,
             @RequestParam(defaultValue = "false") boolean isTeacher) {
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (currentUserId != null) {
+            userId = currentUserId;
+        }
         Map<String, Object> result = commentService.getComments(questionId, userId, isTeacher);
         return Result.success(result);
     }
@@ -70,10 +80,15 @@ public class CommentController {
     @PostMapping
     public Result<SubjectiveCommentVO> postComment(
             @RequestParam Long questionId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestParam Long userId,
             @RequestParam(required = false) Long parentId,
             @RequestParam(defaultValue = "false") boolean isTeacher,
             @RequestBody Map<String, String> body) {
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (currentUserId != null) {
+            userId = currentUserId;
+        }
         try {
             String content = body.get("content");
             SubjectiveComment comment = commentService.postComment(questionId, userId, content, parentId, isTeacher);
@@ -94,8 +109,17 @@ public class CommentController {
     @PostMapping("/post-question")
     public Result<SubjectiveCommentVO> postQuestion(
             @RequestParam Long questionId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestParam Long teacherId,
             @RequestBody Map<String, String> body) {
+        if (!isTeacherOrAdmin(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可发布题目");
+        }
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (currentUserId != null) {
+            teacherId = currentUserId;
+        }
         try {
             String questionContent = body.get("questionContent");
             SubjectiveComment comment = commentService.postQuestion(questionId, teacherId, questionContent);
@@ -109,7 +133,12 @@ public class CommentController {
      * 置顶/取消置顶。
      */
     @PutMapping("/{commentId}/toggle-top")
-    public Result<Void> toggleTop(@PathVariable Long commentId) {
+    public Result<Void> toggleTop(
+            @PathVariable Long commentId,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!isTeacherOrAdmin(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可置顶评论");
+        }
         try {
             commentService.toggleTop(commentId);
             return Result.success("操作成功", null);
@@ -122,9 +151,16 @@ public class CommentController {
      * 删除评论。
      */
     @DeleteMapping("/{commentId}")
-    public Result<Void> deleteComment(@PathVariable Long commentId) {
+    public Result<Void> deleteComment(
+            @PathVariable Long commentId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (currentUserId == null) {
+            return Result.failure(401, "身份认证失败");
+        }
         try {
-            commentService.deleteComment(commentId);
+            commentService.deleteComment(commentId, currentUserId, isAdmin(currentUserRole));
             return Result.success("删除成功", null);
         } catch (Exception e) {
             return Result.error("删除失败: " + e.getMessage());
@@ -136,8 +172,13 @@ public class CommentController {
      */
     @GetMapping("/permission")
     public Result<SubjectiveAnswerPermissionVO> getPermission(
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestParam Long studentId,
             @RequestParam Long questionId) {
+        if (!hasSelfOrAdminAccess(studentId, currentUserIdHeader, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅本人或管理员可查看权限状态");
+        }
         return Result.success(commentService.convertToPermissionVO(
                 commentService.getPermission(studentId, questionId)));
     }
@@ -146,7 +187,13 @@ public class CommentController {
      * 获取学生的问题列表（学生中心用）。
      */
     @GetMapping("/student/{studentId}/questions")
-    public Result<?> getStudentQuestions(@PathVariable Long studentId) {
+    public Result<?> getStudentQuestions(
+            @PathVariable Long studentId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!hasSelfOrAdminAccess(studentId, currentUserIdHeader, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅本人或管理员可查看学生问题列表");
+        }
         try {
             return Result.success(commentService.getStudentQuestions(studentId));
         } catch (Exception e) {
@@ -158,11 +205,56 @@ public class CommentController {
      * 获取教师的问题列表（教师中心用）。
      */
     @GetMapping("/teacher/{teacherId}/questions")
-    public Result<?> getTeacherQuestions(@PathVariable Long teacherId) {
+    public Result<?> getTeacherQuestions(
+            @PathVariable Long teacherId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!isTeacherOrAdmin(currentUserRole) || !hasSelfOrAdminAccess(teacherId, currentUserIdHeader, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅本人教师或管理员可查看教师问题列表");
+        }
         try {
             return Result.success(commentService.getTeacherQuestions(teacherId));
         } catch (Exception e) {
             return Result.error("获取问题列表失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 解析网关注入用户ID。
+     */
+    private Long parseUserId(String userIdHeader) {
+        if (userIdHeader == null || userIdHeader.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(userIdHeader);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * 判断是否管理员。
+     */
+    private boolean isAdmin(String role) {
+        return role != null && "admin".equalsIgnoreCase(role);
+    }
+
+    /**
+     * 判断是否教师或管理员。
+     */
+    private boolean isTeacherOrAdmin(String role) {
+        return role != null && ("teacher".equalsIgnoreCase(role) || "admin".equalsIgnoreCase(role));
+    }
+
+    /**
+     * 判断是否本人或管理员。
+     */
+    private boolean hasSelfOrAdminAccess(Long targetUserId, String currentUserIdHeader, String currentUserRole) {
+        if (isAdmin(currentUserRole)) {
+            return true;
+        }
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        return currentUserId != null && currentUserId.equals(targetUserId);
     }
 }

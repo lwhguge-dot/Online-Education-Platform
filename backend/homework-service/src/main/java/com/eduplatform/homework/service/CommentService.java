@@ -161,12 +161,19 @@ public class CommentService {
      * 删除评论
      */
     @Transactional
-    public void deleteComment(Long commentId) {
+    public void deleteComment(Long commentId, Long currentUserId, boolean isAdmin) {
         SubjectiveComment comment = commentMapper.selectById(commentId);
-        if (comment != null) {
-            comment.setStatus(0);
-            commentMapper.updateById(comment);
+        if (comment == null || comment.getStatus() == 0) {
+            throw new RuntimeException("评论不存在或已被删除");
         }
+
+        // 安全校验：仅管理员或评论作者本人可删除
+        if (!isAdmin && !comment.getUserId().equals(currentUserId)) {
+            throw new RuntimeException("权限不足，不能删除他人的评论");
+        }
+
+        comment.setStatus(0);
+        commentMapper.updateById(comment);
     }
 
     /**

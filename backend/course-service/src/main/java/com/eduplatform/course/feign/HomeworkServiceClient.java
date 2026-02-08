@@ -1,6 +1,7 @@
 package com.eduplatform.course.feign;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.course.config.InternalApiFeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -8,7 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 /**
  * 作业服务Feign客户端
  */
-@FeignClient(name = "homework-service", fallback = HomeworkServiceClientFallback.class)
+@FeignClient(name = "homework-service", fallback = HomeworkServiceClientFallback.class, configuration = InternalApiFeignConfig.class)
 public interface HomeworkServiceClient {
 
     /**

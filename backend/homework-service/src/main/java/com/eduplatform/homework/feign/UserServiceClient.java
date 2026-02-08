@@ -2,6 +2,7 @@ package com.eduplatform.homework.feign;
 
 import com.eduplatform.common.result.Result;
 import com.eduplatform.homework.dto.UserBriefDTO;
+import com.eduplatform.homework.config.InternalApiFeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,7 +15,7 @@ import java.util.Map;
 /**
  * 用户服务Feign客户端
  */
-@FeignClient(name = "user-service", fallback = UserServiceClientFallback.class)
+@FeignClient(name = "user-service", configuration = InternalApiFeignConfig.class, fallback = UserServiceClientFallback.class)
 public interface UserServiceClient {
 
     @GetMapping("/api/users/{id}")

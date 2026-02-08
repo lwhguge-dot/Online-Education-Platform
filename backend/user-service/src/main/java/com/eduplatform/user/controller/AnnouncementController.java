@@ -43,7 +43,12 @@ public class AnnouncementController {
             @RequestParam(name = "page", defaultValue = "1") int page,
             @RequestParam(name = "size", defaultValue = "20") int size,
             @RequestParam(name = "status", required = false) String status,
-            @RequestParam(name = "targetAudience", required = false) String targetAudience) {
+            @RequestParam(name = "targetAudience", required = false) String targetAudience,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 管理后台全量检索仅允许管理员访问
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可访问全量公告列表");
+        }
 
         IPage<Announcement> pageResult = announcementService.findByPage(page, size, status, targetAudience);
         List<AnnouncementVO> records = announcementService.convertToVOList(pageResult.getRecords());
@@ -88,9 +93,15 @@ public class AnnouncementController {
     /**
      * 创建系统级公告。
      * 初始状态默认为 DRAFT（草稿），避免误发布。
-     */
+    */
     @PostMapping
-    public Result<AnnouncementVO> createAnnouncement(@RequestBody AnnouncementRequestDTO request) {
+    public Result<AnnouncementVO> createAnnouncement(
+            @RequestBody AnnouncementRequestDTO request,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 系统级公告创建仅允许管理员操作
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可创建系统公告");
+        }
         Announcement created = announcementService.create(buildAnnouncementEntity(request));
         return Result.success("公告已创建，请及时发布", announcementService.convertToVO(created));
     }
@@ -102,7 +113,12 @@ public class AnnouncementController {
     @PutMapping("/{id}")
     public Result<AnnouncementVO> updateAnnouncement(
             @PathVariable("id") Long id,
-            @RequestBody AnnouncementRequestDTO request) {
+            @RequestBody AnnouncementRequestDTO request,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 系统级公告更新仅允许管理员操作
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可更新系统公告");
+        }
         Announcement updated = announcementService.update(id, buildAnnouncementEntity(request));
         return Result.success("内容修正成功", announcementService.convertToVO(updated));
     }
@@ -110,9 +126,15 @@ public class AnnouncementController {
     /**
      * 永久物理删除公告。
      * 说明：此操作不可逆，通常用于后台治理或违规内容清理。
-     */
+    */
     @DeleteMapping("/{id}")
-    public Result<Void> deleteAnnouncement(@PathVariable("id") Long id) {
+    public Result<Void> deleteAnnouncement(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 系统级公告删除仅允许管理员操作
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可删除系统公告");
+        }
         announcementService.delete(id);
         return Result.success("公告条目已彻底移除", null);
     }
@@ -120,9 +142,15 @@ public class AnnouncementController {
     /**
      * 发布公告 (使受众可见)。
      * 业务原因：统一在服务端控制发布时间与状态切换。
-     */
+    */
     @PostMapping("/{id}/publish")
-    public Result<AnnouncementVO> publishAnnouncement(@PathVariable("id") Long id) {
+    public Result<AnnouncementVO> publishAnnouncement(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 系统级公告发布仅允许管理员操作
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可发布系统公告");
+        }
         Announcement published = announcementService.publish(id);
         return Result.success("公告发布成功，前端实时生效", announcementService.convertToVO(published));
     }
@@ -139,7 +167,14 @@ public class AnnouncementController {
     @PostMapping("/teachers/{teacherId}")
     public Result<AnnouncementVO> createTeacherAnnouncement(
             @PathVariable("teacherId") Long teacherId,
-            @RequestBody TeacherAnnouncementDTO dto) {
+            @RequestBody TeacherAnnouncementDTO dto,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 教师公告仅允许教师本人或管理员操作
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!canManageTeacherAnnouncement(teacherId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师本人或管理员可发布教师公告");
+        }
         Announcement created = announcementService.createByTeacher(teacherId, dto);
         return Result.success("教学公告已送达", announcementService.convertToVO(created));
     }
@@ -152,7 +187,14 @@ public class AnnouncementController {
     public Result<AnnouncementVO> updateTeacherAnnouncement(
             @PathVariable("teacherId") Long teacherId,
             @PathVariable("announcementId") Long announcementId,
-            @RequestBody TeacherAnnouncementDTO dto) {
+            @RequestBody TeacherAnnouncementDTO dto,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 教师公告更新仅允许教师本人或管理员操作
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!canManageTeacherAnnouncement(teacherId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师本人或管理员可更新教师公告");
+        }
         Announcement updated = announcementService.updateByTeacher(teacherId, announcementId, dto);
         return Result.success("公告修订完成", announcementService.convertToVO(updated));
     }
@@ -164,7 +206,14 @@ public class AnnouncementController {
     @DeleteMapping("/teachers/{teacherId}/{announcementId}")
     public Result<Void> deleteTeacherAnnouncement(
             @PathVariable("teacherId") Long teacherId,
-            @PathVariable("announcementId") Long announcementId) {
+            @PathVariable("announcementId") Long announcementId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 教师公告删除仅允许教师本人或管理员操作
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!canManageTeacherAnnouncement(teacherId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师本人或管理员可删除教师公告");
+        }
         announcementService.deleteByTeacher(teacherId, announcementId);
         return Result.success("该内容已从授课范围消失", null);
     }
@@ -179,7 +228,14 @@ public class AnnouncementController {
             @RequestParam(name = "courseId", required = false) Long courseId,
             @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "page", defaultValue = "1") int page,
-            @RequestParam(name = "size", defaultValue = "20") int size) {
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 教师公告列表仅允许教师本人或管理员访问
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!canManageTeacherAnnouncement(teacherId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师本人或管理员可查看教师公告");
+        }
         Map<String, Object> result = announcementService.findByTeacher(teacherId, courseId, status, page, size);
         return Result.success(result);
     }
@@ -187,9 +243,15 @@ public class AnnouncementController {
     /**
      * 获取公告阅读审计统计。
      * 返回总阅读人数（UV）及各受众群体的渗透率。
-     */
+    */
     @GetMapping("/{id}/stats")
-    public Result<AnnouncementStatsDTO> getAnnouncementStats(@PathVariable("id") Long id) {
+    public Result<AnnouncementStatsDTO> getAnnouncementStats(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 阅读统计属于审计类信息，仅允许管理员访问
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可查看公告统计");
+        }
         AnnouncementStatsDTO stats = announcementService.getAnnouncementStats(id);
         return Result.success(stats);
     }
@@ -201,8 +263,30 @@ public class AnnouncementController {
     @PostMapping("/{id}/read")
     public Result<Void> recordRead(
             @PathVariable("id") Long id,
-            @RequestParam("userId") Long userId) {
-        announcementService.recordRead(id, userId);
+            @RequestParam(value = "userId", required = false) Long userId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 公告阅读回执默认以网关注入身份为准，避免前端伪造 userId
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (currentUserId == null && !isAdminRole(currentUserRole)) {
+            return Result.failure(401, "身份无效，请重新登录后再试");
+        }
+
+        Long effectiveUserId;
+        if (isAdminRole(currentUserRole) && userId != null) {
+            effectiveUserId = userId;
+        } else {
+            if (userId != null && currentUserId != null && !userId.equals(currentUserId)) {
+                return Result.failure(403, "权限不足，不能为其他用户记录阅读状态");
+            }
+            effectiveUserId = currentUserId;
+        }
+
+        if (effectiveUserId == null) {
+            return Result.failure(400, "缺少有效的用户标识");
+        }
+
+        announcementService.recordRead(id, effectiveUserId);
         return Result.success("阅读回执已确认", null);
     }
 
@@ -213,7 +297,14 @@ public class AnnouncementController {
     @PostMapping("/teachers/{teacherId}/{announcementId}/toggle-pin")
     public Result<AnnouncementVO> togglePin(
             @PathVariable("teacherId") Long teacherId,
-            @PathVariable("announcementId") Long announcementId) {
+            @PathVariable("announcementId") Long announcementId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 置顶操作仅允许教师本人或管理员执行
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!canManageTeacherAnnouncement(teacherId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师本人或管理员可置顶公告");
+        }
         Announcement updated = announcementService.togglePin(teacherId, announcementId);
         String message = updated.getIsPinned() ? "公告已锁定至主页置顶" : "已从首屏推荐移除";
         return Result.success(message, announcementService.convertToVO(updated));
@@ -233,5 +324,39 @@ public class AnnouncementController {
         }
         BeanUtils.copyProperties(request, announcement);
         return announcement;
+    }
+
+    /**
+     * 解析网关注入的用户ID，非法值返回 null。
+     */
+    private Long parseUserId(String currentUserIdHeader) {
+        if (currentUserIdHeader == null || currentUserIdHeader.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(currentUserIdHeader);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    /**
+     * 判断是否为管理员角色。
+     */
+    private boolean isAdminRole(String role) {
+        return role != null && "admin".equalsIgnoreCase(role);
+    }
+
+    /**
+     * 判断是否允许管理教师公告：管理员可跨教师操作，教师仅允许操作本人数据。
+     */
+    private boolean canManageTeacherAnnouncement(Long targetTeacherId, Long currentUserId, String currentUserRole) {
+        if (isAdminRole(currentUserRole)) {
+            return true;
+        }
+        return currentUserRole != null
+                && "teacher".equalsIgnoreCase(currentUserRole)
+                && currentUserId != null
+                && currentUserId.equals(targetTeacherId);
     }
 }
