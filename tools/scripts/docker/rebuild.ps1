@@ -1,4 +1,4 @@
-param(
+﻿param(
   [int]$TimeoutSeconds = 180,
   [int]$IntervalSeconds = 5,
   [switch]$Prod,
@@ -21,7 +21,33 @@ function Pause-IfInteractive([string]$Prompt) {
   }
 }
 
+function Remove-StaleContainers {
+  param([string[]]$ContainerNames)
+
+  # 清理同名残留容器，避免 docker compose 创建时出现命名冲突
+  foreach ($containerName in $ContainerNames) {
+    $containerId = (docker ps -aq --filter "name=^/$containerName`$" 2>$null)
+    if (-not [string]::IsNullOrWhiteSpace($containerId)) {
+      Write-Host ((Z '[\u63d0\u793a] \u6e05\u7406\u6b8b\u7559\u5bb9\u5668\uff1a') + " $containerName")
+      docker rm -f $containerName | Out-Null
+      if ($LASTEXITCODE -ne 0) {
+        throw ((Z '[\u9519\u8bef] \u65e0\u6cd5\u6e05\u7406\u6b8b\u7559\u5bb9\u5668\uff1a') + " $containerName")
+      }
+    }
+  }
+}
+
+$scriptLock = $null
+$hasScriptLock = $false
+
 try {
+    # 使用命名互斥锁避免重复双击导致并发重建
+    $scriptLock = New-Object System.Threading.Mutex($false, 'Global\DemoDockerRebuildLock')
+    $hasScriptLock = $scriptLock.WaitOne(0, $false)
+    if (-not $hasScriptLock) {
+      throw (Z '[\u9519\u8bef] \u68c0\u6d4b\u5230\u53e6\u4e00\u4e2a\u91cd\u5efa\u811a\u672c\u6b63\u5728\u8fd0\u884c\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002')
+    }
+
     function Run-Step {
       param(
         [string]$Title,
@@ -218,7 +244,18 @@ try {
     Write-Host (Z '[5/6] \u7b49\u5f85\u57fa\u7840\u670d\u52a1\u5c31\u7eea\uff0830\u79d2\uff09...')
     Start-Sleep -Seconds 30
 
-    Run-Step (Z '[6/6] \u91cd\u65b0\u6784\u5efa\u5e76\u542f\u52a8\u4e1a\u52a1\u670d\u52a1...') {
+    Run-Step (Z '[6/7] \u6e05\u7406\u540c\u540d\u6b8b\u7559\u4e1a\u52a1\u5bb9\u5668...') {
+      Remove-StaleContainers -ContainerNames @(
+        'demo-gateway',
+        'demo-user-service',
+        'demo-course-service',
+        'demo-homework-service',
+        'demo-progress-service',
+        'demo-frontend'
+      )
+    } (Z '[\u9519\u8bef] \u6e05\u7406\u6b8b\u7559\u4e1a\u52a1\u5bb9\u5668\u5931\u8d25\u3002')
+
+    Run-Step (Z '[7/7] \u91cd\u65b0\u6784\u5efa\u5e76\u542f\u52a8\u4e1a\u52a1\u670d\u52a1...') {
       Invoke-ComposeUp -Build -Services @('gateway', 'user-service', 'course-service', 'homework-service', 'progress-service', 'frontend')
     } (Z '[\u9519\u8bef] \u4e1a\u52a1\u670d\u52a1\u6784\u5efa\u5931\u8d25\u3002')
 
@@ -236,4 +273,12 @@ try {
     Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
     Pause-IfInteractive "An error occurred."
     exit 1
+} finally {
+    if ($hasScriptLock -and $scriptLock) {
+      try {
+        $scriptLock.ReleaseMutex() | Out-Null
+      } catch {
+      }
+      $scriptLock.Dispose()
+    }
 }

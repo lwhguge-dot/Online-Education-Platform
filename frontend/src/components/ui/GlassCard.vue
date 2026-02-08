@@ -7,15 +7,20 @@ const props = defineProps({
   padding: {
     type: String,
     default: 'p-6'
+  },
+  overflow: {
+    type: String,
+    default: 'hidden'
   }
 })
 </script>
 
 <template>
   <div 
-    class="glass-card relative rounded-2xl transition-all duration-300 overflow-hidden group border border-white/20 shadow-lg"
+    class="glass-card relative rounded-2xl transition-all duration-300 group border border-white/20 shadow-lg"
     :class="[
       padding,
+      props.overflow === 'hidden' ? 'overflow-hidden' : 'overflow-visible',
       props.hoverable ? 'hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1.5 hover:border-white/40' : ''
     ]"
     :style="{

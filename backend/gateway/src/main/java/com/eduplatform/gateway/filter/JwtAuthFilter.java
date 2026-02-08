@@ -21,6 +21,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
@@ -51,7 +52,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             "/api/auth/login",
             "/api/auth/register",
             "/api/auth/health",
-            "/api/auth/reset-password"
+            "/api/auth/reset-password",
+            "/api/courses/published"
     );
 
     private final ObjectMapper objectMapper;
@@ -212,11 +214,11 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         exchange.getResponse().getHeaders().set("Content-Type", "application/json;charset=UTF-8");
 
         try {
-            byte[] bytes = objectMapper.writeValueAsBytes(Map.of(
-                    "code", code,
-                    "message", message,
-                    "data", (Object) null
-            ));
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("code", code);
+            payload.put("message", message);
+            payload.put("data", null);
+            byte[] bytes = objectMapper.writeValueAsBytes(payload);
             return exchange.getResponse()
                     .writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(bytes)));
         } catch (Exception e) {

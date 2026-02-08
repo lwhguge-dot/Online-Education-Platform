@@ -233,6 +233,35 @@ public class ChapterCommentService {
     }
 
     /**
+     * 获取学生在各课程下发表的顶级提问列表（学生中心“我的提问”）。
+     * 说明：不分页，默认返回最近 50 条。
+     */
+    public List<Map<String, Object>> getStudentQuestions(Long studentId, int limit) {
+        List<Map<String, Object>> raw = commentMapper.findStudentTopLevelQuestions(studentId, limit);
+        return raw.stream()
+                .map(item -> {
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("id", getLongValue(item, "id"));
+                    result.put("courseId", getLongValue(item, "course_id"));
+                    result.put("chapterId", getLongValue(item, "chapter_id"));
+                    result.put("courseName", item.get("course_title"));
+                    result.put("chapterName", item.get("chapter_title"));
+                    result.put("content", item.get("content"));
+                    result.put("title", item.get("content"));
+                    result.put("commentCount", getIntValue(item, "reply_count"));
+                    Object createdAt = item.get("created_at");
+                    if (createdAt instanceof LocalDateTime dt) {
+                        result.put("time", dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+                    } else {
+                        result.put("time", "");
+                    }
+                    result.put("type", "chapter_comment");
+                    return result;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
      * SQL 结果聚合 Map 映射 DTO 的归约逻辑
      */
     private CommentDTO mapToDTO(Map<String, Object> data) {

@@ -1,28 +1,32 @@
 @echo off
-setlocal
-chcp 65001 >nul
+setlocal EnableExtensions
 
-REM 统一定位到当前 bat 所在目录，避免从任意工作目录调用时找不到 ps1
-set "SCRIPT_DIR=%~dp0"
-set "PS1_PATH=%SCRIPT_DIR%Docker启动.ps1"
+REM Keep this launcher ASCII-only for cmd.exe compatibility.
+REM Resolve the PowerShell script by using the same basename.
+set "PS1_PATH=%~dpn0.ps1"
+if not exist "%PS1_PATH%" (
+  set "PS1_FALLBACK="
+  for %%I in ("%~dp0*.ps1") do (
+    if /I not "%%~nxI"=="rebuild.ps1" if not defined PS1_FALLBACK set "PS1_FALLBACK=%%~fI"
+  )
+  if defined PS1_FALLBACK set "PS1_PATH=%PS1_FALLBACK%"
+)
 
-REM 启动前先校验 ps1 是否存在，避免报错信息不明确
 if not exist "%PS1_PATH%" (
   echo.
-  echo [错误] 未找到脚本：%PS1_PATH%
+  echo [ERROR] Script not found: %PS1_PATH%
   pause
   exit /b 1
 )
 
-REM 将 bat 接收到的参数原样透传给 PowerShell 启动脚本
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%PS1_PATH%" %*
 set "ERR=%ERRORLEVEL%"
 if not "%ERR%"=="0" (
   echo.
-  echo [错误] Docker 启动脚本执行失败，错误码: %ERR%
+  echo [ERROR] Docker startup script failed, exit code: %ERR%
   pause
   exit /b %ERR%
 )
 
-echo [完成] Docker 启动脚本执行成功。
+echo [DONE] Docker startup script finished successfully.
 exit /b 0

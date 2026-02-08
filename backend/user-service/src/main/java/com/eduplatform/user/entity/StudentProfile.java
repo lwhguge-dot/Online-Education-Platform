@@ -1,6 +1,7 @@
 package com.eduplatform.user.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.eduplatform.user.mybatis.JsonbTypeHandler;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -9,7 +10,7 @@ import java.time.LocalDateTime;
  * 对应数据库表 student_profiles，存储学生的学业统计、学校信息及个性化配置。
  */
 @Data
-@TableName("student_profiles")
+@TableName(value = "student_profiles", autoResultMap = true)
 public class StudentProfile {
     /**
      * 扩展资料ID
@@ -45,13 +46,13 @@ public class StudentProfile {
     /**
      * 通知推送设置 (JSON 格式存储，如：{"email":true, "browser":false})
      */
-    @TableField("notification_settings")
+    @TableField(value = "notification_settings", typeHandler = JsonbTypeHandler.class)
     private String notificationSettings;
 
     /**
      * 学习目标 (JSON 格式存储，如：{"courseId":1, "targetScore":90})
      */
-    @TableField("study_goal")
+    @TableField(value = "study_goal", typeHandler = JsonbTypeHandler.class)
     private String studyGoal;
 
     /**

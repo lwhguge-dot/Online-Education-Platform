@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * 学生学习记录页面
  * 展示学习时长图表、周对比、学习足迹、测验成绩和知识点掌握度
@@ -74,19 +74,46 @@ const loadLearningTrack = async () => {
   learningTrackLoading.value = true
   try {
     const res = await progressAPI.getLearningTrack(studentId)
-    if (res.code === 200 && res.data) {
-      // 将后端数据映射为前端需要的格式
-      learningTrack.value = (res.data || []).map(item => ({
-        title: item.courseName || item.courseTitle || '未知课程',
-        time: item.studyTime || item.lastStudyTime || '最近',
-        action: item.action || `完成章节: ${item.chapterTitle || '未知章节'}`,
-        courseId: item.courseId,
-        chapterId: item.chapterId,
-        chapterTitle: item.chapterTitle,
-        duration: item.duration,
-        type: item.type || 'chapter_complete'
-      }))
-    }
+    if (res.code !== 200 || !res.data) return
+
+    const rawData: any = res.data
+    const items: any[] = Array.isArray(rawData)
+      ? rawData
+      : (Array.isArray(rawData?.recentLearning) ? rawData.recentLearning : [])
+
+    const mapped = await Promise.allSettled(items.map(async (item) => {
+      const chapterId = item?.chapterId
+      let chapterTitle = item?.chapterTitle
+      let courseId = item?.courseId
+      let courseTitle = item?.courseName || item?.courseTitle
+
+      if (chapterId && (!courseId || !chapterTitle)) {
+        try {
+          const chapterRes = await chapterAPI.getDetail(chapterId)
+          if (chapterRes?.code === 200 && chapterRes?.data) {
+            courseId = courseId ?? chapterRes.data.courseId
+            chapterTitle = chapterTitle ?? chapterRes.data.title
+          }
+        } catch {
+        }
+      }
+
+      return {
+        title: courseTitle || '学习记录',
+        time: item?.studyTime || item?.lastStudyTime || item?.time || '最近',
+        action: item?.action || (chapterTitle ? `学习章节: ${chapterTitle}` : '学习进度更新'),
+        courseId,
+        chapterId,
+        chapterTitle,
+        duration: item?.duration,
+        progress: item?.progress,
+        type: item?.type || 'learning_track'
+      }
+    }))
+
+    learningTrack.value = mapped
+      .filter(r => r.status === 'fulfilled')
+      .map((r: any) => r.value)
   } catch (e) {
     console.error('加载学习轨迹失败:', e)
     // 如果API失败，使用父组件传入的timeline数据

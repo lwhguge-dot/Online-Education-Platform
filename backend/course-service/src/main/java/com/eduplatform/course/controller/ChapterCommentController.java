@@ -4,6 +4,7 @@ import com.eduplatform.common.result.Result;
 import com.eduplatform.course.dto.CommentDTO;
 import com.eduplatform.course.service.BlockedWordService;
 import com.eduplatform.course.service.ChapterCommentService;
+import com.eduplatform.course.service.EnrollmentService;
 import com.eduplatform.course.service.MuteService;
 import com.eduplatform.course.vo.BlockedWordVO;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class ChapterCommentController {
     private final ChapterCommentService commentService;
     private final MuteService muteService;
     private final BlockedWordService blockedWordService;
+    private final EnrollmentService enrollmentService;
 
     /**
      * 获取章节评论列表。
@@ -55,6 +57,7 @@ public class ChapterCommentController {
     @PostMapping
     public Result<CommentDTO> createComment(
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRoleHeader,
             @RequestBody Map<String, Object> body) {
         Long chapterId = Long.valueOf(body.get("chapterId").toString());
         Long courseId = Long.valueOf(body.get("courseId").toString());
@@ -66,6 +69,11 @@ public class ChapterCommentController {
         Long parentId = body.get("parentId") != null ? Long.valueOf(body.get("parentId").toString()) : null;
 
         log.info("发表评论, chapterId={}, userId={}, parentId={}", chapterId, userId, parentId);
+
+        // 学生发表评论/提问必须先报名该课程
+        if (isStudent(currentUserRoleHeader) && !enrollmentService.isEnrolled(userId, courseId)) {
+            return Result.failure(403, "请先报名该课程后再提问");
+        }
 
         // 检查用户是否被禁言
         if (muteService.isMuted(userId, courseId)) {
@@ -80,6 +88,21 @@ public class ChapterCommentController {
 
         CommentDTO comment = commentService.createComment(chapterId, courseId, userId, content, parentId);
         return Result.success("评论发表成功", comment);
+    }
+
+    /**
+     * 获取学生在各课程下的顶级提问（学生中心“我的提问”）。
+     */
+    @GetMapping("/chapter/student/{studentId}/questions")
+    public Result<List<Map<String, Object>>> getStudentQuestions(
+            @PathVariable("studentId") Long studentId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRoleHeader) {
+        Long currentUserId = resolveUserId(currentUserIdHeader, null);
+        if (!canAccessStudentData(studentId, currentUserId, currentUserRoleHeader)) {
+            return Result.failure(403, "权限不足，仅本人、教师或管理员可查看学生提问");
+        }
+        return Result.success(commentService.getStudentQuestions(studentId, 50));
     }
 
     /**
@@ -359,5 +382,15 @@ public class ChapterCommentController {
      */
     private boolean isTeacherOrAdmin(String role) {
         return role != null && ("teacher".equalsIgnoreCase(role) || "admin".equalsIgnoreCase(role));
+    }
+
+    /**
+     * 学生数据访问控制：学生仅可访问本人，教师和管理员可用于教学管理查询。
+     */
+    private boolean canAccessStudentData(Long targetStudentId, Long currentUserId, String currentUserRole) {
+        if (isTeacherOrAdmin(currentUserRole)) {
+            return true;
+        }
+        return currentUserId != null && currentUserId.equals(targetStudentId);
     }
 }

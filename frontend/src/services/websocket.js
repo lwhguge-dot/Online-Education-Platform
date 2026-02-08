@@ -1,12 +1,25 @@
-const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-const host = window.location.host;
-// 通过网关统一转发到 user-service 的 WebSocket 端点
-// 后端注册路径为 /ws/notification（见 user-service 的 WebSocketConfig）
-const WS_BASE = `${protocol}//${host}/ws/notification`;
+const apiBase = import.meta.env.VITE_API_BASE || '';
+let wsOrigin = '';
+if (typeof apiBase === 'string' && apiBase.startsWith('http')) {
+  try {
+    const u = new URL(apiBase);
+    const wsProtocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+    wsOrigin = `${wsProtocol}//${u.host}`;
+  } catch {
+    wsOrigin = '';
+  }
+}
+if (!wsOrigin) {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host;
+  wsOrigin = `${protocol}//${host}`;
+}
+const WS_BASE = `${wsOrigin}/ws/notification`;
 
 let ws = null;
 let reconnectTimer = null;
 let heartbeatTimer = null;
+let lastErrorLoggedAt = 0;
 
 const listeners = {
   onForceLogout: [],
@@ -63,7 +76,11 @@ export const connectWebSocket = (userId) => {
     };
 
     ws.onerror = (error) => {
-      console.error('WebSocket 错误:', error);
+      const now = Date.now();
+      if (now - lastErrorLoggedAt > 30000) {
+        console.warn('WebSocket 连接异常:', error);
+        lastErrorLoggedAt = now;
+      }
     };
   } catch (e) {
     console.error('WebSocket 连接失败:', e);

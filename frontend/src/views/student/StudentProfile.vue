@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { User, Mail, Phone, Bell, Target, Save, Edit, Camera, Calendar, ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
 
@@ -18,39 +18,92 @@ const formData = ref({ ...props.profile })
 const showDatePicker = ref(false)
 const currentYear = ref(new Date().getFullYear())
 const currentMonth = ref(new Date().getMonth())
-const pickerView = ref('day') // 'day' | 'month' | 'year'
+const pickerView = ref('day') // 'day', 'month', 'year'
 const yearRangeStart = ref(Math.floor(new Date().getFullYear() / 10) * 10)
-
-// 性别选择器状态
-const showGenderPicker = ref(false)
-
-// 点击外部关闭弹窗
 const datePickerRef = ref(null)
-const genderPickerRef = ref(null)
+const datePickerStyle = ref({})
+
+const updateDatePickerPosition = () => {
+  const el = document.getElementById('profile-birthday-picker')
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  const viewportHeight = window.innerHeight
+  const pickerHeight = 380 // 估计高度
+  
+  let top = rect.bottom + 8
+  if (rect.bottom + pickerHeight > viewportHeight) {
+    top = rect.top - pickerHeight - 8
+  }
+  
+  datePickerStyle.value = {
+    position: 'fixed',
+    top: `${top}px`,
+    left: `${rect.left}px`,
+    zIndex: 9999
+  }
+}
+
+// 性别选择相关
+const showGenderPicker = ref(false)
+const genderPickerStyle = ref({})
+
+const updateGenderPickerPosition = () => {
+  const el = document.getElementById('profile-gender-picker')
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  
+  genderPickerStyle.value = {
+    position: 'fixed',
+    top: `${rect.bottom + 8}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    zIndex: 9999
+  }
+}
+
+const toggleGenderPicker = async () => {
+  if (!isEditing.value) return
+  showGenderPicker.value = !showGenderPicker.value
+  if (showGenderPicker.value) {
+    await nextTick()
+    updateGenderPickerPosition()
+  }
+}
 
 const handleClickOutside = (event) => {
   // 检查日期选择器
   if (showDatePicker.value) {
     const datePickerEl = document.querySelector('[data-date-picker]')
-    if (datePickerEl && !datePickerEl.contains(event.target)) {
+    const popupEl = datePickerRef.value
+    if (datePickerEl && !datePickerEl.contains(event.target) && popupEl && !popupEl.contains(event.target)) {
       showDatePicker.value = false
     }
   }
   // 检查性别选择器
   if (showGenderPicker.value) {
     const genderPickerEl = document.querySelector('[data-gender-picker]')
-    if (genderPickerEl && !genderPickerEl.contains(event.target)) {
+    const popupEl = document.querySelector('.gender-popup') // 需要给性别弹窗加个类名
+    if (genderPickerEl && !genderPickerEl.contains(event.target) && (!popupEl || !popupEl.contains(event.target))) {
       showGenderPicker.value = false
     }
   }
 }
 
+const handleScroll = () => {
+  if (showDatePicker.value) updateDatePickerPosition()
+  if (showGenderPicker.value) updateGenderPickerPosition()
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('scroll', handleScroll, true)
+  window.addEventListener('resize', handleScroll)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('scroll', handleScroll, true)
+  window.removeEventListener('resize', handleScroll)
 })
 
 // 监听props.profile变化
@@ -192,16 +245,20 @@ const showMonthView = () => {
   pickerView.value = 'month'
 }
 
-const openDatePicker = () => {
+const openDatePicker = async () => {
   if (!isEditing.value) return
+  
   if (formData.value.birthday) {
-    const [y, m] = formData.value.birthday.split('-').map(Number)
+    const [y, m, d] = formData.value.birthday.split('-').map(Number)
     currentYear.value = y
     currentMonth.value = m - 1
     yearRangeStart.value = Math.floor(y / 12) * 12
   }
   pickerView.value = 'day'
   showDatePicker.value = true
+  
+  await nextTick()
+  updateDatePickerPosition()
 }
 
 const formatDisplayDate = (dateStr) => {
@@ -232,7 +289,7 @@ const getGenderLabel = (value) => {
   <div class="space-y-6 animate-fade-in">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
        <!-- Profile Card -->
-       <GlassCard class="p-6 col-span-2 card-hover-glow" style="animation: fade-in-up 0.5s ease-out forwards;">
+       <GlassCard class="p-6 col-span-2 card-hover-glow" overflow="visible" style="animation: fade-in-up 0.5s ease-out forwards;">
           <div class="flex items-center justify-between mb-6">
              <h3 class="text-lg font-bold text-shuimo flex items-center gap-2 font-song">
                 <User class="w-5 h-5 text-qinghua icon-hover-rotate" />
@@ -293,10 +350,13 @@ const getGenderLabel = (value) => {
                    </div>
                    
                    <!-- 日期选择器弹窗 -->
-                   <Transition name="dropdown">
-                     <div v-if="showDatePicker" @click.stop
-                          class="absolute top-full left-0 mt-2 z-[100] w-72 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/10 border border-white/50 overflow-hidden">
-                        <div class="p-4">
+                   <Teleport to="body">
+                     <Transition name="dropdown">
+                       <div v-if="showDatePicker" @click.stop
+                            ref="datePickerRef"
+                            :style="datePickerStyle"
+                            class="w-72 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/10 border border-white/50 overflow-visible">
+                          <div class="p-4">
                            <!-- 头部 -->
                            <div class="flex items-center justify-between mb-4">
                               <button @click.stop="pickerView === 'year' ? prevYearRange() : (pickerView === 'month' ? (currentYear--, yearRangeStart = Math.floor(currentYear / 12) * 12) : prevMonth())" 
@@ -384,14 +444,15 @@ const getGenderLabel = (value) => {
                               取消
                            </button>
                         </div>
-                     </div>
-                   </Transition>
+                       </div>
+                     </Transition>
+                   </Teleport>
                 </div>
                 
                 <!-- 自定义性别选择器 -->
                 <div class="space-y-1.5 relative" data-gender-picker>
                    <label id="label-gender" class="text-xs font-bold text-shuimo/60">性别</label>
-                   <div @click.stop="isEditing && (showGenderPicker = !showGenderPicker)"
+                   <div @click.stop="toggleGenderPicker"
                         id="profile-gender-picker"
                         aria-labelledby="label-gender"
                         role="button"
@@ -405,10 +466,12 @@ const getGenderLabel = (value) => {
                    </div>
                    
                    <!-- 性别选择弹窗 -->
-                   <Transition name="dropdown">
-                     <div v-if="showGenderPicker && isEditing" @click.stop
-                          class="absolute top-full left-0 mt-2 z-[100] w-full bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/10 border border-white/50 overflow-hidden">
-                        <div class="p-2">
+                   <Teleport to="body">
+                     <Transition name="dropdown">
+                       <div v-if="showGenderPicker && isEditing" @click.stop
+                            :style="genderPickerStyle"
+                            class="gender-popup bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/10 border border-white/50 overflow-hidden">
+                          <div class="p-2">
                            <button v-for="opt in genderOptions" :key="opt.value"
                                    @click.stop="selectGender(opt.value)"
                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200"
@@ -420,6 +483,7 @@ const getGenderLabel = (value) => {
                         </div>
                      </div>
                    </Transition>
+                 </Teleport>
                 </div>
                 
                 <div class="space-y-1.5">

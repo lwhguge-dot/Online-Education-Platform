@@ -265,7 +265,18 @@ const request = async <T = any>(url: string, options: RequestOptions = {}): Prom
 
   try {
     const response = await fetch(`${API_BASE}${url}`, config)
-    const data: Result<T> = await response.json()
+    let data: Result<T>
+    const rawText = await response.text()
+    if (!rawText) {
+      const normalizedCode = response.status === 204 ? 200 : response.status
+      data = { code: normalizedCode, message: response.statusText || '', data: null as any }
+    } else {
+      try {
+        data = JSON.parse(rawText) as Result<T>
+      } catch {
+        data = { code: response.status, message: '响应解析失败', data: null as any }
+      }
+    }
 
     // 仅对明确的认证失败触发强制登出；普通权限不足(403)保留在当前页并提示
     const isUnauthorized = response.status === 401 || data.code === 401
@@ -383,7 +394,8 @@ const sendHeartbeat = async (): Promise<void> => {
       }
     })
 
-    const result: Result = await response.json()
+    const rawText = await response.text()
+    const result: Result = rawText ? JSON.parse(rawText) : { code: response.status, message: response.statusText || '', data: null }
 
     if (result.code === 200) {
       heartbeatFailCount = 0 // 重置失败计数
@@ -1273,6 +1285,11 @@ export const chapterCommentAPI = {
   getChapterComments: (chapterId, params = {}) => {
     const query = new URLSearchParams(params).toString();
     return request(`/comments/chapter/${chapterId}?${query}`);
+  },
+  // 获取学生在章节评论区的提问列表（学生中心）
+  getStudentQuestions: (studentId = null) => {
+    const resolvedStudentId = resolveUserId(studentId, '学生')
+    return request(`/comments/chapter/student/${resolvedStudentId}/questions`)
   },
   // 发表评论
   createComment: (data) =>

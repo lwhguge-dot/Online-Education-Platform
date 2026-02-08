@@ -24,6 +24,11 @@ const props = defineProps({
     type: String,
     default: 'md', // sm, md, lg
     validator: (v) => ['sm', 'md', 'lg'].includes(v)
+  },
+  align: {
+    type: String,
+    default: 'left', // left, right
+    validator: (v) => ['left', 'right'].includes(v)
   }
 })
 
@@ -90,10 +95,16 @@ const updateDropdownPosition = () => {
   dropdownStyle.value = {
     position: 'fixed',
     top: `${Math.max(10, top)}px`,
-    left: `${rect.left}px`,
     width: `${rect.width}px`,
     maxHeight: `${maxHeight}px`,
     zIndex: 9999
+  }
+
+  if (props.align === 'right') {
+    dropdownStyle.value.right = `${document.documentElement.clientWidth - rect.right}px`
+    dropdownStyle.value.left = 'auto'
+  } else {
+    dropdownStyle.value.left = `${rect.left}px`
   }
 }
 
@@ -188,7 +199,7 @@ onUnmounted(() => {
             :key="option.value"
             @click="selectOption(option)"
             :class="[
-              'flex items-center justify-between px-3 py-2 mx-1.5 rounded-lg cursor-pointer transition-all duration-150',
+              'flex items-center justify-between px-3 py-2 cursor-pointer transition-all duration-150',
               option.value === modelValue
                 ? 'bg-danqing/10 text-danqing font-medium'
                 : 'text-shuimo hover:bg-slate-50'

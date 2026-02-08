@@ -126,6 +126,10 @@ const isExpanded = (questionId) => {
 }
 
 const openAskModal = () => {
+  if (!props.enrolledCourses || props.enrolledCourses.length === 0) {
+    toast.warning('请先报名课程后再提问')
+    return
+  }
   newQuestion.value = { courseId: '', chapterId: '', courseName: '', chapterName: '', title: '', content: '', imageUrl: '' }
   imageFile.value = null
   imagePreview.value = ''
@@ -171,6 +175,18 @@ const removeImage = () => {
 
 // 上传图片并提交问题
 const submitQuestion = async () => {
+  if (!props.enrolledCourses || props.enrolledCourses.length === 0) {
+    toast.warning('请先报名课程后再提问')
+    return
+  }
+  if (!newQuestion.value.courseId) {
+    toast.warning('请选择关联课程')
+    return
+  }
+  if (!newQuestion.value.chapterId) {
+    toast.warning('请选择关联章节')
+    return
+  }
   if (!newQuestion.value.title || !newQuestion.value.content) {
     toast.warning('请填写问题标题和详情')
     return

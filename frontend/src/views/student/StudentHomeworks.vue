@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { FileText, Clock, CheckCircle, AlertCircle, ChevronRight, Filter, RotateCcw, AlertTriangle } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
 import BaseEmptyState from '../../components/ui/BaseEmptyState.vue'
+import BaseSelect from '../../components/ui/BaseSelect.vue'
 
 const props = defineProps({
   pendingHomeworks: {
@@ -29,6 +30,14 @@ const availableCourses = computed(() => {
   const allHomeworks = [...props.pendingHomeworks, ...props.completedHomeworks]
   const courses = [...new Set(allHomeworks.map(hw => hw.course).filter(Boolean))]
   return courses.sort()
+})
+
+// 格式化课程选项供 BaseSelect 使用
+const courseOptions = computed(() => {
+  return [
+    { value: 'all', label: '全部课程' },
+    ...availableCourses.value.map(course => ({ value: course, label: course }))
+  ]
 })
 
 // 作业紧急程度判断
@@ -165,13 +174,14 @@ const getCountdown = (daysLeft) => {
         <!-- 右侧：课程筛选 -->
         <div class="flex items-center gap-2">
           <Filter class="w-4 h-4 text-shuimo/40" />
-          <select 
-            v-model="courseFilter"
-            class="px-3 py-1.5 rounded-lg bg-slate-50 text-sm border-none focus:ring-2 focus:ring-zhizi/20 outline-none text-shuimo/70 cursor-pointer min-w-[120px]"
-          >
-            <option value="all">全部课程</option>
-            <option v-for="course in availableCourses" :key="course" :value="course">{{ course }}</option>
-          </select>
+          <div class="w-40">
+            <BaseSelect 
+              v-model="courseFilter"
+              :options="courseOptions"
+              size="sm"
+              align="right"
+            />
+          </div>
         </div>
       </div>
     </GlassCard>

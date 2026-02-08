@@ -6,7 +6,7 @@ import { useConfirmStore } from '../stores/confirm'
 import {
   startStatusCheck, stopStatusCheck,
   authAPI, courseAPI, enrollmentAPI, chapterAPI,
-  progressAPI, homeworkAPI, commentAPI, userAPI, statsAPI, badgeAPI
+  progressAPI, homeworkAPI, commentAPI, chapterCommentAPI, userAPI, statsAPI, badgeAPI
 } from '../services/api'
 import {
   GraduationCap, LayoutDashboard, BookOpen,
@@ -29,13 +29,22 @@ const toast = useToastStore()
 const confirmStore = useConfirmStore()
 
 // 布局状态
+const isMobile = ref(false)
 const sidebarOpen = ref(window.innerWidth >= 768)
 // 监听窗口大小变化
 const handleResize = () => {
-  if (window.innerWidth < 768) {
+  isMobile.value = window.innerWidth < 768
+  if (isMobile.value) {
     sidebarOpen.value = false
   } else {
     sidebarOpen.value = true
+  }
+}
+
+const handleMenuClick = (menuId) => {
+  activeMenu.value = menuId
+  if (isMobile.value) {
+    sidebarOpen.value = false
   }
 }
 
@@ -142,18 +151,23 @@ const scheduleSaveUserSettings = () => {
   settingsSaveTimer = setTimeout(async () => {
     try {
       await userAPI.updateSettings(userId, {
-        homeworkReminder: notificationSettings.value.homeworkReminder,
-        courseUpdate: notificationSettings.value.courseUpdate,
-        teacherReply: notificationSettings.value.teacherReply,
-        systemNotice: notificationSettings.value.systemNotice,
-        emailNotify: notificationSettings.value.emailNotify,
-        pushNotify: notificationSettings.value.pushNotify,
-        dailyGoalMinutes: studyGoal.value.dailyMinutes,
-        weeklyGoalChapters: studyGoal.value.weeklyHours
+        notificationSettings: {
+          homeworkReminder: notificationSettings.value.homeworkReminder,
+          courseUpdate: notificationSettings.value.courseUpdate,
+          teacherReply: notificationSettings.value.teacherReply,
+          systemNotice: notificationSettings.value.systemNotice,
+          emailNotify: notificationSettings.value.emailNotify,
+          pushNotify: notificationSettings.value.pushNotify,
+        },
+        studyGoal: {
+          dailyMinutes: studyGoal.value.dailyMinutes,
+          weeklyHours: studyGoal.value.weeklyHours
+        }
       })
 
       localStorage.setItem('notification_settings', JSON.stringify(notificationSettings.value))
       localStorage.setItem('study_goal', JSON.stringify(studyGoal.value))
+      dashboardStats.value.dailyGoalMinutes = studyGoal.value.dailyMinutes || 60
     } catch (e) {
       console.error('自动保存设置失败:', e)
       toast.error('设置保存失败，请稍后重试')
@@ -571,9 +585,10 @@ const loadQuestions = async () => {
   try {
     const studentId = authStore.user?.id
     if (!studentId) return
-    const [commentRes, homeworkRes] = await Promise.allSettled([
+    const [commentRes, homeworkRes, chapterCommentRes] = await Promise.allSettled([
       commentAPI.getStudentQuestions(studentId),
-      homeworkAPI.getStudentQuestions(studentId)
+      homeworkAPI.getStudentQuestions(studentId),
+      chapterCommentAPI.getStudentQuestions(studentId)
     ])
 
     const normalizeTime = (timeValue) => {
@@ -629,7 +644,23 @@ const loadQuestions = async () => {
           })
         : []
 
-    myQuestions.value = [...homeworkQuestions, ...commentQuestions].sort((a, b) => parseTime(b.time) - parseTime(a.time))
+    const chapterCommentQuestions =
+      chapterCommentRes.status === 'fulfilled' && chapterCommentRes.value?.code === 200 && Array.isArray(chapterCommentRes.value?.data)
+        ? chapterCommentRes.value.data.map(q => ({
+            id: `chapter-${q.id ?? Date.now()}`,
+            title: q.title || '章节提问',
+            content: q.content,
+            courseName: q.courseName,
+            chapterName: q.chapterName,
+            time: normalizeTime(q.time || q.createdAt),
+            commentCount: Number(q.commentCount || 0),
+            hasReply: Boolean(q.hasReply),
+            replies: q.replies
+          }))
+        : []
+
+    myQuestions.value = [...homeworkQuestions, ...commentQuestions, ...chapterCommentQuestions]
+      .sort((a, b) => parseTime(b.time) - parseTime(a.time))
   } catch (e) {
     console.error('加载我的提问失败:', e)
   }
@@ -645,16 +676,24 @@ const loadUserSettings = async () => {
     const res = await userAPI.getSettings(userId)
     if (res.data) {
       const settings = res.data
-      // 更新通知设置
-      if (settings.homeworkReminder !== undefined) notificationSettings.value.homeworkReminder = settings.homeworkReminder
-      if (settings.courseUpdate !== undefined) notificationSettings.value.courseUpdate = settings.courseUpdate
-      if (settings.teacherReply !== undefined) notificationSettings.value.teacherReply = settings.teacherReply
-      if (settings.systemNotice !== undefined) notificationSettings.value.systemNotice = settings.systemNotice
-      if (settings.emailNotify !== undefined) notificationSettings.value.emailNotify = settings.emailNotify
-      if (settings.pushNotify !== undefined) notificationSettings.value.pushNotify = settings.pushNotify
-      // 更新学习目标
-      if (settings.dailyGoalMinutes) studyGoal.value.dailyMinutes = settings.dailyGoalMinutes
-      if (settings.weeklyGoalChapters) studyGoal.value.weeklyHours = settings.weeklyGoalChapters
+      // 更新通知设置（优先使用嵌套结构；兼容历史扁平字段）
+      const ns = settings.notificationSettings || settings
+      if (ns.homeworkReminder !== undefined) notificationSettings.value.homeworkReminder = ns.homeworkReminder
+      if (ns.courseUpdate !== undefined) notificationSettings.value.courseUpdate = ns.courseUpdate
+      if (ns.teacherReply !== undefined) notificationSettings.value.teacherReply = ns.teacherReply
+      if (ns.systemNotice !== undefined) notificationSettings.value.systemNotice = ns.systemNotice
+      if (ns.emailNotify !== undefined) notificationSettings.value.emailNotify = ns.emailNotify
+      if (ns.pushNotify !== undefined) notificationSettings.value.pushNotify = ns.pushNotify
+
+      // 更新学习目标（优先使用嵌套结构；兼容历史扁平字段）
+      const sg = settings.studyGoal || {}
+      const dailyMinutes = sg.dailyMinutes ?? settings.dailyGoalMinutes
+      const weeklyHours = sg.weeklyHours ?? settings.weeklyGoalChapters
+      if (dailyMinutes !== undefined && dailyMinutes !== null) studyGoal.value.dailyMinutes = dailyMinutes
+      if (weeklyHours !== undefined && weeklyHours !== null) studyGoal.value.weeklyHours = weeklyHours
+      if (studyGoal.value.dailyMinutes) {
+        dashboardStats.value.dailyGoalMinutes = studyGoal.value.dailyMinutes
+      }
     }
   } catch (e) {
     console.error('加载用户设置失败:', e)
@@ -663,7 +702,12 @@ const loadUserSettings = async () => {
       const savedNotifications = localStorage.getItem('notification_settings')
       const savedGoal = localStorage.getItem('study_goal')
       if (savedNotifications) Object.assign(notificationSettings.value, JSON.parse(savedNotifications))
-      if (savedGoal) Object.assign(studyGoal.value, JSON.parse(savedGoal))
+      if (savedGoal) {
+        Object.assign(studyGoal.value, JSON.parse(savedGoal))
+        if (studyGoal.value.dailyMinutes) {
+          dashboardStats.value.dailyGoalMinutes = studyGoal.value.dailyMinutes
+        }
+      }
     } catch(e) {
       console.warn('本地设置缓存解析失败:', e)
     }
@@ -683,6 +727,8 @@ const refreshAll = async () => {
         loadQuestions(),
         loadUserSettings()
       ])
+      // 学习目标以个人设置为准（避免与统计接口的默认值竞争覆盖）
+      dashboardStats.value.dailyGoalMinutes = studyGoal.value.dailyMinutes || dashboardStats.value.dailyGoalMinutes || 60
 
       // 第二阶段：依赖已报名课程的数据
       await Promise.all([
@@ -728,18 +774,31 @@ const handleSubmitQuestion = async (q) => {
        toast.error('用户未登录')
        return
      }
-     
-     // 调用后端API保存问题
-     // 如果关联了章节，使用章节ID作为questionId
-     const questionId = q.chapterId || 0
-     const res = await commentAPI.publishAnswer(questionId, q.content, studentId)
-     
-     if (res.code === 200) {
-       // 添加到本地列表
+
+     if (!q.courseId || !q.chapterId) {
+       toast.warning('请选择关联课程与章节后再提问')
+       return
+     }
+
+     const enrolled = enrolledCourses.value.some(c => String(c.id) === String(q.courseId))
+     if (!enrolled) {
+       toast.warning('请先报名该课程后再提问')
+       return
+     }
+
+     const mergedContent = q.title ? `【${q.title}】\n${q.content}` : q.content
+     const res = await chapterCommentAPI.createComment({
+       courseId: Number(q.courseId),
+       chapterId: Number(q.chapterId),
+       content: mergedContent,
+       parentId: null
+     })
+
+     if (res.code === 200 && res.data) {
        myQuestions.value.unshift({
-         id: res.data?.id || Date.now(),
-         title: q.title,
-         content: q.content,
+         id: `chapter-${res.data.id ?? Date.now()}`,
+         title: q.title || '章节提问',
+         content: mergedContent,
          courseName: q.courseName,
          chapterName: q.chapterName,
          time: new Date().toLocaleString(),
@@ -791,15 +850,20 @@ const handleSaveProfile = async (newProfile) => {
        // 保存用户设置到数据库
        try {
          await userAPI.updateSettings(userId, {
-           homeworkReminder: notificationSettings.value.homeworkReminder,
-           courseUpdate: notificationSettings.value.courseUpdate,
-           teacherReply: notificationSettings.value.teacherReply,
-           systemNotice: notificationSettings.value.systemNotice,
-           emailNotify: notificationSettings.value.emailNotify,
-           pushNotify: notificationSettings.value.pushNotify,
-           dailyGoalMinutes: studyGoal.value.dailyMinutes,
-           weeklyGoalChapters: studyGoal.value.weeklyHours
+          notificationSettings: {
+            homeworkReminder: notificationSettings.value.homeworkReminder,
+            courseUpdate: notificationSettings.value.courseUpdate,
+            teacherReply: notificationSettings.value.teacherReply,
+            systemNotice: notificationSettings.value.systemNotice,
+            emailNotify: notificationSettings.value.emailNotify,
+            pushNotify: notificationSettings.value.pushNotify,
+          },
+          studyGoal: {
+            dailyMinutes: studyGoal.value.dailyMinutes,
+            weeklyHours: studyGoal.value.weeklyHours
+          }
          })
+         dashboardStats.value.dailyGoalMinutes = studyGoal.value.dailyMinutes || 60
        } catch (settingsErr) {
          console.error('保存设置失败:', settingsErr)
        }
@@ -966,7 +1030,7 @@ const handleLogout = async () => {
         <button
           v-for="item in menuItems"
           :key="item.id"
-          @click="{ activeMenu = item.id; if(window.innerWidth < 768) sidebarOpen = false }"
+          @click="handleMenuClick(item.id)"
           class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden"
           :class="activeMenu === item.id 
             ? 'bg-gradient-to-r from-qinghua to-halanzi text-white shadow-lg shadow-qinghua/30' 
@@ -1078,7 +1142,8 @@ const handleLogout = async () => {
                 weeklyChange: dashboardStats.weeklyChange
               } : {}),
               ...(activeMenu === 'questions' ? {
-                questions: myQuestions
+                questions: myQuestions,
+                enrolledCourses: enrolledCourses
               } : {}),
               ...(activeMenu === 'settings' ? {
                 profile: studentProfile,

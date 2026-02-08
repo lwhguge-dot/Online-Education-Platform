@@ -315,6 +315,18 @@ public class UserController {
     }
 
     /**
+     * 兼容性接口：部分客户端不便发起 PUT 时使用 POST 更新设置。
+     */
+    @PostMapping("/{id}/settings")
+    public Result<UserSettingsDTO> updateUserSettingsByPost(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdStr,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
+            @RequestBody UserSettingsDTO settings) {
+        return updateUserSettings(id, currentUserIdStr, currentUserRole, settings);
+    }
+
+    /**
      * 查询指定用户的登录会话历史
      * 展示近期的登录地点、登录时间及其当前的在线状态（基于 jti）。
      */

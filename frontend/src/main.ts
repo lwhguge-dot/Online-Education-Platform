@@ -11,7 +11,11 @@ const app = createApp(App)
 const pinia = createPinia()
 
 // 初始化 Sentry（在其他插件之前）
-if (import.meta.env.VITE_SENTRY_DSN) {
+const sentryEnabled = Boolean(import.meta.env.VITE_SENTRY_DSN) && (
+  import.meta.env.MODE === 'production' || import.meta.env.VITE_SENTRY_ENABLE_IN_DEV === 'true'
+)
+
+if (sentryEnabled) {
   Sentry.init({
     app,
     dsn: import.meta.env.VITE_SENTRY_DSN,

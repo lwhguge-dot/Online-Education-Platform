@@ -134,4 +134,29 @@ public interface ChapterCommentMapper extends BaseMapper<ChapterComment> {
      */
     @Select("SELECT id FROM chapter_comments WHERE user_id = #{userId}")
     List<Long> findIdsByUserId(@Param("userId") Long userId);
+
+    /**
+     * 获取学生发表的顶级提问（用于学生中心“我的提问”）。
+     * 说明：仅查询 parent_id 为空的主评论，并补齐课程/章节标题。
+     */
+    @Select("""
+        SELECT
+          c.id,
+          c.course_id,
+          c.chapter_id,
+          c.content,
+          c.reply_count,
+          c.created_at,
+          co.title AS course_title,
+          ch.title AS chapter_title
+        FROM chapter_comments c
+        LEFT JOIN courses co ON co.id = c.course_id
+        LEFT JOIN chapters ch ON ch.id = c.chapter_id
+        WHERE c.user_id = #{userId}
+          AND c.status = 1
+          AND c.parent_id IS NULL
+        ORDER BY c.created_at DESC
+        LIMIT #{limit}
+    """)
+    List<Map<String, Object>> findStudentTopLevelQuestions(@Param("userId") Long userId, @Param("limit") int limit);
 }
