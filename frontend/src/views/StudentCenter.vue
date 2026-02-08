@@ -29,7 +29,16 @@ const toast = useToastStore()
 const confirmStore = useConfirmStore()
 
 // 布局状态
-const sidebarOpen = ref(true)
+const sidebarOpen = ref(window.innerWidth >= 768)
+// 监听窗口大小变化
+const handleResize = () => {
+  if (window.innerWidth < 768) {
+    sidebarOpen.value = false
+  } else {
+    sidebarOpen.value = true
+  }
+}
+
 // 优先从URL hash读取，其次从sessionStorage，最后默认dashboard
 const getInitialMenu = () => {
   const hash = window.location.hash.replace('#', '')
@@ -859,6 +868,8 @@ onMounted(async () => {
    
    // 监听hash变化
    window.addEventListener('hashchange', handleHashChange)
+   // 监听窗口大小变化
+   window.addEventListener('resize', handleResize)
    // 初始化时也检查一次hash
    handleHashChange()
    
@@ -903,6 +914,7 @@ onUnmounted(() => {
    stopStatusCheck()
    // 移除hash变化监听
    window.removeEventListener('hashchange', handleHashChange)
+   window.removeEventListener('resize', handleResize)
    // sessionStorage已通过watch实时保存，无需在此处理
    if (settingsSaveTimer) {
      clearTimeout(settingsSaveTimer)
@@ -925,10 +937,21 @@ const handleLogout = async () => {
 
 <template>
   <div class="min-h-screen flex transition-colors duration-300">
+    <!-- Mobile Backdrop -->
+    <div 
+      v-if="sidebarOpen" 
+      class="fixed inset-0 bg-shuimo/20 backdrop-blur-sm z-40 md:hidden"
+      @click="sidebarOpen = false"
+      aria-hidden="true"
+    ></div>
+
     <!-- Sidebar -->
     <aside 
       class="fixed top-0 left-0 h-full bg-white/80 backdrop-blur-xl border-r border-slate-200/60 z-50 transition-all duration-300 flex flex-col"
-      :class="sidebarOpen ? 'w-64' : 'w-20'"
+      :class="[
+        sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0 md:w-20',
+        'w-64'
+      ]"
     >
       <div class="h-20 flex items-center px-6 border-b border-slate-100/50">
         <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-qinghua to-halanzi flex items-center justify-center shrink-0 shadow-lg shadow-qinghua/20">
@@ -943,7 +966,7 @@ const handleLogout = async () => {
         <button
           v-for="item in menuItems"
           :key="item.id"
-          @click="activeMenu = item.id"
+          @click="{ activeMenu = item.id; if(window.innerWidth < 768) sidebarOpen = false }"
           class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden"
           :class="activeMenu === item.id 
             ? 'bg-gradient-to-r from-qinghua to-halanzi text-white shadow-lg shadow-qinghua/30' 
@@ -970,7 +993,7 @@ const handleLogout = async () => {
     <!-- Main Content -->
     <main 
       class="flex-1 transition-all duration-300 min-h-screen flex flex-col"
-      :class="sidebarOpen ? 'ml-64' : 'ml-20'"
+      :class="sidebarOpen ? 'md:ml-64' : 'md:ml-20'"
     >
       <!-- Header -->
       <header class="sticky top-0 z-40 bg-white/70 backdrop-blur-md border-b border-slate-200/50 px-6 h-20 flex items-center justify-between">
@@ -1025,6 +1048,7 @@ const handleLogout = async () => {
               }[activeMenu]"
             
             v-bind="{
+              loading: loading,
               ...(activeMenu === 'dashboard' ? {
                 stats: dashboardStats,
                 urgentHomeworks: urgentHomeworks,

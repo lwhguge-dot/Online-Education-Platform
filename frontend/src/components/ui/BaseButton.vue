@@ -94,11 +94,12 @@ const computedClasses = computed(() => {
     :type="type" 
     :class="computedClasses"
     :disabled="disabled || loading"
+    :aria-busy="loading"
     v-bind="$attrs"
   >
     <!-- Ripple effect placeholder (can be implemented with directive) -->
     
-    <span v-if="loading" class="mr-2 animate-spin">
+    <span v-if="loading" class="mr-2 animate-spin" aria-hidden="true">
       <Loader2 class="w-4 h-4" />
     </span>
     <span :class="['flex items-center justify-center gap-2', { 'opacity-0': loading && !block }]">
@@ -106,7 +107,7 @@ const computedClasses = computed(() => {
     </span>
     
     <!-- Absolute centered loader for block buttons -->
-    <div v-if="loading && block" class="absolute inset-0 flex items-center justify-center">
+    <div v-if="loading && block" class="absolute inset-0 flex items-center justify-center" aria-hidden="true">
       <Loader2 class="w-5 h-5 animate-spin" />
     </div>
   </button>

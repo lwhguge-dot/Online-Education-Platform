@@ -7,16 +7,16 @@
 /* ===== CSS 变量定义 ===== */
 :root {
   /* 亮色模式变量 */
-  --color-bg-primary: #f8fafb;
-  --color-bg-secondary: #ffffff;
-  --color-bg-tertiary: #f1f5f9;
+  --color-bg-primary: theme('colors.slate.50'); /* #f8fafb replaced with slate-50 */
+  --color-bg-secondary: theme('colors.white');
+  --color-bg-tertiary: theme('colors.slate.100');
   --color-bg-glass: rgba(255, 255, 255, 0.65);
   --color-bg-glass-hover: rgba(255, 255, 255, 0.85);
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #50616d;
-  --color-text-muted: #94a3b8;
-  --color-border: rgba(203, 213, 225, 0.8);
-  --color-border-light: rgba(241, 245, 249, 0.8);
+  --color-text-primary: theme('colors.slate.900'); /* #0f172a */
+  --color-text-secondary: theme('colors.shuimo'); /* #50616d */
+  --color-text-muted: theme('colors.slate.400'); /* #94a3b8 */
+  --color-border: theme('colors.slate.300');
+  --color-border-light: theme('colors.slate.100');
   --color-shadow: rgba(0, 0, 0, 0.1);
   --color-shadow-light: rgba(0, 0, 0, 0.05);
 
@@ -34,16 +34,16 @@
 
 /* ===== 暗黑模式变量 ===== */
 .dark {
-  --color-bg-primary: #0f172a;
-  --color-bg-secondary: #1e293b;
-  --color-bg-tertiary: #334155;
+  --color-bg-primary: theme('colors.slate.900');
+  --color-bg-secondary: theme('colors.slate.800');
+  --color-bg-tertiary: theme('colors.slate.700');
   --color-bg-glass: rgba(30, 41, 59, 0.8);
   --color-bg-glass-hover: rgba(51, 65, 85, 0.9);
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #cbd5e1;
-  --color-text-muted: #64748b;
-  --color-border: rgba(71, 85, 105, 0.8);
-  --color-border-light: rgba(51, 65, 85, 0.8);
+  --color-text-primary: theme('colors.slate.100');
+  --color-text-secondary: theme('colors.slate.300');
+  --color-text-muted: theme('colors.slate.500');
+  --color-border: theme('colors.slate.600');
+  --color-border-light: theme('colors.slate.700');
   --color-shadow: rgba(0, 0, 0, 0.3);
   --color-shadow-light: rgba(0, 0, 0, 0.2);
 
@@ -52,8 +52,8 @@
 
 /* 暗黑模式 body 样式 */
 .dark body {
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  color: #e2e8f0;
+  background: linear-gradient(135deg, theme('colors.slate.900') 0%, theme('colors.slate.800') 100%);
+  color: theme('colors.slate.200');
 }
 
 /* 暗黑模式下的标题颜色 */
@@ -63,7 +63,7 @@
 .dark h4,
 .dark h5,
 .dark h6 {
-  color: #f1f5f9;
+  color: theme('colors.slate.100');
 }
 
 /* 暗黑模式下的玻璃卡片 */
@@ -249,6 +249,15 @@ h6 {
 
 /* ===== 核心动画定义 ===== */
 
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @keyframes scale-in {
   0% {
     opacity: 0;
@@ -265,6 +274,7 @@ h6 {
 
 .animate-scale-in {
   animation: scale-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes slide-up {
@@ -281,6 +291,7 @@ h6 {
 
 .animate-slide-up {
   animation: slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes slide-down {
@@ -297,6 +308,7 @@ h6 {
 
 .animate-slide-down {
   animation: slide-down 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes fade-in {
@@ -311,6 +323,7 @@ h6 {
 
 .animate-fade-in {
   animation: fade-in 0.4s ease-out forwards;
+  will-change: opacity;
 }
 
 

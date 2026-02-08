@@ -49,8 +49,14 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="modelValue" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-[2px]" @click="onMaskClick"></div>
+      <div 
+        v-if="modelValue" 
+        class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        :aria-labelledby="title ? 'modal-title' : undefined"
+      >
+        <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-[2px]" @click="onMaskClick" aria-hidden="true"></div>
 
         <div
           :class="['relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full overflow-hidden animate-scale-in border border-white/20', maxWidthClass]"
@@ -59,13 +65,14 @@ onBeforeUnmount(() => {
             <div v-if="slots.header || title" class="p-6 border-b border-slate-100 flex items-center justify-between gap-4 shrink-0">
               <div class="min-w-0 flex-1">
                 <slot name="header">
-                  <h3 class="font-bold text-lg text-shuimo truncate">{{ title }}</h3>
+                  <h3 id="modal-title" class="font-bold text-lg text-shuimo truncate">{{ title }}</h3>
                 </slot>
               </div>
               <button
                 v-if="showClose"
                 @click="close"
                 class="p-2 rounded-lg hover:bg-slate-100 text-shuimo/40 hover:text-shuimo transition-colors"
+                aria-label="关闭弹窗"
               >
                 <X class="w-5 h-5" />
               </button>

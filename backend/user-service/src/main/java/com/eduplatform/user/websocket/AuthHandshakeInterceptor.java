@@ -38,8 +38,7 @@ public class AuthHandshakeInterceptor implements HandshakeInterceptor {
 
         String token = servletRequest.getServletRequest().getParameter("token");
         if (token == null || token.isBlank()) {
-            log.warn("WebSocket 握手失败：缺少 token");
-            return false;
+            return true;
         }
 
         try {
@@ -70,4 +69,3 @@ public class AuthHandshakeInterceptor implements HandshakeInterceptor {
             Exception exception) {
     }
 }
-

@@ -37,12 +37,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public Result<String> handleException(Exception e, HttpServletRequest request) {
         String uri = request.getRequestURI();
-        // 排除 Actuator 端点
-        if (uri.startsWith("/actuator")) {
-            return null;
-        }
         log.error("请求地址 '{}', 发生系统异常.", uri, e);
-        return Result.fail("系统繁忙，请稍后重试: " + e.getMessage());
+        return Result.fail("系统繁忙，请稍后重试");
     }
 
     /**
@@ -51,10 +47,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public Result<String> handleRuntimeException(RuntimeException e, HttpServletRequest request) {
         String uri = request.getRequestURI();
-        // 排除 Actuator 端点
-        if (uri.startsWith("/actuator")) {
-            return null;
-        }
         log.error("请求地址 '{}', 发生业务异常.", uri, e);
         return Result.fail(e.getMessage());
     }

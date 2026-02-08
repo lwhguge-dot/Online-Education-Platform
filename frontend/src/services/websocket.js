@@ -27,15 +27,14 @@ export const connectWebSocket = (userId) => {
   }
 
   try {
-    const wsUrl = `${WS_BASE}?token=${encodeURIComponent(token)}`;
-    ws = new WebSocket(wsUrl);
+    ws = new WebSocket(WS_BASE);
 
     ws.onopen = () => {
       console.log('WebSocket 连接成功');
 
       ws.send(JSON.stringify({
-        type: 'REGISTER',
-        userId: userId,
+        type: 'AUTH',
+        token,
       }));
 
       startHeartbeat();
@@ -108,8 +107,12 @@ const handleMessage = (data) => {
     case 'NOTIFICATION':
       listeners.onNotification.forEach(fn => fn(data));
       break;
-    case 'REGISTERED':
-      console.log('WebSocket 注册成功');
+    case 'AUTH_OK':
+      console.log('WebSocket 认证成功');
+      break;
+    case 'AUTH_FAILED':
+      console.warn('WebSocket 认证失败');
+      disconnectWebSocket();
       break;
     case 'PONG':
       break;

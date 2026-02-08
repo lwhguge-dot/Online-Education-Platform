@@ -17,7 +17,11 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import javax.crypto.SecretKey;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,6 +41,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     private static final String HEADER_USER_ID = "X-User-Id";
     private static final String HEADER_USER_NAME = "X-User-Name";
     private static final String HEADER_USER_ROLE = "X-User-Role";
+    private static final String HEADER_USER_TS = "X-User-Ts";
+    private static final String HEADER_USER_SIGNATURE = "X-User-Signature";
 
     /**
      * 白名单接口：无需登录即可访问。
@@ -82,10 +88,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         // WebSocket 握手请求校验 token 参数，后续由 user-service 二次校验并绑定身份。
         if (path.startsWith("/ws/")) {
             String token = exchange.getRequest().getQueryParams().getFirst("token");
-            if (!StringUtils.hasText(token)) {
-                return writeError(exchange, HttpStatus.UNAUTHORIZED, 401, "WebSocket 鉴权失败：缺少 token");
-            }
-            if (!validateToken(token)) {
+            if (StringUtils.hasText(token) && !validateToken(token)) {
                 return writeError(exchange, HttpStatus.UNAUTHORIZED, 401, "WebSocket 鉴权失败：token 无效");
             }
             return chain.filter(exchange);
@@ -116,14 +119,26 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         String userId = String.valueOf(userIdObj);
 
         // 构造可信请求头：先移除同名头，避免被客户端伪造；再注入网关解析结果。
+        if (!StringUtils.hasText(internalToken)) {
+            log.error("网关未配置 security.internal-token，无法生成可信身份签名头");
+            return writeError(exchange, HttpStatus.INTERNAL_SERVER_ERROR, 500, "网关内部配置错误");
+        }
+
+        long ts = Instant.now().getEpochSecond();
+        String signature = signUserHeaders(internalToken, userId, username, role, ts);
         ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
                 .headers(headers -> {
+                    headers.remove(HEADER_INTERNAL_TOKEN);
                     headers.remove(HEADER_USER_ID);
                     headers.remove(HEADER_USER_NAME);
                     headers.remove(HEADER_USER_ROLE);
+                    headers.remove(HEADER_USER_TS);
+                    headers.remove(HEADER_USER_SIGNATURE);
                     headers.add(HEADER_USER_ID, userId);
                     headers.add(HEADER_USER_NAME, username);
                     headers.add(HEADER_USER_ROLE, role);
+                    headers.add(HEADER_USER_TS, String.valueOf(ts));
+                    headers.add(HEADER_USER_SIGNATURE, signature);
                 })
                 .build();
 
@@ -176,6 +191,19 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
+    private String signUserHeaders(String secret, String userId, String username, String role, long ts) {
+        String payload = userId + "|" + username + "|" + role + "|" + ts;
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] digest = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
+        } catch (Exception e) {
+            log.error("网关生成身份签名失败", e);
+            return "";
+        }
+    }
+
     /**
      * 统一输出错误响应，前端可按 code/message 解析。
      */
@@ -203,4 +231,3 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         return Ordered.HIGHEST_PRECEDENCE + 10;
     }
 }
-

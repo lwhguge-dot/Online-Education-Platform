@@ -9,8 +9,13 @@ import {
 import GlassCard from '../../components/ui/GlassCard.vue'
 import DailyGoalProgress from '../../components/student/DailyGoalProgress.vue'
 import UrgentHomeworkBanner from '../../components/student/UrgentHomeworkBanner.vue'
+import SkeletonDashboard from '../../components/ui/SkeletonDashboard.vue'
 
 const props = defineProps({
+  loading: {
+    type: Boolean,
+    default: false
+  },
   stats: {
     type: Object,
     required: true,
@@ -91,7 +96,8 @@ const displayName = computed(() => props.username || '同学')
 </script>
 
 <template>
-  <div class="space-y-6 animate-fade-in">
+  <SkeletonDashboard v-if="loading" :stats-count="4" :show-charts="true" />
+  <div v-else class="space-y-6 animate-fade-in">
     <!-- 个性化问候区域 -->
     <div class="flex items-center justify-between animate-slide-up" style="animation-delay: 0s; animation-fill-mode: both;">
       <div class="flex items-center gap-4">
