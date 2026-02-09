@@ -44,7 +44,9 @@ if ($unstaged -eq 0 -and $staged -eq 0 -and $untracked -eq 0) {
   if ($unpushed -gt 0) {
     Write-Host (Z "[\u63d0\u793a] \u68c0\u6d4b\u5230\u6709 $unpushed \u4e2a\u672c\u5730\u63d0\u4ea4\u5c1a\u672a\u63a8\u9001\u3002")
     $retryPush = Read-Host (Z '\u662f\u5426\u5c1d\u8bd5\u91cd\u65b0\u63a8\u9001\uff1f[y/N]')
-    if ($retryPush.ToUpperInvariant() -eq "Y") {
+    # 兼容非交互场景：Read-Host 可能返回 $null，需先做空值保护
+    $retryPushText = if ($null -eq $retryPush) { '' } else { $retryPush.ToString() }
+    if ($retryPushText.Trim().ToUpperInvariant() -eq "Y") {
         Write-Host ""
         Write-Host (Z '[6/7] \u6b63\u5728\u91cd\u8bd5\u63a8\u9001...')
         git push
