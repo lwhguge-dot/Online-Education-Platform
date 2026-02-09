@@ -2,7 +2,7 @@
 -- 智慧课堂在线教育平台 - 数据库表结构
 -- 数据库: PostgreSQL 15+
 -- 字符集: UTF-8
--- 表数量: 30张
+-- 表数量: 29张
 -- 默认数据库账号密码: postgres / 123456
 -- 最后更新时间: 2026-02-08
 -- =====================================================
@@ -149,7 +149,7 @@ COMMENT ON COLUMN subjects.sort_order IS '排序';
 COMMENT ON COLUMN subjects.status IS '状态';
 
 CREATE INDEX idx_subjects_code ON subjects(code);
--- 学科初始数据
+-- 学科初始化数据
 INSERT INTO subjects (name, code, category, icon, color, sort_order)
 VALUES ('语文', 'chinese', 'main', 'book', '#e74c3c', 1),
     ('数学', 'math', 'main', 'calculator', '#3498db', 2),
@@ -320,6 +320,7 @@ CREATE TABLE IF NOT EXISTS homeworks (
     id BIGSERIAL PRIMARY KEY,
     course_id BIGINT DEFAULT NULL,
     chapter_id BIGINT DEFAULT NULL,
+    teacher_id BIGINT DEFAULT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT DEFAULT NULL,
     homework_type VARCHAR(50) DEFAULT 'objective',
@@ -332,6 +333,7 @@ CREATE TABLE IF NOT EXISTS homeworks (
 COMMENT ON TABLE homeworks IS '作业表';
 COMMENT ON COLUMN homeworks.course_id IS '课程ID';
 COMMENT ON COLUMN homeworks.chapter_id IS '章节ID';
+COMMENT ON COLUMN homeworks.teacher_id IS '教师ID';
 COMMENT ON COLUMN homeworks.title IS '作业标题';
 COMMENT ON COLUMN homeworks.description IS '作业描述';
 COMMENT ON COLUMN homeworks.homework_type IS '作业类型：objective/subjective/mixed';
@@ -341,6 +343,12 @@ COMMENT ON COLUMN homeworks.test_type IS '测试类型：chapter/final';
 
 CREATE INDEX idx_homeworks_course ON homeworks(course_id);
 CREATE INDEX idx_homeworks_chapter ON homeworks(chapter_id);
+CREATE INDEX idx_homeworks_teacher ON homeworks(teacher_id);
+
+ALTER TABLE IF EXISTS homeworks
+    ADD COLUMN IF NOT EXISTS teacher_id BIGINT DEFAULT NULL;
+
+-- 历史兼容迁移（幂等）：如旧库缺少 teacher_id 字段，则自动补齐
 -- 作业题目表
 CREATE TABLE IF NOT EXISTS homework_questions (
     id BIGSERIAL PRIMARY KEY,
@@ -552,7 +560,7 @@ COMMENT ON COLUMN badges.description IS '徽章描述';
 COMMENT ON COLUMN badges.icon IS '图标';
 COMMENT ON COLUMN badges.condition_type IS '获取条件类型';
 COMMENT ON COLUMN badges.condition_value IS '条件值';
--- 徽章初始数据
+-- 徽章初始化数据
 INSERT INTO badges (name, description, icon, condition_type, condition_value)
 VALUES ('学习新手', '完成第一个章节学习', 'star', 'chapter_complete', 1),
     ('勤奋学员', '累计学习7天', 'fire', 'study_days', 7),
@@ -816,7 +824,7 @@ CREATE INDEX idx_muted_users_course ON muted_users(course_id);
 CREATE INDEX idx_muted_users_status ON muted_users(status);
 
 -- muted_users 历史兼容迁移（幂等）
--- 兼容说明：适配旧版本仅包含 operator_id/mute_until 的表结构
+-- 迁移说明：适配旧版仅包含 operator_id/mute_until 的表结构
 ALTER TABLE IF EXISTS muted_users
     ADD COLUMN IF NOT EXISTS muted_by BIGINT,
     ADD COLUMN IF NOT EXISTS muted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -855,7 +863,7 @@ COMMENT ON COLUMN blocked_words.created_at IS '创建时间';
 
 CREATE INDEX idx_blocked_words_scope ON blocked_words(scope);
 CREATE INDEX idx_blocked_words_course ON blocked_words(course_id);
--- 屏蔽词初始数据
+-- 屏蔽词初始化数据
 INSERT INTO blocked_words (word, scope)
 VALUES ('广告', 'global'),
     ('代写', 'global'),
