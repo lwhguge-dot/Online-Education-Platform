@@ -11,6 +11,8 @@ const props = defineProps({
   settings: { type: Object, default: () => ({}) }
 })
 
+const emit = defineEmits(['save-profile', 'update:profile', 'update:settings'])
+
 const toast = useToastStore()
 const isEditing = ref(false)
 const avatarInput = ref(null)
@@ -70,6 +72,8 @@ const handleSave = async () => {
     if (res.code === 200) {
       toast.success('保存成功')
       isEditing.value = false
+      // 通知父组件重新拉取服务端数据，确保页面状态与持久化一致
+      emit('save-profile')
     } else {
       toast.error(res.message || '保存失败')
     }
@@ -112,6 +116,8 @@ const handleAvatarChange = async (event) => {
     const res = await teacherProfileAPI.uploadAvatar(props.user.id, file)
     if (res.code === 200 && res.data?.avatarUrl) {
       fullProfile.value.avatar = res.data.avatarUrl
+      // 上传头像后触发父组件回拉，统一刷新页面其它位置的头像展示
+      emit('save-profile')
       toast.success('头像上传成功')
     } else {
       toast.error(res.message || '头像上传失败')

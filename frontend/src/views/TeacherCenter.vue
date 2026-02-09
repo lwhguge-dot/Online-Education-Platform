@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, watch, defineAsyncComponent, computed } fr
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import {
-  courseAPI, statsAPI, enrollmentAPI,
+  courseAPI, statsAPI, enrollmentAPI, teacherProfileAPI, getImageUrl,
   startStatusCheck, stopStatusCheck, authAPI
 } from '../services/api'
 
@@ -149,6 +149,39 @@ const notificationSettings = ref({
   systemNotice: false
 })
 
+// 加载教师个人资料（个人设置页的数据源）
+const loadTeacherProfile = async () => {
+  try {
+    const userId = authStore.user?.id
+    if (!userId) return
+
+    const res = await teacherProfileAPI.getProfile(userId)
+    if (res.code === 200 && res.data) {
+      // 统一使用后端返回的教师资料，避免刷新后回退到默认值
+      teacherProfile.value = {
+        ...teacherProfile.value,
+        ...res.data,
+        teachingSubjects: Array.isArray(res.data.teachingSubjects) ? res.data.teachingSubjects : []
+      }
+
+      // 同步登录态中的展示字段（顶部昵称/头像依赖 authStore.user）
+      authStore.updateUser({
+        username: res.data.username || authStore.user?.username,
+        avatar: res.data.avatar || authStore.user?.avatar || null
+      })
+
+      if (res.data.notificationSettings) {
+        notificationSettings.value = {
+          ...notificationSettings.value,
+          ...res.data.notificationSettings
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load teacher profile', e)
+  }
+}
+
 // === 数据加载 ===
 
 const loadCourses = async () => {
@@ -237,10 +270,11 @@ const loadAllData = async () => {
   loading.value = true
   // 先加载课程，因为统计数据依赖课程信息
   await loadCourses()
-  // 然后并行加载统计数据和学生数据
+  // 然后并行加载统计数据、学生数据和个人资料
   await Promise.all([
     loadStats(),
-    loadStudents()
+    loadStudents(),
+    loadTeacherProfile()
   ])
   loading.value = false
 }
@@ -279,6 +313,13 @@ onMounted(() => {
     loadCourses()
     loadStats()
   }, 30000) // 30s refresh
+})
+
+watch(activeMenu, (menu) => {
+  // 每次切到“个人设置”都主动拉取一次，确保展示的是最新持久化结果
+  if (menu === 'settings') {
+    loadTeacherProfile()
+  }
 })
 
 onUnmounted(() => {
@@ -404,8 +445,15 @@ onUnmounted(() => {
               <p class="text-sm font-bold text-shuimo">{{ authStore.user?.username || '教师' }}</p>
               <p class="text-xs text-shuimo/50">{{ roleLabel }}</p>
             </div>
-            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-tianlv to-qingsong flex items-center justify-center text-white font-bold shadow-lg shadow-tianlv/20 cursor-pointer hover:scale-105 transition-transform" @click="activeMenu = 'settings'">
-              {{ authStore.user?.username?.charAt(0).toUpperCase() || 'T' }}
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-tianlv to-qingsong flex items-center justify-center text-white font-bold shadow-lg shadow-tianlv/20 cursor-pointer hover:scale-105 transition-transform overflow-hidden" @click="activeMenu = 'settings'">
+              <!-- 优先展示已上传头像；无头像时回退到首字母 -->
+              <img
+                v-if="authStore.user?.avatar"
+                :src="getImageUrl(authStore.user.avatar)"
+                alt="教师头像"
+                class="w-full h-full object-cover"
+              />
+              <span v-else>{{ authStore.user?.username?.charAt(0).toUpperCase() || 'T' }}</span>
             </div>
           </div>
         </div>
@@ -484,7 +532,7 @@ onUnmounted(() => {
             :settings="notificationSettings"
             @update:profile="(p) => teacherProfile = p"
             @update:settings="(s) => notificationSettings = s"
-            @save-profile="() => {}"
+            @save-profile="loadTeacherProfile"
           />
         </Transition>
       </div>

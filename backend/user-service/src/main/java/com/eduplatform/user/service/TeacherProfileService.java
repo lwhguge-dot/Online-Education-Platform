@@ -120,6 +120,10 @@ public class TeacherProfileService {
         // 更新基础用户信息
         User user = userMapper.selectById(userId);
         if (user != null) {
+            // 用户昵称属于 users 表字段，需要与教师资料扩展表同步保存
+            if (dto.getUsername() != null && !dto.getUsername().trim().isEmpty()) {
+                user.setUsername(dto.getUsername().trim());
+            }
             if (dto.getPhone() != null)
                 user.setPhone(dto.getPhone());
             userMapper.updateById(user);
