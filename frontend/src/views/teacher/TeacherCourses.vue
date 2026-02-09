@@ -423,8 +423,12 @@ const deleteQuiz = async (quizId) => {
         <!-- 右侧：搜索和创建按钮 -->
         <div class="flex items-center gap-3 shrink-0">
           <div class="relative group">
+            <!-- 无障碍：为课程搜索框补充可关联标签 -->
+            <label for="teacher-course-search" class="sr-only">搜索课程</label>
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-shuimo/40 transition-colors group-focus-within:text-tianlv" />
             <input
+              id="teacher-course-search"
+              name="teacherCourseSearch"
               v-model="searchQuery"
               type="text"
               placeholder="搜索课程..."
@@ -508,7 +512,7 @@ const deleteQuiz = async (quizId) => {
     <Teleport to="body">
       <div v-if="showCourseModal" class="fixed inset-0 z-[100] flex items-center justify-center p-6" @click.self="showCourseModal = false">
         <!-- 背景遮罩 -->
-        <div class="absolute inset-0 bg-black/20" @click="showCourseModal = false"></div>
+        <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-[2px]" @click="showCourseModal = false"></div>
         <!-- 弹窗内容 -->
         <div class="relative bg-white rounded-2xl w-full max-w-md max-h-[85vh] shadow-2xl border border-slate-200 animate-scale-in flex flex-col">
           <!-- 固定头部 -->
@@ -521,15 +525,16 @@ const deleteQuiz = async (quizId) => {
           <div class="flex-1 overflow-y-auto p-5 space-y-4">
              <!-- 封面上传 -->
              <div>
-               <label class="block text-sm font-bold text-shuimo mb-2">课程封面</label>
+               <span class="block text-sm font-bold text-shuimo mb-2">课程封面</span>
                <div class="flex gap-3 items-start">
                  <div class="w-24 h-16 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center">
                    <img v-if="newCourse.coverImage" :src="newCourse.coverImage" class="w-full h-full object-cover">
                    <Upload v-else class="w-5 h-5 text-slate-300" />
                  </div>
-                 <div>
-                    <input type="file" ref="coverInput" class="hidden" accept="image/*" @change="handleCoverUpload">
-                    <div class="flex gap-2">
+                  <div>
+                     <label for="course-cover-input" class="sr-only">上传课程封面</label>
+                     <input id="course-cover-input" name="courseCover" type="file" ref="coverInput" class="hidden" accept="image/*" @change="handleCoverUpload">
+                     <div class="flex gap-2">
                       <BaseButton size="sm" variant="secondary" @click="coverInput?.click()" :loading="uploadingCover">
                         {{ uploadingCover ? '上传中' : (newCourse.coverImage ? '更换' : '上传图片') }}
                       </BaseButton>
@@ -545,7 +550,7 @@ const deleteQuiz = async (quizId) => {
              <BaseInput label="课程名称" v-model="newCourse.title" required placeholder="输入课程名" />
              
              <div>
-               <label class="block text-sm font-bold text-shuimo mb-1">学科分类</label>
+               <span class="block text-sm font-bold text-shuimo mb-1">学科分类</span>
                <BaseSelect 
                  v-model="newCourse.subject" 
                  :options="subjectOptions"
@@ -553,10 +558,10 @@ const deleteQuiz = async (quizId) => {
                />
              </div>
 
-             <div>
-               <label class="block text-sm font-bold text-shuimo mb-1">简介</label>
-               <textarea v-model="newCourse.description" rows="2" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tianlv/20 outline-none text-sm resize-none"></textarea>
-             </div>
+              <div>
+                <label for="course-description-input" class="block text-sm font-bold text-shuimo mb-1">简介</label>
+                <textarea id="course-description-input" name="courseDescription" v-model="newCourse.description" rows="2" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tianlv/20 outline-none text-sm resize-none"></textarea>
+              </div>
              
              <!-- 解锁设置 -->
              <div class="bg-slate-50 p-3 rounded-xl">
@@ -583,7 +588,7 @@ const deleteQuiz = async (quizId) => {
     <Teleport to="body">
       <div v-if="showChapterModal" class="fixed inset-0 z-[100] flex items-center justify-center p-6" @click.self="showChapterModal = false">
         <!-- 背景遮罩 -->
-        <div class="absolute inset-0 bg-black/20" @click="showChapterModal = false"></div>
+        <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-[2px]" @click="showChapterModal = false"></div>
         <!-- 弹窗内容 -->
         <div class="relative bg-white rounded-2xl w-full max-w-4xl max-h-[85vh] shadow-2xl border border-slate-200 flex overflow-hidden animate-scale-in">
           <!-- 左侧：章节列表 -->
@@ -631,11 +636,12 @@ const deleteQuiz = async (quizId) => {
               <BaseInput label="章节标题" v-model="newChapter.title" required />
               
               <div>
-                 <label class="block text-sm font-bold text-shuimo mb-2">章节视频</label>
+                 <span class="block text-sm font-bold text-shuimo mb-2">章节视频</span>
                  <div class="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center transition-colors"
                    :class="{'border-tianlv bg-tianlv/5': dragging}"
                  >
-                    <input type="file" ref="videoInput" accept="video/*" class="hidden" @change="handleVideoUpload">
+                     <label for="chapter-video-input" class="sr-only">上传章节视频</label>
+                     <input id="chapter-video-input" name="chapterVideo" type="file" ref="videoInput" accept="video/*" class="hidden" @change="handleVideoUpload">
                     
                     <div v-if="uploadingVideo" class="py-3">
                        <div class="animate-spin w-6 h-6 border-4 border-tianlv border-t-transparent rounded-full mx-auto mb-2"></div>
@@ -666,17 +672,17 @@ const deleteQuiz = async (quizId) => {
               </div>
               
               <div>
-                 <label class="block text-sm font-bold text-shuimo mb-2">本章简介</label>
-                 <textarea v-model="newChapter.description" rows="3" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tianlv/20 outline-none text-sm resize-none"></textarea>
+                 <label for="chapter-description-input" class="block text-sm font-bold text-shuimo mb-2">本章简介</label>
+                 <textarea id="chapter-description-input" name="chapterDescription" v-model="newChapter.description" rows="3" class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-tianlv/20 outline-none text-sm resize-none"></textarea>
               </div>
 
               <!-- 测验管理区域 -->
               <div v-if="editingChapter" class="border-t border-slate-100 pt-5">
                 <div class="flex items-center justify-between mb-3">
-                  <label class="text-sm font-bold text-shuimo flex items-center gap-2">
+                  <span class="text-sm font-bold text-shuimo flex items-center gap-2">
                     <ListChecks class="w-4 h-4 text-qinghua" />
                     章节测验题目
-                  </label>
+                  </span>
                   <span class="text-xs text-shuimo/50">共 {{ chapterQuizzes.length }} 题</span>
                 </div>
 

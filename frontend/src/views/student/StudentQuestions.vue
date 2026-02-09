@@ -344,11 +344,13 @@ const submitQuestion = async () => {
         <div class="space-y-4">
           <!-- 关联课程选择 -->
           <div>
-            <label class="block text-sm font-bold text-shuimo mb-1">
+            <label for="question-course-select" class="block text-sm font-bold text-shuimo mb-1">
               <BookOpen class="w-4 h-4 inline-block mr-1" />
               关联课程 <span class="font-normal text-shuimo/50">(可选)</span>
             </label>
             <select 
+              id="question-course-select"
+              name="questionCourse"
               v-model="newQuestion.courseId"
               class="w-full px-4 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-zijinghui/20 outline-none"
             >
@@ -361,11 +363,13 @@ const submitQuestion = async () => {
           
           <!-- 关联章节选择 -->
           <div v-if="newQuestion.courseId">
-            <label class="block text-sm font-bold text-shuimo mb-1">
+            <label for="question-chapter-select" class="block text-sm font-bold text-shuimo mb-1">
               <FileText class="w-4 h-4 inline-block mr-1" />
               关联章节 <span class="font-normal text-shuimo/50">(可选)</span>
             </label>
             <select 
+              id="question-chapter-select"
+              name="questionChapter"
               v-model="newQuestion.chapterId"
               class="w-full px-4 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-zijinghui/20 outline-none"
               :disabled="loadingChapters"
@@ -378,8 +382,10 @@ const submitQuestion = async () => {
           </div>
           
           <div>
-            <label class="block text-sm font-bold text-shuimo mb-1">问题标题</label>
+            <label for="question-title-input" class="block text-sm font-bold text-shuimo mb-1">问题标题</label>
             <input 
+              id="question-title-input"
+              name="questionTitle"
               v-model="newQuestion.title" 
               type="text" 
               placeholder="简要描述你的问题"
@@ -387,8 +393,10 @@ const submitQuestion = async () => {
             />
           </div>
           <div>
-            <label class="block text-sm font-bold text-shuimo mb-1">问题详情</label>
+            <label for="question-content-input" class="block text-sm font-bold text-shuimo mb-1">问题详情</label>
             <textarea 
+              id="question-content-input"
+              name="questionContent"
               v-model="newQuestion.content" 
               rows="4" 
               placeholder="详细描述你遇到的困难..."
@@ -398,13 +406,15 @@ const submitQuestion = async () => {
           
           <!-- 图片上传区域 -->
           <div>
-            <label class="block text-sm font-bold text-shuimo mb-2">
+            <label for="question-image-input" class="block text-sm font-bold text-shuimo mb-2">
               <Image class="w-4 h-4 inline-block mr-1" />
               添加图片 <span class="font-normal text-shuimo/50">(可选，支持拍题上传)</span>
             </label>
             
             <!-- 隐藏文件输入框 -->
             <input 
+              id="question-image-input"
+              name="questionImage"
               ref="fileInputRef"
               type="file" 
               accept="image/*" 

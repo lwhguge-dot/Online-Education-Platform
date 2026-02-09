@@ -536,7 +536,7 @@ watch(
     <Teleport to="body">
       <div v-if="showQAManagement && selectedHomework" class="fixed inset-0 z-[100] flex items-center justify-center p-6" @click.self="closeQAManagement">
         <!-- 背景遮罩 -->
-        <div class="absolute inset-0 bg-black/20" @click="closeQAManagement"></div>
+        <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-[2px]" @click="closeQAManagement"></div>
         <!-- 弹窗内容 -->
         <div class="relative bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden shadow-2xl border border-slate-200 animate-scale-in">
           <div class="flex justify-between items-center p-4 border-b">
@@ -561,7 +561,7 @@ watch(
     <Teleport to="body">
       <div v-if="showErrorReport && selectedHomework" class="fixed inset-0 z-[100] flex items-center justify-center p-6" @click.self="closeErrorReport">
         <!-- 背景遮罩 -->
-        <div class="absolute inset-0 bg-black/20 backdrop-blur-sm" @click="closeErrorReport"></div>
+        <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-[2px]" @click="closeErrorReport"></div>
         <!-- 弹窗内容 -->
         <div class="relative bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden shadow-2xl border border-slate-200 animate-scale-in">
           <div class="flex justify-between items-center p-5 border-b bg-gradient-to-r from-yanzhi/5 to-mudan/5">

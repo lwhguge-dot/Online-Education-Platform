@@ -1070,6 +1070,8 @@ const handleLogout = async () => {
           </button>
           
           <div class="relative hidden sm:block">
+            <!-- 无障碍：为全局搜索框提供可关联标签 -->
+            <label for="global-search-input" class="sr-only">全局搜索</label>
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-shuimo/40" />
             <input 
               id="global-search-input"

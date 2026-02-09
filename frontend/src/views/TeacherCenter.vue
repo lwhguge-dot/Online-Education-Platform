@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch, defineAsyncComponent } from 'vue'
+import { ref, onMounted, onUnmounted, watch, defineAsyncComponent, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import {
@@ -26,6 +26,12 @@ const TeachingCalendar = defineAsyncComponent(() => import('./teacher/TeachingCa
 
 const router = useRouter()
 const authStore = useAuthStore()
+const roleLabel = computed(() => {
+  const role = authStore.user?.role
+  if (role === 'admin') return '管理员'
+  if (role === 'student') return '学生'
+  return '教师'
+})
 
 // UI 状态
 const sidebarOpen = ref(true)
@@ -396,7 +402,7 @@ onUnmounted(() => {
           <div class="flex items-center gap-3 pl-6 border-l border-slate-200/50">
             <div class="text-right hidden md:block">
               <p class="text-sm font-bold text-shuimo">{{ authStore.user?.username || '教师' }}</p>
-              <p class="text-xs text-shuimo/50">{{ teacherProfile.title || '高级讲师' }}</p>
+              <p class="text-xs text-shuimo/50">{{ roleLabel }}</p>
             </div>
             <div class="w-10 h-10 rounded-full bg-gradient-to-br from-tianlv to-qingsong flex items-center justify-center text-white font-bold shadow-lg shadow-tianlv/20 cursor-pointer hover:scale-105 transition-transform" @click="activeMenu = 'settings'">
               {{ authStore.user?.username?.charAt(0).toUpperCase() || 'T' }}

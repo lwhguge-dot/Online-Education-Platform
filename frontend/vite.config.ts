@@ -33,6 +33,12 @@ export default defineConfig(({ mode }) => {
           target: gatewayTarget,
           changeOrigin: true,
         },
+        // WebSocket 通知通道代理（修复浏览器直连 localhost:80 时握手超时）
+        '/ws': {
+          target: gatewayTarget,
+          changeOrigin: true,
+          ws: true,
+        },
         '/oss': {
           target: gatewayTarget,
           changeOrigin: true,

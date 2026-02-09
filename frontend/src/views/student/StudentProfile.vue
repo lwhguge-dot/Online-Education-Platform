@@ -363,19 +363,23 @@ const getGenderLabel = (value) => {
                    </div>
                 </div>
                 <input
+                  id="profile-avatar-input"
                   ref="avatarInput"
+                  name="avatar"
                   type="file"
                   accept="image/*"
+                  aria-label="上传头像"
                   class="hidden"
                   @change="handleAvatarChange"
                 />
+                <label for="profile-avatar-input" class="sr-only">上传头像</label>
               </div>
 
              <!-- Form -->
              <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-1.5 stagger-item" style="animation: fade-in-up 0.4s ease-out 0.1s forwards; opacity: 0;">
                    <label for="profile-username" class="text-xs font-bold text-shuimo/60">用户名/昵称</label>
-                   <input id="profile-username" name="username" v-model="formData.username" :disabled="!isEditing" autocomplete="nickname"
+                   <input id="profile-username" name="username" v-model="formData.username" :disabled="!isEditing" autocomplete="username"
                           class="w-full bg-slate-50/80 border border-slate-200/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-qinghua/20 focus:border-qinghua/30 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:text-shuimo transition-all duration-300" />
                    <p v-if="isEditing" class="text-xs text-shuimo/40">用户名在系统内显示，可随意修改</p>
                 </div>
@@ -388,7 +392,8 @@ const getGenderLabel = (value) => {
                 
                 <!-- 自定义日期选择器 -->
                 <div class="space-y-1.5 relative z-20" data-date-picker>
-                   <label id="label-birthday" class="text-xs font-bold text-shuimo/60">出生年月日</label>
+                   <!-- 无障碍：这里是自定义按钮触发器，使用文本元素并通过 aria-labelledby 关联 -->
+                   <span id="label-birthday" class="text-xs font-bold text-shuimo/60">出生年月日</span>
                    <div @click.stop="openDatePicker"
                         id="profile-birthday-picker"
                         aria-labelledby="label-birthday"
@@ -504,7 +509,8 @@ const getGenderLabel = (value) => {
                 
                 <!-- 自定义性别选择器 -->
                 <div class="space-y-1.5 relative" data-gender-picker>
-                   <label id="label-gender" class="text-xs font-bold text-shuimo/60">性别</label>
+                   <!-- 无障碍：这里是自定义按钮触发器，使用文本元素并通过 aria-labelledby 关联 -->
+                   <span id="label-gender" class="text-xs font-bold text-shuimo/60">性别</span>
                    <div @click.stop="toggleGenderPicker"
                         id="profile-gender-picker"
                         aria-labelledby="label-gender"
@@ -593,21 +599,21 @@ const getGenderLabel = (value) => {
              <div class="space-y-5">
                 <div>
                    <div class="flex justify-between mb-2">
-                     <span class="text-sm text-shuimo">每日学习时长</span>
+                     <label for="daily-minutes-range" class="text-sm text-shuimo">每日学习时长</label>
                      <span class="text-sm font-bold text-tianlv number-pop">{{ studyGoal.dailyMinutes }} 分钟</span>
                    </div>
                    <div class="relative">
-                      <input type="range" v-model="studyGoal.dailyMinutes" min="15" max="180" step="15" 
+                      <input id="daily-minutes-range" name="dailyMinutes" type="range" v-model="studyGoal.dailyMinutes" min="15" max="180" step="15" 
                              class="w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer slider-tianlv slider-enhanced" />
                    </div>
                 </div>
                 <div>
                    <div class="flex justify-between mb-2">
-                     <span class="text-sm text-shuimo">每周完成章节</span>
+                     <label for="weekly-hours-range" class="text-sm text-shuimo">每周完成章节</label>
                      <span class="text-sm font-bold text-tianlv number-pop">{{ studyGoal.weeklyHours }} 章</span>
                    </div>
                    <div class="relative">
-                      <input type="range" v-model="studyGoal.weeklyHours" min="1" max="20" 
+                      <input id="weekly-hours-range" name="weeklyHours" type="range" v-model="studyGoal.weeklyHours" min="1" max="20" 
                              class="w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer slider-tianlv slider-enhanced" />
                    </div>
                 </div>

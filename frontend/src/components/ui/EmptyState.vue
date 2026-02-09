@@ -52,7 +52,7 @@ const props = defineProps({
     default: ''
   },
   actionIcon: {
-    type: Object,
+    type: [Object, Function],
     default: null
   },
   actionVariant: {

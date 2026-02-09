@@ -20,6 +20,8 @@ let ws = null;
 let reconnectTimer = null;
 let heartbeatTimer = null;
 let lastErrorLoggedAt = 0;
+// 标记是否为前端主动断开，避免触发无意义的自动重连
+let manualDisconnect = false;
 
 const listeners = {
   onForceLogout: [],
@@ -29,7 +31,7 @@ const listeners = {
 };
 
 export const connectWebSocket = (userId) => {
-  if (ws && ws.readyState === WebSocket.OPEN) {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
     return;
   }
 
@@ -40,7 +42,16 @@ export const connectWebSocket = (userId) => {
   }
 
   try {
-    ws = new WebSocket(WS_BASE);
+    // 新连接建立前清理重连定时器，避免并发重连
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+
+    manualDisconnect = false;
+    // 握手阶段携带 token，便于网关与后端在握手时直接鉴权
+    const wsUrl = `${WS_BASE}?token=${encodeURIComponent(token)}`;
+    ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
       console.log('WebSocket 连接成功');
@@ -68,11 +79,14 @@ export const connectWebSocket = (userId) => {
       stopHeartbeat();
       listeners.onDisconnected.forEach(fn => fn());
 
-      reconnectTimer = setTimeout(() => {
-        if (userId) {
-          connectWebSocket(userId);
-        }
-      }, 5000);
+      // 主动断开（如退出登录/页面卸载）时不重连
+      if (!manualDisconnect) {
+        reconnectTimer = setTimeout(() => {
+          if (userId) {
+            connectWebSocket(userId);
+          }
+        }, 5000);
+      }
     };
 
     ws.onerror = (error) => {
@@ -96,6 +110,7 @@ export const disconnectWebSocket = () => {
   stopHeartbeat();
 
   if (ws) {
+    manualDisconnect = true;
     ws.close();
     ws = null;
   }

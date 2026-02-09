@@ -14,7 +14,7 @@ public interface TeacherProfileMapper extends BaseMapper<TeacherProfile> {
         INSERT INTO teacher_profiles (user_id, title, department, subjects, introduction, 
             teaching_subjects, default_grading_criteria, dashboard_layout, notification_settings)
         VALUES (#{userId}, #{title}, #{department}, #{subjects}, #{introduction},
-            #{teachingSubjects}, #{defaultGradingCriteria}, #{dashboardLayout}, #{notificationSettings})
+            #{teachingSubjects}::jsonb, #{defaultGradingCriteria}::jsonb, #{dashboardLayout}::jsonb, #{notificationSettings}::jsonb)
     """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insertProfile(TeacherProfile profile);
@@ -25,10 +25,10 @@ public interface TeacherProfileMapper extends BaseMapper<TeacherProfile> {
             department = #{department},
             subjects = #{subjects},
             introduction = #{introduction},
-            teaching_subjects = #{teachingSubjects},
-            default_grading_criteria = #{defaultGradingCriteria},
-            dashboard_layout = #{dashboardLayout},
-            notification_settings = #{notificationSettings}
+            teaching_subjects = #{teachingSubjects}::jsonb,
+            default_grading_criteria = #{defaultGradingCriteria}::jsonb,
+            dashboard_layout = #{dashboardLayout}::jsonb,
+            notification_settings = #{notificationSettings}::jsonb
         WHERE user_id = #{userId}
     """)
     int updateByUserId(TeacherProfile profile);

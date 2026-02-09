@@ -60,7 +60,7 @@ public interface AnnouncementMapper extends BaseMapper<Announcement> {
             "AND a.status = #{status} " +
             "</if>" +
             "ORDER BY a.created_at DESC " +
-            "LIMIT #{offset}, #{size}" +
+            "LIMIT #{size} OFFSET #{offset}" +
             "</script>")
     List<Announcement> findByTeacher(@Param("teacherId") Long teacherId, 
                                       @Param("courseId") Long courseId,

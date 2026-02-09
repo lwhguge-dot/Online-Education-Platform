@@ -11,8 +11,8 @@ defineProps({
     default: ''
   },
   icon: {
-    type: Object,
-    default: null // Component type check is loose in Vue, usually just pass the icon component
+    type: [Object, Function],
+    default: null // 兼容不同构建产物下图标组件被解析为对象或函数
   }
 })
 </script>

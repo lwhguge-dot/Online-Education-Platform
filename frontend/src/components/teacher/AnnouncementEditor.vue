@@ -18,8 +18,10 @@
       <form @submit.prevent="handleSubmit" class="space-y-6">
             <!-- 公告标题 -->
             <div>
-              <label class="block text-sm font-medium text-shuimo mb-2">公告标题 *</label>
+              <label for="announcement-title" class="block text-sm font-medium text-shuimo mb-2">公告标题 *</label>
               <input 
+                id="announcement-title"
+                name="announcementTitle"
                 v-model="form.title" 
                 type="text" 
                 required
@@ -30,8 +32,10 @@
             
             <!-- 公告内容 -->
             <div>
-              <label class="block text-sm font-medium text-shuimo mb-2">公告内容 *</label>
+              <label for="announcement-content" class="block text-sm font-medium text-shuimo mb-2">公告内容 *</label>
               <textarea 
+                id="announcement-content"
+                name="announcementContent"
                 v-model="form.content" 
                 required
                 rows="6"
@@ -43,7 +47,7 @@
             <!-- 发布范围 -->
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-shuimo mb-2">发布范围</label>
+                <span class="block text-sm font-medium text-shuimo mb-2">发布范围</span>
                 <BaseSelect 
                   v-model="form.targetType" 
                   :options="[
@@ -54,7 +58,7 @@
               </div>
               
               <div v-if="form.targetType === 'course'">
-                <label class="block text-sm font-medium text-shuimo mb-2">选择课程</label>
+                <span class="block text-sm font-medium text-shuimo mb-2">选择课程</span>
                 <BaseSelect 
                   v-model="form.courseId" 
                   :options="courseOptions"
@@ -65,10 +69,12 @@
             
             <!-- 发布时间设置 -->
             <div>
-              <label class="block text-sm font-medium text-shuimo mb-2">发布时间</label>
+              <span class="block text-sm font-medium text-shuimo mb-2">发布时间</span>
               <div class="flex items-center gap-4">
                 <label class="flex items-center gap-2 cursor-pointer">
                   <input 
+                    id="announcement-publish-now"
+                    name="announcementPublishType"
                     type="radio" 
                     v-model="form.publishType" 
                     value="now"
@@ -78,6 +84,8 @@
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer">
                   <input 
+                    id="announcement-publish-scheduled"
+                    name="announcementPublishType"
                     type="radio" 
                     v-model="form.publishType" 
                     value="scheduled"
@@ -88,7 +96,10 @@
               </div>
               
               <div v-if="form.publishType === 'scheduled'" class="mt-3">
+                <label for="announcement-publish-time" class="sr-only">定时发布时间</label>
                 <input 
+                  id="announcement-publish-time"
+                  name="announcementPublishTime"
                   type="datetime-local" 
                   v-model="form.publishTime"
                   :min="minDateTime"
@@ -99,8 +110,10 @@
             
             <!-- 过期时间 -->
             <div>
-              <label class="block text-sm font-medium text-shuimo mb-2">过期时间（可选）</label>
+              <label for="announcement-expire-time" class="block text-sm font-medium text-shuimo mb-2">过期时间（可选）</label>
               <input 
+                id="announcement-expire-time"
+                name="announcementExpireTime"
                 type="datetime-local" 
                 v-model="form.expireTime"
                 :min="minDateTime"

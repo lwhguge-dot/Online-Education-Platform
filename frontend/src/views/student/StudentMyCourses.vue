@@ -85,8 +85,12 @@ const handleStartStudy = (course) => {
         <!-- 右侧：搜索和筛选 -->
         <div class="flex items-center gap-3">
           <div class="relative group">
+             <!-- 无障碍：为课程搜索输入框提供可关联标签 -->
+             <label for="course-search-input" class="sr-only">搜索课程或教师</label>
              <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-shuimo/40 transition-colors group-focus-within:text-qinghua" />
              <input 
+               id="course-search-input"
+               name="courseSearch"
                v-model="searchQuery"
                type="text" 
                placeholder="搜索课程、教师..."

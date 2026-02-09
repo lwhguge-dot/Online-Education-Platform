@@ -5,7 +5,7 @@ defineProps({
     required: true
   },
   icon: {
-    type: Object, // Icon component
+    type: [Object, Function], // 兼容图标组件在不同构建环境下的对象/函数形态
     default: null
   },
   iconColor: {

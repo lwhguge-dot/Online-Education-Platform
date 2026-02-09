@@ -113,6 +113,22 @@ const courseRankings = computed(() => {
   }
   return props.courseProgress || []
 })
+
+// 本周互动环比：对异常值做兜底，避免出现 NaN%
+const weeklyTrendValue = computed(() => {
+  const raw = Number(props.stats?.weeklyTrend)
+  if (!Number.isFinite(raw)) {
+    return 0
+  }
+  return raw
+})
+
+// 环比方向：1 上升，-1 下降，0 持平
+const weeklyTrendDirection = computed(() => {
+  if (weeklyTrendValue.value > 0) return 1
+  if (weeklyTrendValue.value < 0) return -1
+  return 0
+})
 </script>
 
 <template>
@@ -184,9 +200,14 @@ const courseRankings = computed(() => {
         <div class="text-4xl font-bold font-mono relative z-10 bg-gradient-to-r from-zijinghui to-qinghua bg-clip-text text-transparent group-hover:scale-105 transition-transform duration-300 origin-left">
           <AnimatedNumber :value="stats.weeklyInteractions" />
         </div>
-        <p class="text-xs text-tianlv mt-3 relative z-10 font-medium flex items-center gap-1">
-          <TrendingUp class="w-3 h-3" />
-          <AnimatedNumber :value="stats.weeklyTrend || 12" suffix="%" :show-trend="true" />
+        <p
+          class="text-xs mt-3 relative z-10 font-medium flex items-center gap-1"
+          :class="[
+            weeklyTrendDirection >= 0 ? 'text-tianlv' : 'text-yanzhi'
+          ]"
+        >
+          <TrendingUp class="w-3 h-3" :class="weeklyTrendDirection < 0 ? 'rotate-180' : ''" />
+          <AnimatedNumber :value="weeklyTrendValue" suffix="%" :show-trend="true" />
           较上周
         </p>
         <Activity class="stat-card-icon absolute -bottom-2 -right-2 w-12 h-12 text-zijinghui/[0.06]" />

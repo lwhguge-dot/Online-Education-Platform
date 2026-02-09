@@ -16,52 +16,74 @@ import { useAuthStore } from '../../stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const props = defineProps({
-  timeline: {
-    type: Array,
-    default: () => []
-  },
-  quizScores: {
-    type: Array,
-    default: () => []
-  },
-  weeklyStudyHours: {
-    type: Array,
-    default: () => [
-      { day: '周一', hours: 0 },
-      { day: '周二', hours: 0 },
-      { day: '周三', hours: 0 },
-      { day: '周四', hours: 0 },
-      { day: '周五', hours: 0 },
-      { day: '周六', hours: 0 },
-      { day: '周日', hours: 0 },
-    ]
-  },
-  // 上周学习数据
-  lastWeekStudyHours: {
-    type: Array,
-    default: () => []
-  },
-  // 本周总分钟数
-  thisWeekMinutes: {
-    type: Number,
-    default: 0
-  },
-  // 上周总分钟数
-  lastWeekMinutes: {
-    type: Number,
-    default: 0
-  },
-  // 周变化百分比
-  weeklyChange: {
-    type: Number,
-    default: 0
-  }
+/**
+ * 每日学习时长数据结构
+ */
+interface WeeklyStudyDay {
+  day: string
+  hours: number
+}
+
+/**
+ * 学习足迹项数据结构
+ */
+interface TimelineItem {
+  title: string
+  time: string
+  action: string
+  courseId?: number | string
+  chapterId?: number | string
+  chapterTitle?: string
+  duration?: number
+  progress?: number
+  type?: string
+}
+
+/**
+ * 测验成绩项数据结构
+ */
+interface QuizScoreItem {
+  title: string
+  time: string
+  score: number
+  chapterId?: number | string
+  courseId?: number | string
+}
+
+/**
+ * 组件属性类型定义
+ */
+interface StudentRecordsProps {
+  timeline?: TimelineItem[]
+  quizScores?: QuizScoreItem[]
+  weeklyStudyHours?: WeeklyStudyDay[]
+  lastWeekStudyHours?: WeeklyStudyDay[]
+  thisWeekMinutes?: number
+  lastWeekMinutes?: number
+  weeklyChange?: number
+}
+
+const props = withDefaults(defineProps<StudentRecordsProps>(), {
+  timeline: () => [],
+  quizScores: () => [],
+  weeklyStudyHours: () => [
+    { day: '周一', hours: 0 },
+    { day: '周二', hours: 0 },
+    { day: '周三', hours: 0 },
+    { day: '周四', hours: 0 },
+    { day: '周五', hours: 0 },
+    { day: '周六', hours: 0 },
+    { day: '周日', hours: 0 }
+  ],
+  lastWeekStudyHours: () => [],
+  thisWeekMinutes: 0,
+  lastWeekMinutes: 0,
+  weeklyChange: 0
 })
 
 // 学习轨迹真实数据状态
 const learningTrackLoading = ref(false)
-const learningTrack = ref([])
+const learningTrack = ref<TimelineItem[]>([])
 
 /**
  * 加载学习轨迹真实数据
@@ -163,7 +185,7 @@ const weeklyCompareMessage = computed(() => {
 /**
  * 点击学习足迹跳转到对应章节
  */
-const handleTimelineClick = (item) => {
+const handleTimelineClick = (item: TimelineItem) => {
   if (item.courseId && item.chapterId) {
     router.push(`/study/${item.courseId}?chapter=${item.chapterId}&from=student`)
   } else if (item.courseId) {
@@ -174,7 +196,7 @@ const handleTimelineClick = (item) => {
 /**
  * 点击测验跳转到对应章节
  */
-const handleQuizClick = async (quiz) => {
+const handleQuizClick = async (quiz: QuizScoreItem) => {
   const chapterId = quiz?.chapterId
   if (!chapterId) return
 
@@ -196,7 +218,7 @@ const handleQuizClick = async (quiz) => {
 /**
  * 从知识点图表跳转到学习页面
  */
-const handleMasteryNavigate = ({ courseId, chapterId }) => {
+const handleMasteryNavigate = ({ courseId, chapterId }: { courseId?: number | string, chapterId?: number | string }) => {
   if (courseId && chapterId) {
     router.push(`/study/${courseId}?chapter=${chapterId}&from=student`)
   } else if (courseId) {
