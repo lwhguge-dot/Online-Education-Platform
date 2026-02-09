@@ -199,6 +199,7 @@ import { useToastStore } from '../../stores/toast'
 import AnnouncementEditor from './AnnouncementEditor.vue'
 import BaseSelect from '../ui/BaseSelect.vue'
 import EmptyState from '../ui/EmptyState.vue'
+import { formatDateTimeCN } from '../../utils/datetime'
 
 const authStore = useAuthStore()
 const toast = useToastStore()
@@ -306,15 +307,7 @@ const getStatusText = (status) => {
 
 // 格式化日期时间
 const formatDateTime = (dateStr) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatDateTimeCN(dateStr, '-')
 }
 
 // 切换置顶

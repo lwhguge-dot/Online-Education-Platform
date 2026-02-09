@@ -11,6 +11,7 @@ import AnnouncementStatsModal from '../../components/admin/AnnouncementStatsModa
 import { announcementAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
 import { useConfirmStore } from '../../stores/confirm'
+import { formatDateTimeCN } from '../../utils/datetime'
 
 const toast = useToastStore()
 const confirmStore = useConfirmStore()
@@ -198,8 +199,7 @@ const confirmDelete = async (announcement) => {
 
 // 格式化时间
 const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('zh-CN')
+  return formatDateTimeCN(dateStr)
 }
 
 // 打开阅读统计弹窗

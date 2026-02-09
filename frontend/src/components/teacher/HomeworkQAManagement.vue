@@ -5,6 +5,11 @@ import { homeworkAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
 import GlassCard from '../ui/GlassCard.vue'
 import BaseButton from '../ui/BaseButton.vue'
+import { formatDateTimeCN } from '../../utils/datetime'
+
+const formatDisplayDateTime = (dateStr) => {
+  return formatDateTimeCN(dateStr, '未知时间')
+}
 
 const props = defineProps({
   homeworkId: {
@@ -119,7 +124,7 @@ onMounted(() => {
                   学生ID: {{ q.studentId }}
                 </span>
                 <span class="text-xs text-shuimo/40">
-                  {{ new Date(q.createdAt).toLocaleString() }}
+                  {{ formatDisplayDateTime(q.createdAt) }}
                 </span>
                 <span
                   v-if="q.status === 'pending'"
@@ -141,7 +146,7 @@ onMounted(() => {
               <CheckCircle class="w-4 h-4 text-tianlv" />
               <span class="font-bold text-sm text-tianlv">您的回复</span>
               <span class="text-xs text-shuimo/40">
-                {{ new Date(q.repliedAt).toLocaleString() }}
+                {{ formatDisplayDateTime(q.repliedAt) }}
               </span>
             </div>
             <p class="text-sm text-shuimo/80">{{ q.teacherReply }}</p>

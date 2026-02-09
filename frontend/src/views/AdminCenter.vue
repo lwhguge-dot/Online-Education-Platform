@@ -6,15 +6,12 @@ import {
   userAPI, courseAPI, statsAPI,
   startStatusCheck, stopStatusCheck
 } from '../services/api'
+import { formatTimeCN } from '../utils/datetime'
 import {
   LayoutDashboard, Users, BookOpen, Settings,
   LogOut, Menu, X, Home, GraduationCap,
-  FileText, Megaphone, Sun, Moon, Monitor, Search, Keyboard
+  FileText, Megaphone
 } from 'lucide-vue-next'
-
-// Composables
-import { useTheme } from '../composables/useTheme'
-import { useKeyboard, keyboardShortcuts } from '../composables/useKeyboard'
 
 // 子组件（按需异步加载，降低主包体积）
 const AdminDashboard = defineAsyncComponent(() => import('./admin/AdminDashboard.vue'))
@@ -27,14 +24,8 @@ const AdminAnnouncements = defineAsyncComponent(() => import('./admin/AdminAnnou
 const router = useRouter()
 const authStore = useAuthStore()
 
-// 主题切换
-const { isDark, theme, setTheme, toggleTheme } = useTheme()
-
 // 布局状态
 const sidebarOpen = ref(true)
-const showSearch = ref(false)
-const showKeyboardHelp = ref(false)
-const searchQuery = ref('')
 
 // 优先从URL hash读取，其次从sessionStorage，最后默认dashboard
 const getInitialMenu = () => {
@@ -93,33 +84,6 @@ const menuItems = [
   { id: 'settings', label: '系统设置', icon: Settings },
 ]
 
-// 快捷键处理
-useKeyboard({
-  onSearch: () => {
-    showSearch.value = true
-    showKeyboardHelp.value = false
-  },
-  onEscape: () => {
-    if (showSearch.value) {
-      showSearch.value = false
-      searchQuery.value = ''
-    } else if (showKeyboardHelp.value) {
-      showKeyboardHelp.value = false
-    }
-  },
-  onRefresh: () => {
-    refreshData()
-  },
-  onMenuSwitch: (index) => {
-    if (index < menuItems.length) {
-      activeMenu.value = menuItems[index].id
-    }
-  },
-  onThemeToggle: () => {
-    toggleTheme()
-  }
-})
-
 // 数据请求
 const refreshData = async () => {
   loading.value = true
@@ -164,8 +128,8 @@ const refreshData = async () => {
     }
 
     lastUpdateTime.value = adminStats.timestamp
-      ? new Date(adminStats.timestamp).toLocaleTimeString('zh-CN')
-      : new Date().toLocaleTimeString('zh-CN')
+      ? formatTimeCN(adminStats.timestamp)
+      : formatTimeCN(new Date())
   } catch (e) {
     console.error('Data refresh failed', e)
   } finally {
@@ -232,155 +196,13 @@ const handleNavigate = ({ menu, filter }) => {
   }
 }
 
-// 搜索功能
-const handleSearch = () => {
-  if (!searchQuery.value.trim()) return
-  // 根据搜索内容跳转到对应页面
-  const query = searchQuery.value.toLowerCase()
-  if (query.includes('用户') || query.includes('user')) {
-    activeMenu.value = 'users'
-  } else if (query.includes('课程') || query.includes('course')) {
-    activeMenu.value = 'courses'
-  } else if (query.includes('日志') || query.includes('log')) {
-    activeMenu.value = 'logs'
-  } else if (query.includes('公告') || query.includes('announcement')) {
-    activeMenu.value = 'announcements'
-  } else if (query.includes('设置') || query.includes('setting')) {
-    activeMenu.value = 'settings'
-  }
-  showSearch.value = false
-  searchQuery.value = ''
-}
-
 const disabledUsersCount = computed(() => allUsers.value.filter(u => u.status === 0).length)
 
-const componentMap = {
-  dashboard: AdminDashboard,
-  users: AdminUsers,
-  courses: AdminCourses,
-  logs: AdminLogs,
-  announcements: AdminAnnouncements,
-  settings: AdminSystem
-}
-
-const currentComponent = computed(() => componentMap[activeMenu.value])
-
-const currentProps = computed(() => {
-  if (activeMenu.value === 'dashboard') {
-    return {
-      stats: stats.value,
-      todayStats: todayStats.value,
-      courseStats: courseStats.value,
-      recentUsers: recentUsers.value,
-      disabledUsersCount: disabledUsersCount.value,
-      lastUpdateTime: lastUpdateTime.value,
-      loading: loading.value
-    }
-  }
-
-  if (activeMenu.value === 'users') {
-    return {
-      users: allUsers.value,
-      loading: loading.value,
-      initialFilter: userInitialFilter.value
-    }
-  }
-
-  if (activeMenu.value === 'courses') {
-    return {
-      courses: courses.value,
-      loading: loading.value,
-      initialFilter: courseInitialFilter.value
-    }
-  }
-
-  return {}
-})
-
-const currentListeners = computed(() => {
-  if (activeMenu.value === 'dashboard') {
-    return { navigate: handleNavigate, refresh: refreshData }
-  }
-  if (activeMenu.value === 'users' || activeMenu.value === 'courses') {
-    return { refresh: refreshData }
-  }
-  return {}
-})
-
-// 主题图标
-const themeIcon = computed(() => {
-  if (theme.value === 'system') return Monitor
-  return isDark.value ? Moon : Sun
-})
-
-// 切换到下一个主题模式
-const cycleTheme = () => {
-  const themes = ['light', 'dark', 'system']
-  const currentIndex = themes.indexOf(theme.value)
-  const nextIndex = (currentIndex + 1) % themes.length
-  setTheme(themes[nextIndex])
-}
-
-const themeLabel = computed(() => {
-  const labels = { light: '浅色', dark: '深色', system: '跟随系统' }
-  return labels[theme.value] || '浅色'
-})
 </script>
 
 <template>
-  <div class="min-h-screen flex transition-colors duration-300" :class="{ 'dark': isDark }">
-    <!-- 全局搜索弹窗 -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showSearch" class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]">
-          <div class="fixed inset-0 bg-black/30 dark:bg-black/50 backdrop-blur-sm" @click="showSearch = false"></div>
-          <div class="relative w-full max-w-lg mx-4 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl overflow-hidden">
-            <div class="flex items-center gap-3 p-4 border-b border-slate-100 dark:border-slate-700">
-              <Search class="w-5 h-5 text-shuimo/50 dark:text-slate-400" />
-              <input
-                id="admin-search-input"
-                v-model="searchQuery"
-                type="text"
-                placeholder="搜索菜单、功能..."
-                aria-label="全局搜索菜单"
-                class="flex-1 bg-transparent outline-none text-shuimo dark:text-slate-200 placeholder:text-shuimo/40 dark:placeholder:text-slate-500"
-                @keydown.enter="handleSearch"
-                @keydown.escape="showSearch = false"
-                autofocus
-              />
-              <kbd class="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 text-shuimo/60 dark:text-slate-400 rounded">Esc</kbd>
-            </div>
-            <div class="p-4 text-sm text-shuimo/60 dark:text-slate-400">
-              输入关键词搜索：用户、课程、日志、公告、设置
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-
-    <!-- 快捷键帮助弹窗 -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="showKeyboardHelp" class="fixed inset-0 z-[100] flex items-center justify-center">
-          <div class="fixed inset-0 bg-black/30 dark:bg-black/50 backdrop-blur-sm" @click="showKeyboardHelp = false"></div>
-          <div class="relative w-full max-w-sm mx-4 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-bold text-shuimo dark:text-slate-200">键盘快捷键</h3>
-              <button @click="showKeyboardHelp = false" class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700">
-                <X class="w-5 h-5 text-shuimo/50 dark:text-slate-400" />
-              </button>
-            </div>
-            <div class="space-y-3">
-              <div v-for="shortcut in keyboardShortcuts" :key="shortcut.key" class="flex items-center justify-between">
-                <span class="text-sm text-shuimo/70 dark:text-slate-300">{{ shortcut.description }}</span>
-                <kbd class="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700 text-shuimo/60 dark:text-slate-400 rounded font-mono">{{ shortcut.key }}</kbd>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
-
+  <!-- 已按需求移除“跟随系统/快捷键”功能，容器不再依赖主题切换状态 -->
+  <div class="min-h-screen flex transition-colors duration-300">
     <!-- 全局自定义滚动条与动效注入 -->
     <component is="style">
       ::-webkit-scrollbar {
@@ -439,11 +261,6 @@ const themeLabel = computed(() => {
             <span v-if="sidebarOpen" class="font-medium whitespace-nowrap">{{ item.label }}</span>
           </Transition>
 
-          <!-- 快捷键提示 -->
-          <Transition name="sidebar-text">
-            <kbd v-if="sidebarOpen" class="ml-auto px-1.5 py-0.5 text-[10px] rounded opacity-50" :class="activeMenu === item.id ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700'">{{ index + 1 }}</kbd>
-          </Transition>
-
           <!-- 待审核课程徽标 -->
           <span
             v-if="item.badge === 'pending' && courseStats.pending > 0 && sidebarOpen"
@@ -459,29 +276,6 @@ const themeLabel = computed(() => {
 
       <!-- Bottom Actions -->
       <div class="p-4 border-t border-slate-100/50 dark:border-slate-700/50 space-y-2">
-        <!-- 主题切换 -->
-        <button
-          @click="cycleTheme"
-          class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-shuimo/60 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          :title="`当前: ${themeLabel}`"
-        >
-          <component :is="themeIcon" class="w-5 h-5" />
-          <Transition name="sidebar-text">
-            <span v-if="sidebarOpen" class="font-medium">{{ themeLabel }}</span>
-          </Transition>
-        </button>
-
-        <!-- 快捷键帮助 -->
-        <button
-          @click="showKeyboardHelp = true"
-          class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-shuimo/60 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        >
-          <Keyboard class="w-5 h-5" />
-          <Transition name="sidebar-text">
-            <span v-if="sidebarOpen" class="font-medium">快捷键</span>
-          </Transition>
-        </button>
-
         <button @click="router.push('/')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-qinghua hover:bg-qinghua/10 dark:hover:bg-qinghua/20 transition-colors">
           <Home class="w-5 h-5" />
           <Transition name="sidebar-text">
@@ -519,16 +313,6 @@ const themeLabel = computed(() => {
         </div>
 
         <div class="flex items-center gap-4">
-          <!-- 搜索按钮 -->
-          <button
-            @click="showSearch = true"
-            class="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-shuimo/60 dark:text-slate-400 transition-colors"
-          >
-            <Search class="w-4 h-4" />
-            <span class="text-sm hidden md:inline">搜索</span>
-            <kbd class="px-1.5 py-0.5 text-[10px] bg-white dark:bg-slate-600 rounded hidden md:inline">⌘K</kbd>
-          </button>
-
           <div class="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-600">
              <div class="text-right hidden md:block">
                 <p class="text-sm font-bold text-shuimo dark:text-slate-200">{{ authStore.user?.username || '管理员' }}</p>
@@ -547,14 +331,38 @@ const themeLabel = computed(() => {
           :name="slideDirection === 'up' ? 'slide-up' : 'slide-down'"
           mode="out-in"
         >
-          <KeepAlive>
-            <component
-              :is="currentComponent"
-              :key="activeMenu"
-              v-bind="currentProps"
-              v-on="currentListeners"
+          <!-- 使用显式分支渲染，避免动态组件在切换时出现空白 -->
+          <div :key="activeMenu">
+            <AdminDashboard
+              v-if="activeMenu === 'dashboard'"
+              :stats="stats"
+              :today-stats="todayStats"
+              :course-stats="courseStats"
+              :recent-users="recentUsers"
+              :disabled-users-count="disabledUsersCount"
+              :last-update-time="lastUpdateTime"
+              :loading="loading"
+              @navigate="handleNavigate"
+              @refresh="refreshData"
             />
-          </KeepAlive>
+            <AdminUsers
+              v-else-if="activeMenu === 'users'"
+              :users="allUsers"
+              :loading="loading"
+              :initial-filter="userInitialFilter"
+              @refresh="refreshData"
+            />
+            <AdminCourses
+              v-else-if="activeMenu === 'courses'"
+              :courses="courses"
+              :loading="loading"
+              :initial-filter="courseInitialFilter"
+              @refresh="refreshData"
+            />
+            <AdminLogs v-else-if="activeMenu === 'logs'" />
+            <AdminAnnouncements v-else-if="activeMenu === 'announcements'" />
+            <AdminSystem v-else-if="activeMenu === 'settings'" />
+          </div>
         </Transition>
       </div>
     </main>

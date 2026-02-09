@@ -11,9 +11,10 @@ import {
 import {
   GraduationCap, LayoutDashboard, BookOpen,
   FileText, History, MessageSquare, Settings,
-  LogOut, Menu, X, Home, Search, Star, Flame, Award, Medal
+  LogOut, Menu, X, Home, Star, Flame, Award, Medal
 } from 'lucide-vue-next'
 import { useToastStore } from '../stores/toast'
+import { formatDateCN, formatDateTimeCN } from '../utils/datetime'
 
 // 子组件（按需异步加载，减少主包体积）
 const StudentDashboard = defineAsyncComponent(() => import('./student/StudentDashboard.vue'))
@@ -22,6 +23,16 @@ const StudentHomeworks = defineAsyncComponent(() => import('./student/StudentHom
 const StudentRecords = defineAsyncComponent(() => import('./student/StudentRecords.vue'))
 const StudentQuestions = defineAsyncComponent(() => import('./student/StudentQuestions.vue'))
 const StudentProfile = defineAsyncComponent(() => import('./student/StudentProfile.vue'))
+
+// 预热学生中心异步页面，减少首次切换时的加载延迟
+const preloadStudentViews = () => {
+  void import('./student/StudentDashboard.vue')
+  void import('./student/StudentMyCourses.vue')
+  void import('./student/StudentHomeworks.vue')
+  void import('./student/StudentRecords.vue')
+  void import('./student/StudentQuestions.vue')
+  void import('./student/StudentProfile.vue')
+}
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -205,8 +216,7 @@ const getSubjectColor = (subject) => {
 }
 
 const formatTime = (dateStr) => {
-   if (!dateStr) return '暂无'
-   return new Date(dateStr).toLocaleDateString()
+   return formatDateCN(dateStr, '暂无')
 }
 
 // 加载学生统计数据（从后端API）
@@ -570,7 +580,7 @@ const loadHomeworks = async () => {
       .map(hw => ({
         type: 'grade',
         title: `${hw.title} 已批改`,
-        time: hw.submitTime ? new Date(hw.submitTime).toLocaleDateString() : '刚刚',
+        time: hw.submitTime ? formatDateCN(hw.submitTime, '刚刚') : '刚刚',
         score: hw.totalScore,
         action: 'homework'
       }))
@@ -797,13 +807,13 @@ const handleSubmitQuestion = async (q) => {
      if (res.code === 200 && res.data) {
        myQuestions.value.unshift({
          id: `chapter-${res.data.id ?? Date.now()}`,
-         title: q.title || '章节提问',
-         content: mergedContent,
-         courseName: q.courseName,
-         chapterName: q.chapterName,
-         time: new Date().toLocaleString(),
-         commentCount: 0
-       })
+        title: q.title || '章节提问',
+        content: mergedContent,
+        courseName: q.courseName,
+        chapterName: q.chapterName,
+        time: formatDateTimeCN(new Date()),
+        commentCount: 0
+      })
        toast.success('提问成功，等待老师回复')
      }
    } catch (e) {
@@ -972,6 +982,9 @@ onMounted(async () => {
    }
    
    refreshAll()
+
+   // 首屏数据请求发起后异步预加载其他视图，提升菜单切换顺滑度
+   setTimeout(() => preloadStudentViews(), 0)
 })
 
 onUnmounted(() => {
@@ -1069,18 +1082,6 @@ const handleLogout = async () => {
             <component :is="sidebarOpen ? X : Menu" class="w-5 h-5" />
           </button>
           
-          <div class="relative hidden sm:block">
-            <!-- 无障碍：为全局搜索框提供可关联标签 -->
-            <label for="global-search-input" class="sr-only">全局搜索</label>
-            <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-shuimo/40" />
-            <input 
-              id="global-search-input"
-              name="search"
-              type="text" 
-              placeholder="搜索..."
-              class="pl-9 pr-4 py-2 rounded-xl bg-slate-100/50 border-none focus:ring-2 focus:ring-qinghua/20 transition-all text-sm w-64"
-            />
-          </div>
         </div>
 
         <div class="flex items-center gap-6">

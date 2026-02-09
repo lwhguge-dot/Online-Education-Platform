@@ -7,6 +7,7 @@ import BaseSelect from '../../components/ui/BaseSelect.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import { discussionAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
+import { formatDateCN } from '../../utils/datetime'
 
 const props = defineProps({
   user: {
@@ -232,7 +233,7 @@ const formatTime = (dateStr) => {
   if (hours < 1) return '刚刚'
   if (hours < 24) return `${hours}小时前`
   if (hours < 48) return '昨天'
-  return date.toLocaleDateString('zh-CN')
+  return formatDateCN(dateStr, '')
 }
 
 const handleStatClick = (statId) => {

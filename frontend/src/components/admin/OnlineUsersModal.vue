@@ -8,6 +8,7 @@ import { X, Users, Wifi, WifiOff, Clock, Monitor, RefreshCw, Search } from 'luci
 import { userAPI } from '../../services/api'
 import { useWebSocket } from '../../composables/useWebSocket'
 import AnimatedNumber from '../ui/AnimatedNumber.vue'
+import { formatTimeCN } from '../../utils/datetime'
 
 const props = defineProps({
   /** 是否显示弹窗 */
@@ -38,7 +39,7 @@ const loadOnlineUsers = async () => {
     const res = await userAPI.getOnlineStatus()
     if (res.code === 200 && res.data) {
       onlineUsers.value = res.data.users || res.data || []
-      lastUpdateTime.value = new Date().toLocaleTimeString('zh-CN')
+      lastUpdateTime.value = formatTimeCN(new Date())
     }
   } catch (e) {
     console.error('加载在线用户失败:', e)

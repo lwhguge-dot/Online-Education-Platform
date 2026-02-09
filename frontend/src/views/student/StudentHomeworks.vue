@@ -4,6 +4,11 @@ import { FileText, Clock, CheckCircle, AlertCircle, ChevronRight, Filter, Rotate
 import GlassCard from '../../components/ui/GlassCard.vue'
 import BaseEmptyState from '../../components/ui/BaseEmptyState.vue'
 import BaseSelect from '../../components/ui/BaseSelect.vue'
+import { formatDateTimeCN } from '../../utils/datetime'
+
+const formatDisplayDateTime = (dateStr) => {
+  return formatDateTimeCN(dateStr, '未知时间')
+}
 
 const props = defineProps({
   pendingHomeworks: {
@@ -292,7 +297,7 @@ const getCountdown = (daysLeft) => {
                    <h3 class="font-bold text-shuimo truncate">{{ hw.title }}</h3>
                    <p class="text-xs text-shuimo/50 mt-1 truncate">{{ hw.course }}</p>
                    <div class="flex items-center gap-3 mt-2">
-                       <span class="text-xs text-slate-400">提交于 {{ new Date(hw.submitTime).toLocaleString() }}</span>
+                       <span class="text-xs text-slate-400">提交于 {{ formatDisplayDateTime(hw.submitTime) }}</span>
                    </div>
                 </div>
              </div>

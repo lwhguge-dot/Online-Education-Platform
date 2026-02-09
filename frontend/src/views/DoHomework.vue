@@ -11,6 +11,7 @@ import GlassCard from '../components/ui/GlassCard.vue'
 import SkeletonLoader from '../components/SkeletonLoader.vue'
 import HomeworkQA from '../components/student/HomeworkQA.vue'
 import AnimatedNumber from '../components/ui/AnimatedNumber.vue'
+import { formatDateTimeCN } from '../utils/datetime'
 
 const router = useRouter()
 const route = useRoute()
@@ -318,7 +319,7 @@ const goBack = () => {
             </span>
           </div>
           <div v-if="isViewMode && submissionData" class="text-sm text-shuimo/50">
-             提交时间：{{ new Date(submissionData.submittedAt).toLocaleString() }}
+             提交时间：{{ formatDateTimeCN(submissionData.submittedAt, '-') }}
           </div>
         </GlassCard>
 

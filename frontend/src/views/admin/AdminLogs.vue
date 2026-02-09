@@ -7,6 +7,7 @@ import {
 import GlassCard from '../../components/ui/GlassCard.vue'
 import { auditLogAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
+import { formatDateTimeCN } from '../../utils/datetime'
 
 const toast = useToastStore()
 
@@ -114,8 +115,7 @@ const applyFilters = () => {
 
 // 格式化时间
 const formatDate = (dateStr) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('zh-CN')
+  return formatDateTimeCN(dateStr)
 }
 
 // 生命周期

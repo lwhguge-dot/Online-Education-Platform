@@ -24,6 +24,19 @@ const CourseAnalytics = defineAsyncComponent(() => import('./teacher/CourseAnaly
 const AnnouncementHistory = defineAsyncComponent(() => import('../components/teacher/AnnouncementHistory.vue'))
 const TeachingCalendar = defineAsyncComponent(() => import('./teacher/TeachingCalendar.vue'))
 
+// 预热教师中心异步页面，减少首次切换时的白屏/卡顿感
+const preloadTeacherViews = () => {
+  void import('./teacher/TeacherDashboard.vue')
+  void import('./teacher/TeacherCourses.vue')
+  void import('./teacher/TeacherHomeworks.vue')
+  void import('./teacher/TeacherStudents.vue')
+  void import('./teacher/TeacherDiscussion.vue')
+  void import('./teacher/TeacherProfile.vue')
+  void import('./teacher/CourseAnalytics.vue')
+  void import('../components/teacher/AnnouncementHistory.vue')
+  void import('./teacher/TeachingCalendar.vue')
+}
+
 const router = useRouter()
 const authStore = useAuthStore()
 const roleLabel = computed(() => {
@@ -304,6 +317,9 @@ let refreshInterval = null
 onMounted(() => {
   startStatusCheck()
   loadAllData()
+
+  // 首屏稳定后异步预加载其余页面，提升后续菜单切换顺滑度
+  setTimeout(() => preloadTeacherViews(), 0)
   
   // 监听 hash 变化
   window.addEventListener('hashchange', handleHashChange)
@@ -461,7 +477,8 @@ onUnmounted(() => {
 
       <!-- Content Area with Page Transition -->
       <div class="p-8 flex-1">
-        <Transition :name="'page-slide-' + slideDirection" mode="out-in">
+        <!-- 页面切换动画与管理员中心保持一致 -->
+        <Transition :name="slideDirection === 'up' ? 'slide-up' : 'slide-down'" mode="out-in">
           <!-- Dashboard -->
           <TeacherDashboard 
             v-if="activeMenu === 'dashboard'" 
@@ -541,40 +558,34 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* 页面切换过渡动画 - 向上滑动（切换到下方菜单项） */
-.page-slide-up-enter-active {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+/* 页面切换过渡动画 - 向上滑入（与管理员中心一致） */
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.page-slide-up-leave-active {
-  transition: all 0.2s ease-in;
-}
-
-.page-slide-up-enter-from {
+.slide-up-enter-from {
   opacity: 0;
-  transform: translateY(30px);
+  transform: translateY(20px);
 }
 
-.page-slide-up-leave-to {
+.slide-up-leave-to {
   opacity: 0;
   transform: translateY(-20px);
 }
 
-/* 页面切换过渡动画 - 向下滑动（切换到上方菜单项） */
-.page-slide-down-enter-active {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+/* 页面切换过渡动画 - 向下滑入（与管理员中心一致） */
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.page-slide-down-leave-active {
-  transition: all 0.2s ease-in;
-}
-
-.page-slide-down-enter-from {
+.slide-down-enter-from {
   opacity: 0;
-  transform: translateY(-30px);
+  transform: translateY(-20px);
 }
 
-.page-slide-down-leave-to {
+.slide-down-leave-to {
   opacity: 0;
   transform: translateY(20px);
 }

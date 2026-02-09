@@ -330,10 +330,12 @@ const submitQuestion = async () => {
        </div>
     </div>
 
-    <!-- 提问弹窗 -->
+    <!-- 提问弹窗（与教师中心公告发布弹窗使用同款遮罩层风格） -->
     <Teleport to="body">
-      <div v-if="showAskModal" class="fixed inset-0 bg-white/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4">
-        <GlassCard class="w-full max-w-lg p-6 animate-slide-up md:p-8 max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
+      <div v-if="showAskModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-[2px]" @click="showAskModal = false"></div>
+        <div class="relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in border border-white/20">
+          <div class="p-6 md:p-8 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-6">
           <h3 class="text-xl font-bold text-shuimo font-song">向老师提问</h3>
           <button @click="showAskModal = false" class="p-2 rounded-full hover:bg-slate-100 text-shuimo/50 hover:text-shuimo transition-colors">
@@ -452,13 +454,18 @@ const submitQuestion = async () => {
             </BaseButton>
           </div>
         </div>
-      </GlassCard>
+          </div>
+      </div>
       </div>
     </Teleport>
   </div>
 </template>
 
 <style scoped>
+.animate-scale-in {
+  animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* 展开/收起动画 */
 .expand-enter-active,
 .expand-leave-active {

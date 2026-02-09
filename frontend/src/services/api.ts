@@ -481,7 +481,8 @@ export const userAPI = {
       ...(token && { Authorization: `Bearer ${token}` }),
     }
     if (operatorId) headers['X-User-Id'] = operatorId.toString()
-    if (operatorName) headers['X-User-Name'] = operatorName
+    // 浏览器限制自定义请求头必须是 ISO-8859-1，可视化中文用户名会触发 fetch 报错
+    // 操作人姓名由网关从 JWT 注入，前端不再手动传递 X-User-Name
     const response = await fetch(`${API_BASE}/users/${id}/status`, {
       method: 'PUT',
       headers,
@@ -500,7 +501,7 @@ export const userAPI = {
       ...(token && { Authorization: `Bearer ${token}` }),
     }
     if (operatorId) headers['X-User-Id'] = operatorId.toString()
-    if (operatorName) headers['X-User-Name'] = operatorName
+    // 同上：避免中文请求头导致删除请求在浏览器侧被拦截
     const response = await fetch(`${API_BASE}/users/${id}`, {
       method: 'DELETE',
       headers,

@@ -10,6 +10,8 @@ import BaseModal from '../../components/ui/BaseModal.vue'
 import { userAPI, authAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
 import { useConfirmStore } from '../../stores/confirm'
+import { formatDateTimeCN } from '../../utils/datetime'
+
 
 const confirmStore = useConfirmStore()
 
@@ -63,6 +65,10 @@ const closeSessionModal = () => {
   showSessionModal.value = false
   selectedUserForSession.value = null
   userSessions.value = []
+}
+
+const formatDisplayDateTime = (dateStr) => {
+  return formatDateTimeCN(dateStr, '未知时间')
 }
 
 // 导出状态
@@ -475,7 +481,7 @@ onDeactivated(stopOnlineStatusTimer)
                   </span>
                 </td>
                 <td class="p-4 text-sm text-shuimo/60 font-mono">
-                  {{ user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : '从未登录' }}
+                  {{ user.lastLoginAt ? formatDisplayDateTime(user.lastLoginAt) : '从未登录' }}
                 </td>
                 <td class="p-4 text-right pr-6">
                    <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -574,7 +580,7 @@ onDeactivated(stopOnlineStatusTimer)
                   <p class="font-medium text-sm text-shuimo">{{ session.deviceInfo || '未知设备' }}</p>
                   <p class="text-xs text-shuimo/50 flex items-center gap-1 mt-0.5">
                     <Clock class="w-3 h-3" />
-                    {{ session.loginTime ? new Date(session.loginTime).toLocaleString() : '未知时间' }}
+                    {{ formatDisplayDateTime(session.loginTime) }}
                   </p>
                 </div>
               </div>

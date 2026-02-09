@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { ThumbsUp, MessageCircle, Pin, Trash2, VolumeX, MoreHorizontal, User } from 'lucide-vue-next'
 import CommentInput from './CommentInput.vue'
 import { useConfirmStore } from '../../stores/confirm'
+import { formatDateCN } from '../../utils/datetime'
 
 const confirmStore = useConfirmStore()
 
@@ -53,7 +54,7 @@ const formatTime = (dateStr) => {
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
   if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`
   
-  return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+  return formatDateCN(dateStr, '')
 }
 
 const handleLike = () => {

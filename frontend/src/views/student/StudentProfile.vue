@@ -540,7 +540,7 @@ const getGenderLabel = (value) => {
                               <div v-if="formData.gender === opt.value" class="ml-auto w-2 h-2 rounded-full bg-qinghua"></div>
                            </button>
                         </div>
-                     </div>
+                       </div>
                    </Transition>
                  </Teleport>
                 </div>

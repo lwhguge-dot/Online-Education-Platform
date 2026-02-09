@@ -6,6 +6,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { X, Users, Eye, Clock, CheckCircle, User, TrendingUp } from 'lucide-vue-next'
 import { announcementAPI } from '../../services/api'
+import { formatDateCN } from '../../utils/datetime'
 import GlassCard from '../ui/GlassCard.vue'
 import AnimatedNumber from '../ui/AnimatedNumber.vue'
 
@@ -85,7 +86,7 @@ const formatTimeAgo = (dateStr) => {
   if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`
   if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`
   if (diff < 604800) return `${Math.floor(diff / 86400)}天前`
-  return date.toLocaleDateString('zh-CN')
+  return formatDateCN(dateStr, '未知')
 }
 
 /**

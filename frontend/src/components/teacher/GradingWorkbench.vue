@@ -8,6 +8,7 @@ import {
 } from 'lucide-vue-next'
 import GlassCard from '../ui/GlassCard.vue'
 import BaseButton from '../ui/BaseButton.vue'
+import { formatDateTimeCN } from '../../utils/datetime'
 
 const props = defineProps({
   homeworkId: { type: Number, required: true },
@@ -165,14 +166,7 @@ const handleKeydown = (e) => {
 
 // 格式化时间
 const formatTime = (dateStr) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleString('zh-CN', { 
-    month: '2-digit', 
-    day: '2-digit', 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  })
+  return formatDateTimeCN(dateStr, '-')
 }
 
 // 安全解析选项，避免模板内重复 JSON.parse 且降低异常风险
