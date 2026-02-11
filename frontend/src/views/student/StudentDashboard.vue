@@ -135,7 +135,7 @@ const displayName = computed(() => props.username || '同学')
     />
 
     <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="grid grid-cols-1 tablet:grid-cols-2 fold:grid-cols-3 lg:grid-cols-4 gap-6">
       <!-- 今日目标进度卡片 -->
       <GlassCard 
         class="p-6 card-hover-lift animate-slide-up"
@@ -153,13 +153,13 @@ const displayName = computed(() => props.username || '同学')
         @click="emit('navigate', 'courses')"
       >
         <div class="flex items-center justify-between mb-3">
-          <span class="text-sm font-medium text-shuimo/60">学习课程</span>
-          <BookOpen class="w-5 h-5 text-qinghua icon-hover-scale group-hover:text-qinghua/80 transition-colors" />
+          <span class="text-sm font-medium text-muted">学习课程</span>
+          <BookOpen class="w-5 h-5 text-qinghua icon-hover-scale group-hover:text-qinghua/80 transition-colors" aria-hidden="true" />
         </div>
         <div class="text-3xl font-bold bg-gradient-to-r from-qinghua to-halanzi bg-clip-text text-transparent number-pop">
           {{ stats.enrolledCourses }}
         </div>
-        <p class="text-xs text-shuimo/50 mt-2">已完成 {{ stats.completedChapters }} 章节</p>
+        <p class="text-xs text-muted mt-2">已完成 {{ stats.completedChapters }} 章节</p>
       </GlassCard>
 
       <GlassCard 
@@ -169,8 +169,8 @@ const displayName = computed(() => props.username || '同学')
         @click="emit('navigate', 'homework')"
       >
         <div class="flex items-center justify-between mb-3">
-          <span class="text-sm font-medium text-shuimo/60">待完成作业</span>
-          <FileText class="w-5 h-5 text-zhizi icon-hover-scale" :class="{ 'animate-bounce': stats.pendingHomework > 0 }" />
+          <span class="text-sm font-medium text-muted">待完成作业</span>
+          <FileText class="w-5 h-5 text-zhizi icon-hover-scale" :class="{ 'animate-bounce': stats.pendingHomework > 0 }" aria-hidden="true" />
         </div>
         <div class="text-3xl font-bold bg-gradient-to-r from-zhizi to-tanxiang bg-clip-text text-transparent number-pop">
           {{ stats.pendingHomework }}
@@ -180,7 +180,7 @@ const displayName = computed(() => props.username || '同学')
           请尽快完成
         </p>
         <p class="text-xs text-tianlv mt-2 flex items-center gap-1" v-else>
-          <CheckCircle class="w-3 h-3" />
+          <CheckCircle class="w-3 h-3" aria-hidden="true" />
           太棒了！
         </p>
       </GlassCard>
@@ -190,8 +190,8 @@ const displayName = computed(() => props.username || '同学')
         style="animation-delay: 0.3s; animation-fill-mode: both;"
       >
         <div class="flex items-center justify-between mb-3">
-          <span class="text-sm font-medium text-shuimo/60">连续学习</span>
-          <Flame class="w-5 h-5 text-yanzhi icon-hover-scale" :class="{ 'animate-pulse': stats.streakDays >= 7 }" />
+          <span class="text-sm font-medium text-muted">连续学习</span>
+          <Flame class="w-5 h-5 text-yanzhi icon-hover-scale" :class="{ 'animate-pulse': stats.streakDays >= 7 }" aria-hidden="true" />
         </div>
         <div class="text-3xl font-bold bg-gradient-to-r from-yanzhi to-tanxiang bg-clip-text text-transparent number-pop">
           {{ stats.streakDays }}天
@@ -205,7 +205,7 @@ const displayName = computed(() => props.username || '同学')
       <GlassCard class="p-6 h-full flex flex-col card-hover-glow animate-slide-up" style="animation-delay: 0.4s; animation-fill-mode: both;">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-bold text-shuimo flex items-center gap-2 font-song">
-            <Target class="w-5 h-5 text-qinghua icon-hover-rotate" />
+            <Target class="w-5 h-5 text-qinghua icon-hover-rotate" aria-hidden="true" />
             今日任务
           </h3>
           <span class="text-xs bg-qinghua/20 text-qinghua px-2 py-1 rounded-full font-bold" :class="{ 'animate-pulse': todayTasks.length > 0 }">
@@ -225,14 +225,14 @@ const displayName = computed(() => props.username || '同学')
               <span class="text-sm text-shuimo font-medium line-clamp-1" :title="task.title">{{ task.title }}</span>
               <span v-if="task.urgent" class="text-xs text-yanzhi font-bold whitespace-nowrap ml-2 animate-pulse">紧急</span>
             </div>
-            <p class="text-xs text-shuimo/50 mt-1">{{ task.deadline }}</p>
+            <p class="text-xs text-muted mt-1">{{ task.deadline }}</p>
           </div>
-          <div v-if="todayTasks.length === 0" class="flex flex-col items-center justify-center h-32 text-shuimo/40">
+          <div v-if="todayTasks.length === 0" class="flex flex-col items-center justify-center h-32 text-muted">
             <div class="w-16 h-16 rounded-full bg-tianlv/10 flex items-center justify-center mb-3 empty-state-float">
-              <CheckCircle class="w-8 h-8 text-tianlv" />
+              <CheckCircle class="w-8 h-8 text-tianlv" aria-hidden="true" />
             </div>
             <p class="text-sm font-medium text-tianlv">太棒了！今日无紧急任务</p>
-            <p class="text-xs text-shuimo/40 mt-1">保持这个状态，继续加油~</p>
+            <p class="text-xs text-muted mt-1">保持这个状态，继续加油~</p>
           </div>
         </div>
       </GlassCard>

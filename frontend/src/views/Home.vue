@@ -265,7 +265,7 @@ const goToCenter = () => {
       <div class="max-w-7xl mx-auto px-6 py-4">
         <div class="flex items-center justify-between">
           <router-link to="/" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm border border-white/50 group hover:shadow-md transition-all hover:scale-105">
-            <Sparkles class="w-4 h-4 text-zhizi group-hover:animate-spin-slow" />
+            <Sparkles class="w-4 h-4 text-zhizi group-hover:animate-spin-slow" aria-hidden="true" />
             <span class="text-sm font-medium text-shuimo">中学在线教育平台</span>
           </router-link>
           
@@ -344,7 +344,7 @@ const goToCenter = () => {
                         精选推荐
                       </span>
                       <div class="flex items-center gap-1 text-zhizi">
-                        <Star class="w-4 h-4 fill-current" />
+                        <Star class="w-4 h-4 fill-current" aria-hidden="true" />
                         <span class="text-white font-bold">{{ course.rating }}</span>
                       </div>
                     </div>
@@ -363,7 +363,7 @@ const goToCenter = () => {
                         size="lg"
                         :class="['!rounded-full !px-8 border-0', course.btnStyle]"
                       >
-                        <Play class="w-5 h-5 mr-2 fill-current" />
+                        <Play class="w-5 h-5 mr-2 fill-current" aria-hidden="true" />
                         立即开始
                       </BaseButton>
                     </div>
@@ -379,13 +379,13 @@ const goToCenter = () => {
               @click.stop="prevSlide"
               class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-105 transition-all text-white/50 hover:text-white"
             >
-              <ChevronLeft class="w-6 h-6" />
+              <ChevronLeft class="w-6 h-6" aria-hidden="true" />
             </button>
             <button 
               @click.stop="nextSlide"
               class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-105 transition-all text-white/50 hover:text-white"
             >
-              <ChevronRight class="w-6 h-6" />
+              <ChevronRight class="w-6 h-6" aria-hidden="true" />
             </button>
           </div>
           
@@ -407,7 +407,7 @@ const goToCenter = () => {
 
     <!-- Course Section -->
     <section id="courses" class="py-6 px-6">
-      <div class="max-w-7xl mx-auto">
+      <div class="max-w-7xl mx-auto" aria-live="polite">
 
         <!-- Subject Filter -->
         <div class="flex justify-center gap-3 mb-12 flex-wrap">
@@ -422,7 +422,7 @@ const goToCenter = () => {
                 : 'bg-white border-slate-100 text-shuimo/60 hover:border-danqing/30 hover:text-danqing hover:shadow-md'
             ]"
           >
-            <component :is="subject.icon" class="w-4 h-4" />
+            <component :is="subject.icon" class="w-4 h-4" aria-hidden="true" />
             {{ subject.name }}
           </button>
         </div>
@@ -466,7 +466,7 @@ const goToCenter = () => {
         <!-- Empty State -->
         <div v-if="!loading && displayedCourses.length === 0" class="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
           <div class="w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center mb-6">
-            <BookOpen class="w-10 h-10 text-shuimo/20" />
+            <BookOpen class="w-10 h-10 text-shuimo/20" aria-hidden="true" />
           </div>
           <h3 class="text-lg font-medium text-shuimo/60 mb-2">暂无该学科课程</h3>
           <p class="text-sm text-shuimo/40 mb-6">老师正在快马加鞭备课中...</p>
@@ -482,7 +482,7 @@ const goToCenter = () => {
         <!-- Load More Indicator -->
         <div v-if="loadingMore" class="flex justify-center py-12">
           <div class="flex items-center gap-2 text-danqing bg-white/50 backdrop-blur px-4 py-2 rounded-full border border-danqing/10 shadow-sm">
-            <Loader2 class="w-5 h-5 animate-spin" />
+            <Loader2 class="w-5 h-5 animate-spin" aria-hidden="true" />
             <span class="text-sm font-medium">加载更多课程...</span>
           </div>
         </div>
@@ -492,7 +492,7 @@ const goToCenter = () => {
             class="text-sm text-shuimo/40 hover:text-danqing transition-colors flex items-center gap-1 mx-auto group"
           >
             下滑或点击加载更多
-            <ChevronRight class="w-4 h-4 group-hover:translate-y-0.5 transition-transform rotate-90" />
+            <ChevronRight class="w-4 h-4 group-hover:translate-y-0.5 transition-transform rotate-90" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -503,7 +503,7 @@ const goToCenter = () => {
     <footer class="py-8 px-6 border-t border-white/20 bg-white/30 footer-section">
       <div class="max-w-7xl mx-auto text-center">
         <div class="flex items-center justify-center gap-2 mb-2 group cursor-default">
-          <GraduationCap class="w-5 h-5 text-danqing group-hover:animate-bounce-subtle transition-transform" />
+          <GraduationCap class="w-5 h-5 text-danqing group-hover:animate-bounce-subtle transition-transform" aria-hidden="true" />
           <span class="font-bold text-shuimo group-hover:text-danqing transition-colors">智慧课堂</span>
           <span class="text-sm text-shuimo/50">中学在线教育平台</span>
         </div>

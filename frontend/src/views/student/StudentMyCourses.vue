@@ -7,6 +7,7 @@ import { ref, computed } from 'vue'
 import { BookOpen, Search, Play, Star, Users, Clock, GraduationCap } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
 import BaseSelect from '../../components/ui/BaseSelect.vue'
+import BaseTooltip from '../../components/ui/BaseTooltip.vue'
 import SkeletonCard from '../../components/ui/SkeletonCard.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import { getImageUrl } from '../../services/api'
@@ -38,6 +39,14 @@ const handleImageError = (courseId) => {
 }
 
 const subjects = ['语文', '数学', '英语', '物理', '化学', '生物', '政治', '历史', '地理']
+
+// 学生端关键状态说明文案，统一接入 Tooltip 组件
+const studentStatusTips = {
+  lastStudy: '显示你最近一次进入该课程学习的时间。',
+  progress: '学习进度=已完成章节/总章节，完成更多章节可持续提升。',
+  activeLearners: '当前正在学习该课程的学生人数。',
+  enroll: '点击后立即报名课程，报名成功后会进入“已选课程”。'
+}
 
 const filteredList = computed(() => {
   const targetList = activeTab.value === 'enrolled' ? props.enrolledCourses : props.availableCourses
@@ -110,12 +119,12 @@ const handleStartStudy = (course) => {
 
     <!-- Content Grid -->
     <!-- 骨架屏加载状态 -->
-    <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div v-if="loading" class="grid grid-cols-1 tablet:grid-cols-2 fold:grid-cols-3 xl:grid-cols-4 gap-6">
       <SkeletonCard v-for="i in 4" :key="i" />
     </div>
 
     <!-- 课程列表 -->
-    <div v-else-if="filteredList.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div v-else-if="filteredList.length > 0" class="grid grid-cols-1 tablet:grid-cols-2 fold:grid-cols-3 xl:grid-cols-4 gap-6">
       
       <!-- ========== 已选课程卡片 ========== -->
       <template v-if="activeTab === 'enrolled'">
@@ -131,6 +140,7 @@ const handleStartStudy = (course) => {
             <img 
               v-if="course.coverImage && !imageErrors[course.id]" 
               :src="getImageUrl(course.coverImage)" 
+              :alt="course.title + ' 封面'"
               loading="lazy" 
               class="w-full h-full object-cover transition-transform duration-[8s] ease-out group-hover:scale-110"
               @error="handleImageError(course.id)"
@@ -140,7 +150,7 @@ const handleStartStudy = (course) => {
               :class="['w-full h-full bg-gradient-to-br', course.color || 'from-qinghua to-halanzi']"
             >
               <div class="w-full h-full flex items-center justify-center">
-                <BookOpen class="w-16 h-16 text-white/30" />
+                <BookOpen class="w-16 h-16 text-white/30" aria-hidden="true" />
               </div>
             </div>
           </div>
@@ -152,7 +162,7 @@ const handleStartStudy = (course) => {
           <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-50 group-hover:scale-100">
             <div class="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm border border-white/50 flex items-center justify-center shadow-lg group-active:scale-95 transition-transform play-btn-pulse">
               <div class="w-12 h-12 rounded-full bg-white text-qinghua flex items-center justify-center shadow-sm">
-                <Play class="w-5 h-5 ml-1 fill-current" />
+                <Play class="w-5 h-5 ml-1 fill-current" aria-hidden="true" />
               </div>
             </div>
           </div>
@@ -164,8 +174,12 @@ const handleStartStudy = (course) => {
 
           <!-- 最后学习时间（右上角） -->
           <div v-if="course.lastStudy && course.lastStudy !== '暂无记录'" class="absolute top-3 right-3 px-2.5 py-1 rounded-lg backdrop-blur-md bg-black/30 border border-white/20 text-xs text-white/80 flex items-center gap-1">
-            <Clock class="w-3 h-3" />
-            {{ course.lastStudy }}
+            <BaseTooltip :text="studentStatusTips.lastStudy" placement="top">
+              <span class="inline-flex items-center gap-1">
+                <Clock class="w-3 h-3" aria-hidden="true" />
+                {{ course.lastStudy }}
+              </span>
+            </BaseTooltip>
           </div>
           
           <!-- 底部信息面板 -->
@@ -184,7 +198,9 @@ const handleStartStudy = (course) => {
             <!-- 学习进度条和继续学习按钮 -->
             <div class="pt-3 border-t border-white/10">
               <div class="flex items-center justify-between mb-2">
-                <span class="text-xs text-white/70">学习进度</span>
+                <BaseTooltip :text="studentStatusTips.progress" placement="top">
+                  <span class="text-xs text-white/70">学习进度</span>
+                </BaseTooltip>
                 <span class="text-xs font-medium text-white">{{ course.completedChapters || 0 }}/{{ course.totalChapters || 0 }} 章</span>
               </div>
               <div class="flex items-center gap-3">
@@ -196,7 +212,7 @@ const handleStartStudy = (course) => {
                 </div>
                 <button 
                   @click.stop="handleStartStudy(course)" 
-                  class="px-4 py-1.5 text-xs font-bold text-qinghua bg-white rounded-lg hover:shadow-lg transition-all hover:scale-105 active:scale-95 shadow-sm whitespace-nowrap btn-ripple"
+                  class="px-4 py-1.5 text-xs font-bold text-qinghua bg-white rounded-lg hover:shadow-lg transition-all hover:scale-105 active:scale-95 shadow-sm whitespace-nowrap btn-ripple min-h-[44px] min-w-[80px] flex items-center justify-center md:min-h-0 md:py-1.5"
                 >
                   继续学习
                 </button>
@@ -220,6 +236,7 @@ const handleStartStudy = (course) => {
             <img 
               v-if="course.coverImage && !imageErrors[course.id]" 
               :src="getImageUrl(course.coverImage)" 
+              :alt="course.title + ' 封面'"
               loading="lazy" 
               class="w-full h-full object-cover transition-transform duration-[8s] ease-out group-hover:scale-110"
               @error="handleImageError(course.id)"
@@ -229,7 +246,7 @@ const handleStartStudy = (course) => {
               :class="['w-full h-full bg-gradient-to-br', course.color || 'from-qinghua to-halanzi']"
             >
               <div class="w-full h-full flex items-center justify-center">
-                <BookOpen class="w-16 h-16 text-white/30" />
+                <BookOpen class="w-16 h-16 text-white/30" aria-hidden="true" />
               </div>
             </div>
           </div>
@@ -241,14 +258,14 @@ const handleStartStudy = (course) => {
           <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-50 group-hover:scale-100">
             <div class="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm border border-white/50 flex items-center justify-center shadow-lg group-active:scale-95 transition-transform play-btn-pulse">
               <div class="w-12 h-12 rounded-full bg-white text-qinghua flex items-center justify-center shadow-sm">
-                <Play class="w-5 h-5 ml-1 fill-current" />
+                <Play class="w-5 h-5 ml-1 fill-current" aria-hidden="true" />
               </div>
             </div>
           </div>
           
           <!-- 评分（右上角） -->
           <div class="absolute top-3 right-3 px-2.5 py-1 rounded-lg backdrop-blur-md bg-black/20 border border-white/10 text-xs font-medium flex items-center gap-1 text-white shadow-sm">
-            <Star class="w-3.5 h-3.5 text-yellow-400 fill-current" />
+            <Star class="w-3.5 h-3.5 text-yellow-400 fill-current" aria-hidden="true" />
             <span>{{ course.rating || 4.5 }}</span>
           </div>
           
@@ -266,20 +283,24 @@ const handleStartStudy = (course) => {
                 {{ course.teacher }}
               </span>
               <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10">
-                <Users class="w-3.5 h-3.5" />
+                <Users class="w-3.5 h-3.5" aria-hidden="true" />
                 <span>{{ course.students || 0 }}</span>
               </div>
             </div>
 
             <!-- 报名按钮 -->
             <div class="pt-3 border-t border-white/10 flex items-center justify-between">
-              <span class="text-xs text-white/70">{{ course.students || 0 }} 人在学</span>
-              <button 
-                @click.stop="emit('enroll', course)" 
-                class="px-4 py-1.5 text-xs font-bold text-white bg-white/20 hover:bg-white hover:text-qinghua rounded-lg backdrop-blur-md transition-all border border-white/20 btn-ripple hover:scale-105 active:scale-95"
-              >
-                立即报名
-              </button>
+              <BaseTooltip :text="studentStatusTips.activeLearners" placement="top">
+                <span class="text-xs text-white/70">{{ course.students || 0 }} 人在学</span>
+              </BaseTooltip>
+              <BaseTooltip :text="studentStatusTips.enroll" placement="top">
+                <button 
+                  @click.stop="emit('enroll', course)" 
+                  class="px-4 py-1.5 text-xs font-bold text-white bg-white/20 hover:bg-white hover:text-qinghua rounded-lg backdrop-blur-md transition-all border border-white/20 btn-ripple hover:scale-105 active:scale-95 min-h-[44px] min-w-[80px] flex items-center justify-center md:min-h-0 md:py-1.5"
+                >
+                  立即报名
+                </button>
+              </BaseTooltip>
             </div>
           </div>
         </div>

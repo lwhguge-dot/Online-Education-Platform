@@ -28,7 +28,9 @@
             </div>
             <div class="p-8 md:w-2/3 flex flex-col justify-center">
               <div class="flex items-center gap-3 mb-4">
-                <span :class="statusClass">{{ statusText }}</span>
+                <BaseTooltip :text="statusTipText" placement="top">
+                  <span :class="statusClass">{{ statusText }}</span>
+                </BaseTooltip>
               </div>
               <h1 class="text-3xl font-bold text-shuimo mb-4 font-song">{{ course.title }}</h1>
               <p class="text-shuimo/70 mb-6 leading-relaxed">{{ course.description }}</p>
@@ -184,6 +186,7 @@ import { useAuthStore } from '../stores/auth'
 import { useConfirmStore } from '../stores/confirm'
 import { courseAPI, chapterAPI, enrollmentAPI, getImageUrl } from '../services/api'
 import BaseButton from '../components/ui/BaseButton.vue'
+import BaseTooltip from '../components/ui/BaseTooltip.vue'
 import SkeletonLoader from '../components/SkeletonLoader.vue'
 import AnimatedNumber from '../components/ui/AnimatedNumber.vue'
 import { ArrowLeft, Users, Star, User, Clock, BookOpen, Play, LogOut, Eye } from 'lucide-vue-next'
@@ -240,6 +243,17 @@ const statusText = computed(() => {
     'OFFLINE': '已下架',
   }
   return textMap[course.value?.status] || '未知'
+})
+
+const statusTipText = computed(() => {
+  const tips = {
+    PUBLISHED: '课程已发布，学生可访问并进行选课。',
+    DRAFT: '课程为草稿状态，仅课程教师可见。',
+    REVIEWING: '课程正在管理员审核中，暂不对学生开放。',
+    REJECTED: '课程已被驳回，教师修改并保存后可再次提交审核。',
+    OFFLINE: '课程已下架，学生暂不可访问。'
+  }
+  return tips[course.value?.status] || '课程状态以管理员审核结果为准。'
 })
 
 const canEnroll = computed(() => {

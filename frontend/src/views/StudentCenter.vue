@@ -1024,7 +1024,7 @@ const handleLogout = async () => {
 
     <!-- Sidebar -->
     <aside 
-      class="fixed top-0 left-0 h-full bg-white/80 backdrop-blur-xl border-r border-slate-200/60 z-50 transition-all duration-300 flex flex-col"
+      class="fixed top-0 left-0 h-full bg-white/80 backdrop-blur-xl border-r border-slate-200/60 z-50 transition-all duration-300 flex flex-col will-change-[width,transform]"
       :class="[
         sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0 md:w-20',
         'w-64'
@@ -1032,7 +1032,7 @@ const handleLogout = async () => {
     >
       <div class="h-20 flex items-center px-6 border-b border-slate-100/50">
         <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-qinghua to-halanzi flex items-center justify-center shrink-0 shadow-lg shadow-qinghua/20">
-          <GraduationCap class="w-5 h-5 text-white" />
+          <GraduationCap class="w-5 h-5 text-white" aria-hidden="true" />
         </div>
         <span v-if="sidebarOpen" class="ml-3 font-bold text-lg text-shuimo font-song tracking-wide truncate">
            学生中心
@@ -1044,24 +1044,25 @@ const handleLogout = async () => {
           v-for="item in menuItems"
           :key="item.id"
           @click="handleMenuClick(item.id)"
-          class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden"
+          class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qinghua"
           :class="activeMenu === item.id 
             ? 'bg-gradient-to-r from-qinghua to-halanzi text-white shadow-lg shadow-qinghua/30' 
-            : 'text-shuimo/60 hover:bg-slate-100 hover:text-shuimo'"
+            : 'text-muted hover:bg-slate-100 hover:text-shuimo'"
+          :aria-label="item.label"
         >
-          <component :is="item.icon" class="w-5 h-5 transition-transform" :class="{'scale-110': activeMenu === item.id}" />
+          <component :is="item.icon" class="w-5 h-5 transition-transform" :class="{'scale-110': activeMenu === item.id}" aria-hidden="true" />
           <span v-if="sidebarOpen" class="font-medium whitespace-nowrap">{{ item.label }}</span>
           <div v-if="activeMenu === item.id" class="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
         </button>
       </nav>
 
       <div class="p-4 border-t border-slate-100/50 space-y-2">
-        <button @click="router.push('/')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-qinghua hover:bg-qinghua/10 transition-colors">
-          <Home class="w-5 h-5" />
+        <button @click="router.push('/')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-qinghua hover:bg-qinghua/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qinghua" aria-label="回到首页">
+          <Home class="w-5 h-5" aria-hidden="true" />
           <span v-if="sidebarOpen" class="font-medium">回到首页</span>
         </button>
-        <button @click="handleLogout" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-yanzhi hover:bg-yanzhi/10 transition-colors">
-          <LogOut class="w-5 h-5" />
+        <button @click="handleLogout" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-yanzhi hover:bg-yanzhi/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yanzhi" aria-label="退出登录">
+          <LogOut class="w-5 h-5" aria-hidden="true" />
           <span v-if="sidebarOpen" class="font-medium">退出登录</span>
         </button>
       </div>
@@ -1069,17 +1070,19 @@ const handleLogout = async () => {
 
     <!-- Main Content -->
     <main 
-      class="flex-1 transition-all duration-300 min-h-screen flex flex-col"
+      class="flex-1 transition-all duration-300 min-h-screen flex flex-col will-change-[margin]"
       :class="sidebarOpen ? 'md:ml-64' : 'md:ml-20'"
+      aria-live="polite"
     >
       <!-- Header -->
       <header class="sticky top-0 z-40 bg-white/70 backdrop-blur-md border-b border-slate-200/50 px-6 h-20 flex items-center justify-between">
         <div class="flex items-center gap-4">
           <button 
             @click="sidebarOpen = !sidebarOpen"
-            class="p-2 rounded-xl hover:bg-slate-100 text-shuimo/60 hover:text-shuimo transition-colors"
+            class="p-2 rounded-xl hover:bg-slate-100 text-muted hover:text-shuimo transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qinghua"
+            :aria-label="sidebarOpen ? '收起侧边栏' : '展开侧边栏'"
           >
-            <component :is="sidebarOpen ? X : Menu" class="w-5 h-5" />
+            <component :is="sidebarOpen ? X : Menu" class="w-5 h-5" aria-hidden="true" />
           </button>
           
         </div>
@@ -1088,10 +1091,13 @@ const handleLogout = async () => {
           <div class="flex items-center gap-3 pl-6 border-l border-slate-200">
              <div class="text-right hidden md:block">
                 <p class="text-sm font-bold text-shuimo">{{ authStore.user?.username || 'Student' }}</p>
-                <p class="text-xs text-shuimo/50">学生</p>
+                <p class="text-xs text-muted">学生</p>
              </div>
              <div class="w-10 h-10 rounded-full bg-slate-200 border-2 border-white shadow-sm overflow-hidden">
-                <img :src="studentProfile.avatar || `https://ui-avatars.com/api/?name=${authStore.user?.username}&background=random`" />
+                <img 
+                  :src="studentProfile.avatar || `https://ui-avatars.com/api/?name=${authStore.user?.username}&background=random`" 
+                  alt="用户头像"
+                />
              </div>
           </div>
         </div>

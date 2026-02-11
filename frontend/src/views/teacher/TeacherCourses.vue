@@ -12,7 +12,8 @@ import BaseInput from '../../components/ui/BaseInput.vue'
 import BaseSelect from '../../components/ui/BaseSelect.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import BaseSectionHeader from '../../components/ui/BaseSectionHeader.vue'
-import { courseAPI, chapterAPI, fileAPI } from '../../services/api'
+import BaseTooltip from '../../components/ui/BaseTooltip.vue'
+import { courseAPI, chapterAPI, fileAPI, getImageUrl } from '../../services/api'
 
 const confirmStore = useConfirmStore()
 
@@ -44,6 +45,13 @@ const courseStatusMap = {
   REVIEWING: { label: '审核中', class: 'bg-zhizi/10 text-zhizi border-zhizi/20' },
   REJECTED: { label: '已驳回', class: 'bg-yanzhi/10 text-yanzhi border-yanzhi/20' }
 }
+
+const statusTooltipMap = {
+  DRAFT: '草稿仅课程教师可见，编辑并保存后会自动提交管理员审核。',
+  REVIEWING: '课程正在等待管理员审核，通过后才会重新对学生开放。'
+}
+
+const getStatusTooltip = (status) => statusTooltipMap[status] || ''
 
 const subjectOptions = ['语文', '数学', '英语', '物理', '化学', '生物', '政治', '历史', '地理']
 
@@ -180,27 +188,10 @@ const saveCourse = async () => {
     }
     showCourseModal.value = false
     emit('refresh')
-    toast.success('保存成功')
+    // 课程编辑保存后由后端统一进入待审核状态，提示语需明确流程变化
+    toast.success(editingCourse.value ? '已保存并提交审核' : '课程创建成功（草稿）')
   } catch (e) {
     toast.error('保存失败: ' + e.message)
-  }
-}
-
-const updateStatus = async (id, status) => {
-  try {
-    // 严格模式：教师提审/撤审走专用接口；上下线由管理员处理
-    if (status === 'DRAFT') {
-      await courseAPI.submitReview(id)
-    } else if (status === 'REVIEWING') {
-      await courseAPI.withdrawReview(id)
-    } else {
-      toast.warning('该状态请联系管理员处理')
-      return
-    }
-    emit('refresh')
-    toast.success('状态更新成功')
-  } catch (e) {
-    toast.error('操作失败')
   }
 }
 
@@ -468,9 +459,15 @@ const deleteQuiz = async (quizId) => {
             <BookOpen class="w-12 h-12 text-tianlv/30" />
           </div>
           
-          <div class="absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-bold border backdrop-blur-md"
-             :class="courseStatusMap[course.status]?.class || 'bg-slate-100 text-slate-500'">
-            {{ courseStatusMap[course.status]?.label || course.status }}
+          <div class="absolute top-3 right-3">
+            <BaseTooltip :text="getStatusTooltip(course.status)" placement="top">
+              <div
+                class="px-2 py-1 rounded-full text-xs font-bold border backdrop-blur-md"
+                :class="courseStatusMap[course.status]?.class || 'bg-slate-100 text-slate-500'"
+              >
+                {{ courseStatusMap[course.status]?.label || course.status }}
+              </div>
+            </BaseTooltip>
           </div>
         </div>
 
@@ -493,15 +490,22 @@ const deleteQuiz = async (quizId) => {
                <button @click="openCourseModal(course)" class="p-2 hover:bg-slate-100 rounded-lg text-shuimo/60 hover:text-qinghua transition-colors" title="编辑课程">
                  <Edit class="w-4 h-4" />
                </button>
-               <!-- 如需操作菜单可在此扩展 -->
                <div class="h-4 w-px bg-slate-200 mx-1 self-center"></div>
-               
-               <button v-if="course.status === 'DRAFT'" @click="updateStatus(course.id, course.status)" class="text-xs font-bold text-tianlv hover:underline px-2">
-                 发布
-               </button>
-                <button v-if="course.status === 'REVIEWING'" @click="updateStatus(course.id, course.status)" class="text-xs font-bold text-yanzhi hover:underline px-2">
-                  撤审
-                </button>
+               <!-- 统一教师端交互语义：课程是否送审由“编辑后保存”触发，不再展示发布/撤审入口 -->
+               <BaseTooltip :text="getStatusTooltip(course.status)" placement="top">
+                 <span
+                   v-if="course.status === 'REVIEWING'"
+                   class="text-xs font-bold text-yanzhi px-2"
+                 >
+                   等待审核
+                 </span>
+                 <span
+                   v-else
+                   class="text-xs font-bold text-tianlv px-2"
+                 >
+                   保存即送审
+                 </span>
+               </BaseTooltip>
              </div>
            </div>
         </div>
@@ -578,7 +582,9 @@ const deleteQuiz = async (quizId) => {
           <!-- 固定底部按钮 -->
           <div class="p-4 border-t border-slate-100 flex gap-3 shrink-0 bg-white rounded-b-2xl">
             <BaseButton block variant="ghost" @click="showCourseModal = false">取消</BaseButton>
-            <BaseButton block variant="primary" @click="saveCourse">保存</BaseButton>
+            <BaseButton block variant="primary" @click="saveCourse">
+              {{ editingCourse ? '保存并提交审核' : '保存草稿' }}
+            </BaseButton>
           </div>
         </div>
       </div>

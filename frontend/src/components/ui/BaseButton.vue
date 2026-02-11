@@ -63,9 +63,10 @@ const props = defineProps({
 })
 
 const sizeClasses = {
-  sm: 'px-3 py-1.5 text-xs',
-  md: 'px-5 py-2.5 text-sm',
-  lg: 'px-8 py-3.5 text-base',
+  // Mobile-first: enforce min-height 44px for touch targets
+  sm: 'px-3 py-1.5 text-xs min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 md:px-3 md:py-1.5',
+  md: 'px-5 py-2.5 text-sm min-h-[44px] md:min-h-0',
+  lg: 'px-8 py-3.5 text-base min-h-[44px]',
 }
 
 const variantClasses = {
@@ -81,6 +82,7 @@ const variantClasses = {
 const computedClasses = computed(() => {
   return [
     'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-300 relative overflow-hidden',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-qinghua', // Accessibility Focus
     sizeClasses[props.size],
     variantClasses[props.variant],
     props.block ? 'w-full' : '',

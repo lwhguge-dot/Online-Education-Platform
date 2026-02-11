@@ -46,8 +46,23 @@ public class CourseController {
     @GetMapping
     public Result<List<CourseVO>> getAllCourses(
             @RequestParam(name = "subject", required = false) String subject,
-            @RequestParam(name = "status", required = false) String status) {
-        List<Course> courses = courseService.getAllCourses(subject, status);
+            @RequestParam(name = "status", required = false) String status,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        // 课程列表按角色收口：草稿仅教师本人可见，管理员默认不看草稿，学生仅看已发布
+        List<Course> courses;
+        if (isAdminRole(currentUserRole)) {
+            courses = courseService.getAdminVisibleCourses(subject, status);
+        } else if ("teacher".equalsIgnoreCase(currentUserRole)) {
+            Long currentUserId = parseUserId(currentUserIdHeader);
+            if (currentUserId == null) {
+                return Result.failure(403, "权限不足，无法识别当前教师身份");
+            }
+            courses = courseService.getTeacherCourses(currentUserId, subject, status);
+        } else {
+            // 学生及其他角色仅可查询已发布课程
+            courses = courseService.getPublishedCourses(subject);
+        }
         return Result.success(courseService.convertToVOList(courses));
     }
 
@@ -330,6 +345,8 @@ public class CourseController {
     @GetMapping("/teacher/{teacherId}")
     public Result<List<CourseVO>> getTeacherCourses(
             @PathVariable("teacherId") Long teacherId,
+            @RequestParam(name = "subject", required = false) String subject,
+            @RequestParam(name = "status", required = false) String status,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 教师课程列表仅允许教师本人或管理员访问
@@ -338,7 +355,7 @@ public class CourseController {
             return Result.failure(403, "权限不足，仅教师本人或管理员可查看教师课程列表");
         }
 
-        List<Course> courses = courseService.getTeacherCourses(teacherId);
+        List<Course> courses = courseService.getTeacherCourses(teacherId, subject, status);
         return Result.success(courseService.convertToVOList(courses));
     }
 
@@ -425,7 +442,7 @@ public class CourseController {
             return;
         }
 
-        List<Course> courses = courseService.getAllCourses(null, status);
+        List<Course> courses = courseService.getAdminVisibleCourses(null, status);
 
         // 生成带时间戳的文件名
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));

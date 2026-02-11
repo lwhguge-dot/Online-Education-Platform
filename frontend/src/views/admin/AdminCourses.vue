@@ -9,6 +9,7 @@ import GlassCard from '../../components/ui/GlassCard.vue'
 import BaseButton from '../../components/ui/BaseButton.vue'
 import BaseCourseCard from '../../components/ui/BaseCourseCard.vue'
 import BaseSelect from '../../components/ui/BaseSelect.vue'
+import BaseTooltip from '../../components/ui/BaseTooltip.vue'
 import { courseAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
 import { useConfirmStore } from '../../stores/confirm'
@@ -100,6 +101,21 @@ const statusMap = {
   'OFFLINE': { label: '已下架', class: 'bg-slate-100 text-slate-500', icon: Ban },
   'REJECTED': { label: '已驳回', class: 'bg-red-100 text-red-500', icon: XCircle },
 }
+
+// 管理员课程状态说明，用于统一 Tooltip 展示
+const statusTooltipMap = {
+  0: '课程正在等待管理员审核，通过后才会对学生开放。',
+  1: '课程已发布，学生可见且可报名选课。',
+  2: '课程已下架，学生不可访问或继续报名。',
+  PENDING: '课程正在等待管理员审核，通过后才会对学生开放。',
+  REVIEWING: '课程正在等待管理员审核，通过后才会对学生开放。',
+  PUBLISHED: '课程已发布，学生可见且可报名选课。',
+  OFFLINE: '课程已下架，学生不可访问或继续报名。',
+  REJECTED: '课程已被驳回，教师修改并保存后会再次进入待审核。',
+  DRAFT: '草稿仅教师可见，管理员默认列表不展示草稿。'
+}
+
+const getStatusTooltip = (status) => statusTooltipMap[status] || '课程状态已更新。'
 
 // 状态判断辅助函数 (使用宽松比较以支持字符串和数字)
 const isPending = (status) => status == 0 || status === 'PENDING' || status === 'REVIEWING'
@@ -395,25 +411,35 @@ onDeactivated(stopRefreshTimer)
                <!-- 底部：操作按钮 -->
                <div class="flex justify-center gap-2 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
                  <template v-if="isPending(course.status)">
-                   <button @click.stop="auditCourse(course, 'REJECT')" class="px-3 py-2 rounded-lg bg-red-500/90 hover:bg-red-500 text-white text-sm font-medium shadow-lg backdrop-blur-sm transition-colors">
-                     驳回
-                   </button>
-                   <button @click.stop="auditCourse(course, 'APPROVE')" class="px-4 py-2 rounded-lg bg-emerald-500/90 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg backdrop-blur-sm transition-colors">
-                     通过
-                   </button>
+                   <BaseTooltip text="驳回后课程对学生不可见，教师需修改并重新提交审核。" placement="top">
+                     <button @click.stop="auditCourse(course, 'REJECT')" class="px-3 py-2 rounded-lg bg-red-500/90 hover:bg-red-500 text-white text-sm font-medium shadow-lg backdrop-blur-sm transition-colors">
+                       驳回
+                     </button>
+                   </BaseTooltip>
+                   <BaseTooltip text="审核通过后课程立即发布，学生可访问并选课。" placement="top">
+                     <button @click.stop="auditCourse(course, 'APPROVE')" class="px-4 py-2 rounded-lg bg-emerald-500/90 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg backdrop-blur-sm transition-colors">
+                       通过
+                     </button>
+                   </BaseTooltip>
                  </template>
                  <template v-if="isPublished(course.status)">
-                   <button @click.stop="offlineCourse(course)" class="px-3 py-2 rounded-lg bg-red-500/90 hover:bg-red-500 text-white text-sm font-medium shadow-lg backdrop-blur-sm transition-colors" title="强制下线违规课程">
-                     强制下线
-                   </button>
-                   <button @click.stop="updateStatus(course, 2)" class="px-3 py-2 rounded-lg bg-slate-600/90 hover:bg-slate-600 text-white text-sm font-medium shadow-lg backdrop-blur-sm transition-colors">
-                     下架
-                   </button>
+                   <BaseTooltip text="用于违规或风险课程紧急下线，立即中断学生访问。" placement="top">
+                     <button @click.stop="offlineCourse(course)" class="px-3 py-2 rounded-lg bg-red-500/90 hover:bg-red-500 text-white text-sm font-medium shadow-lg backdrop-blur-sm transition-colors">
+                       强制下线
+                     </button>
+                   </BaseTooltip>
+                   <BaseTooltip text="普通下架：课程暂时对学生不可见，可后续重新上架。" placement="top">
+                     <button @click.stop="updateStatus(course, 2)" class="px-3 py-2 rounded-lg bg-slate-600/90 hover:bg-slate-600 text-white text-sm font-medium shadow-lg backdrop-blur-sm transition-colors">
+                       下架
+                     </button>
+                   </BaseTooltip>
                  </template>
                  <template v-if="isOffline(course.status)">
-                   <button @click.stop="updateStatus(course, 1)" class="px-3 py-2 rounded-lg bg-emerald-500/90 hover:bg-emerald-500 text-white text-sm font-medium shadow-lg backdrop-blur-sm transition-colors">
-                     重新上架
-                   </button>
+                   <BaseTooltip text="重新上架后课程恢复发布态，学生可再次访问。" placement="top">
+                     <button @click.stop="updateStatus(course, 1)" class="px-3 py-2 rounded-lg bg-emerald-500/90 hover:bg-emerald-500 text-white text-sm font-medium shadow-lg backdrop-blur-sm transition-colors">
+                       重新上架
+                     </button>
+                   </BaseTooltip>
                  </template>
                </div>
              </div>
@@ -421,10 +447,14 @@ onDeactivated(stopRefreshTimer)
            
            <!-- 状态徽标 -->
            <template #badge>
-             <div class="absolute top-3 right-3 px-2.5 py-1 rounded-lg backdrop-blur-md border text-xs font-bold shadow-sm"
-               :class="statusMap[course.status]?.class"
-             >
-               {{ statusMap[course.status]?.label }}
+             <div class="absolute top-3 right-3">
+               <BaseTooltip :text="getStatusTooltip(course.status)" placement="top">
+                 <div class="px-2.5 py-1 rounded-lg backdrop-blur-md border text-xs font-bold shadow-sm"
+                   :class="statusMap[course.status]?.class"
+                 >
+                   {{ statusMap[course.status]?.label }}
+                 </div>
+               </BaseTooltip>
              </div>
            </template>
            

@@ -199,14 +199,16 @@ const loadTeacherProfile = async () => {
 
 const loadCourses = async () => {
   try {
-    const res = await courseAPI.getAll()
+    const teacherId = authStore.user?.id
+    if (!teacherId) {
+      courses.value = []
+      return
+    }
+
+    // 教师端统一使用“我的课程”接口，避免全量拉取后本地过滤导致的可见性问题
+    const res = await courseAPI.getTeacherCourses(teacherId)
     if (res.data) {
-      const userStr = sessionStorage.getItem('user')
-      const teacherId = userStr ? Number(JSON.parse(userStr).id) : 0
-      
-      const myCourses = res.data.filter(c => Number(c.teacherId) === teacherId)
-      
-      courses.value = myCourses.map(c => ({
+      courses.value = res.data.map(c => ({
         id: c.id,
         title: c.title,
         subject: c.subject,

@@ -36,8 +36,12 @@ export default {
         info: '#1781b5',           // Default: 花蓝紫
         text: {
           main: '#50616d',         // Default: 水墨
-          muted: '#94a3b8',        // Default: Slate-400 (标准弱化灰，原为黛青)
+          muted: '#64748b',        // Optimized: Slate-500 (Contrast > 4.5:1)
         },
+      },
+      screens: {
+        'tablet': '744px',
+        'fold': '880px',
       },
       fontFamily: {
         'song': ['"Noto Serif SC"', 'serif'],

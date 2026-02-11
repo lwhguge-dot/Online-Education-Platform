@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -206,7 +207,66 @@ public class CourseService {
             wrapper.eq(Course::getSubject, subject);
         }
         if (status != null && !status.isEmpty()) {
-            wrapper.eq(Course::getStatus, status);
+            wrapper.eq(Course::getStatus, normalizeStatus(status));
+        }
+        wrapper.orderByDesc(Course::getCreatedAt);
+        List<Course> courses = courseMapper.selectList(wrapper);
+        fillChapterCounts(courses);
+        fillTeacherNames(courses);
+        return courses;
+    }
+
+    /**
+     * 管理端课程列表（默认不展示草稿）。
+     * 业务规则：草稿仅课程所属教师可见，管理员默认看不到草稿课程。
+     *
+     * @param subject 学科分类（可选）
+     * @param status  课程状态（可选）
+     * @return 管理端可见课程列表
+     */
+    public List<Course> getAdminVisibleCourses(String subject, String status) {
+        String normalizedStatus = null;
+        if (status != null && !status.isEmpty() && !"all".equalsIgnoreCase(status)) {
+            normalizedStatus = normalizeStatus(status);
+            // 草稿仅教师可见，管理员请求草稿时直接返回空列表
+            if (Course.STATUS_DRAFT.equals(normalizedStatus)) {
+                return Collections.emptyList();
+            }
+        }
+
+        LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
+        if (subject != null && !subject.isEmpty() && !"all".equals(subject)) {
+            wrapper.eq(Course::getSubject, subject);
+        }
+        if (normalizedStatus != null) {
+            wrapper.eq(Course::getStatus, normalizedStatus);
+        } else {
+            // 默认排除草稿，避免管理员在“全部”中看到教师私有草稿
+            wrapper.ne(Course::getStatus, Course.STATUS_DRAFT);
+        }
+        wrapper.orderByDesc(Course::getCreatedAt);
+        List<Course> courses = courseMapper.selectList(wrapper);
+        fillChapterCounts(courses);
+        fillTeacherNames(courses);
+        return courses;
+    }
+
+    /**
+     * 教师端课程列表（仅本人课程，支持按学科/状态筛选）。
+     *
+     * @param teacherId 教师ID
+     * @param subject   学科分类（可选）
+     * @param status    课程状态（可选）
+     * @return 教师可见课程列表
+     */
+    public List<Course> getTeacherCourses(Long teacherId, String subject, String status) {
+        LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Course::getTeacherId, teacherId);
+        if (subject != null && !subject.isEmpty() && !"all".equals(subject)) {
+            wrapper.eq(Course::getSubject, subject);
+        }
+        if (status != null && !status.isEmpty() && !"all".equalsIgnoreCase(status)) {
+            wrapper.eq(Course::getStatus, normalizeStatus(status));
         }
         wrapper.orderByDesc(Course::getCreatedAt);
         List<Course> courses = courseMapper.selectList(wrapper);
@@ -276,7 +336,7 @@ public class CourseService {
 
     /**
      * 修订存量课程关键元数据
-     * 注意：本接口仅负责属性同步，不涉及状态扭转或提审。
+     * 注意：教师每次保存后课程会自动进入待审核状态，需管理员审核通过后再次发布。
      *
      * @param id  目标课程唯一标识
      * @param dto 包含待修改属性的容器
@@ -298,6 +358,14 @@ public class CourseService {
             existing.setSubject(dto.getSubject());
         if (dto.getCoverImage() != null)
             existing.setCoverImage(dto.getCoverImage());
+
+        // 教师每次保存课程后都进入待审核状态，等待管理员审核通过后再次发布
+        existing.setStatus(Course.STATUS_REVIEWING);
+        existing.setSubmitTime(LocalDateTime.now());
+        // 清空上一轮审核结果，避免历史审核信息误导当前版本
+        existing.setAuditBy(null);
+        existing.setAuditTime(null);
+        existing.setAuditRemark(null);
         existing.setUpdatedAt(LocalDateTime.now());
         courseMapper.updateById(existing);
     }
@@ -549,12 +617,7 @@ public class CourseService {
      * 按创建时间逆序排列，并填充实时章节总数。
      */
     public List<Course> getTeacherCourses(Long teacherId) {
-        List<Course> courses = courseMapper.selectList(
-                new LambdaQueryWrapper<Course>()
-                        .eq(Course::getTeacherId, teacherId)
-                        .orderByDesc(Course::getCreatedAt));
-        fillChapterCounts(courses);
-        return courses;
+        return getTeacherCourses(teacherId, null, null);
     }
 
     /**
