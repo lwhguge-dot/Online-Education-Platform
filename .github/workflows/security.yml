@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: 配置 JDK ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
@@ -159,7 +159,7 @@ jobs:
 
       # Maven 依赖检查
       - name: 配置 JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
