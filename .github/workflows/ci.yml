@@ -119,7 +119,7 @@ jobs:
 
       # 8. 上传构建产物 (供后续 Job 使用)
       - name: 上传构建产物
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: backend-jars
           path: |
@@ -133,7 +133,7 @@ jobs:
       # 9. 上传测试报告
       - name: 上传测试报告
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-reports
           path: backend/**/target/surefire-reports/
@@ -186,7 +186,7 @@ jobs:
 
       # 7. 上传构建产物
       - name: 上传前端构建产物
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: frontend-dist
           path: frontend/dist/
