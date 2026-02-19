@@ -31,7 +31,7 @@
         <jjwt.version>0.12.3</jjwt.version>
         <micrometer.version>1.12.0</micrometer.version>
         <micrometer-tracing.version>1.2.0</micrometer-tracing.version>
-        <sentinel.version>1.8.6</sentinel.version>
+        <sentinel.version>1.8.9</sentinel.version>
         <langchain4j.version>0.32.0</langchain4j.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
