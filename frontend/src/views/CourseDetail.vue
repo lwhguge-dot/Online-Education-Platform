@@ -402,11 +402,12 @@ onMounted(() => {
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease;
+  /* P1 第二批：课程详情过渡统一 200ms 档 */
+  transition: opacity var(--motion-duration-medium) var(--motion-ease-standard);
 }
 .fade-enter-active .relative,
 .fade-leave-active .relative {
-  transition: transform 0.3s ease;
+  transition: transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 .fade-enter-from,
 .fade-leave-to {
@@ -421,7 +422,7 @@ onMounted(() => {
 
 /* 统计项入场动画 */
 .stat-item {
-  animation: stat-fade-in 0.5s ease-out both;
+  animation: stat-fade-in var(--motion-duration-medium) var(--motion-ease-standard) both;
   animation-delay: var(--delay, 0s);
 }
 
@@ -438,12 +439,12 @@ onMounted(() => {
 
 /* 章节列表入场动画 */
 .chapter-list-enter-active {
-  animation: chapter-enter 0.5s ease-out both;
+  animation: chapter-enter var(--motion-duration-medium) var(--motion-ease-standard) both;
   animation-delay: var(--delay, 0s);
 }
 
 .chapter-list-leave-active {
-  animation: chapter-leave 0.3s ease-in both;
+  animation: chapter-leave var(--motion-duration-medium) var(--motion-ease-standard) both;
 }
 
 @keyframes chapter-enter {
@@ -476,7 +477,7 @@ onMounted(() => {
 
 /* 章节序号动画 */
 .chapter-number {
-  animation: number-pop 0.4s ease-out both;
+  animation: number-pop var(--motion-duration-medium) var(--motion-ease-standard) both;
   animation-delay: calc(var(--delay, 0s) + 0.15s);
 }
 

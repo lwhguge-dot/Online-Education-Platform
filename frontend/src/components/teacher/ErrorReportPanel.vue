@@ -305,7 +305,10 @@ onMounted(() => {
 <style scoped>
 .expand-enter-active,
 .expand-leave-active {
-  transition: all 0.3s ease;
+  /* P1：展开过渡仅保留透明度与高度 */
+  transition:
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    max-height var(--motion-duration-medium) var(--motion-ease-standard);
   overflow: hidden;
 }
 

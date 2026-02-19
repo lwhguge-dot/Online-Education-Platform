@@ -91,6 +91,7 @@ defineProps({
 }
 
 .animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  /* P1：统一脉冲缓动曲线 */
+  animation: pulse var(--motion-duration-slow) var(--motion-ease-standard) infinite;
 }
 </style>

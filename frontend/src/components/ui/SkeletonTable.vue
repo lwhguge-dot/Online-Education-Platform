@@ -45,6 +45,7 @@ const props = defineProps({
 }
 
 .skeleton-table .animate-pulse {
-  animation: shimmer 1.5s ease-in-out infinite;
+  /* P1 第二批：表格骨架动画压缩 */
+  animation: shimmer var(--motion-duration-medium) var(--motion-ease-standard) infinite;
 }
 </style>

@@ -148,7 +148,10 @@ const formatTimeLeft = (daysLeft) => {
 <style scoped>
 .slide-down-enter-active,
 .slide-down-leave-active {
-  transition: all 0.3s ease;
+  /* P1：仅保留透明度与位移动画 */
+  transition:
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .slide-down-enter-from {
@@ -162,7 +165,8 @@ const formatTimeLeft = (daysLeft) => {
 }
 
 .animate-pulse-subtle {
-  animation: pulse-subtle 2s ease-in-out infinite;
+  /* P1 第二批：紧急作业提醒动画压缩 */
+  animation: pulse-subtle var(--motion-duration-medium) var(--motion-ease-standard) infinite;
 }
 
 @keyframes pulse-subtle {

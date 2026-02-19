@@ -19,6 +19,15 @@
   --color-shadow: rgba(0, 0, 0, 0.1);
   --color-shadow-light: rgba(0, 0, 0, 0.05);
 
+  /* P1 动效 Token：统一时长与缓动曲线 */
+  --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  /* P1 第二批：统一压缩到 200ms 档，复杂序列单独使用 complex token */
+  --motion-duration-fast: 0.12s;
+  --motion-duration-base: 0.16s;
+  --motion-duration-medium: 0.2s;
+  --motion-duration-slow: 0.2s;
+  --motion-duration-complex: 0.4s;
+
   /* 基础样式 */
   font-family: 'Noto Sans SC', system-ui, -apple-system, sans-serif;
   line-height: 1.6;
@@ -156,7 +165,9 @@ body {
     0 4px 6px -1px rgba(0, 0, 0, 0.05),
     0 2px 4px -1px rgba(0, 0, 0, 0.03),
     inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
-  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease;
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 /* Typography Enhancements */
@@ -191,7 +202,11 @@ h6 {
   padding: 0.75rem 1.5rem;
   border-radius: 1rem;
   font-weight: 500;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    transform var(--motion-duration-base) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-base) var(--motion-ease-standard),
+    background-color var(--motion-duration-base) var(--motion-ease-standard),
+    color var(--motion-duration-base) var(--motion-ease-standard);
 }
 
 .btn-primary:hover {
@@ -210,7 +225,10 @@ h6 {
   border: 2px solid transparent;
   background-color: rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(4px);
-  transition: all 0.3s;
+  transition:
+    border-color var(--motion-duration-medium) var(--motion-ease-standard),
+    background-color var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .input-field:focus {
@@ -223,7 +241,9 @@ h6 {
   position: relative;
   padding: 0.5rem 1rem;
   font-weight: 500;
-  transition: all 0.3s;
+  transition:
+    color var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .nav-link:hover {
@@ -238,7 +258,9 @@ h6 {
   width: 0;
   height: 2px;
   background-color: #88ada6;
-  transition: all 0.3s;
+  transition:
+    width var(--motion-duration-medium) var(--motion-ease-standard),
+    background-color var(--motion-duration-medium) var(--motion-ease-standard);
   transform: translateX(-50%);
 }
 
@@ -272,7 +294,7 @@ h6 {
 
 
 .animate-scale-in {
-  animation: scale-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: scale-in var(--motion-duration-slow) var(--motion-ease-standard) forwards;
   will-change: transform, opacity;
 }
 
@@ -289,7 +311,7 @@ h6 {
 }
 
 .animate-slide-up {
-  animation: slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: slide-up var(--motion-duration-slow) var(--motion-ease-standard) forwards;
   will-change: transform, opacity;
 }
 
@@ -306,7 +328,7 @@ h6 {
 }
 
 .animate-slide-down {
-  animation: slide-down 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: slide-down var(--motion-duration-medium) var(--motion-ease-standard) forwards;
   will-change: transform, opacity;
 }
 
@@ -321,7 +343,7 @@ h6 {
 }
 
 .animate-fade-in {
-  animation: fade-in 0.4s ease-out forwards;
+  animation: fade-in var(--motion-duration-slow) var(--motion-ease-standard) forwards;
   will-change: opacity;
 }
 
@@ -341,7 +363,7 @@ h6 {
   background: rgba(136, 173, 166, 0.4);
   /* danqing low opacity */
   border-radius: 4px;
-  transition: all 0.3s;
+  transition: background-color var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -352,7 +374,9 @@ h6 {
 /* 全局路由过渡动画 (Standardized - Elegant) */
 .page-fade-enter-active,
 .page-fade-leave-active {
-  transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-slow) var(--motion-ease-standard);
 }
 
 .page-fade-enter-from {
@@ -381,7 +405,10 @@ select.p-2\.5 {
   background-size: 1rem !important;
   padding-right: 2.5rem !important;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition:
+    border-color var(--motion-duration-base) var(--motion-ease-standard),
+    background-color var(--motion-duration-base) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-base) var(--motion-ease-standard);
   border-radius: 0.75rem;
   border: 1px solid rgba(203, 213, 225, 0.8);
   background-color: rgba(255, 255, 255, 0.6);
@@ -412,7 +439,9 @@ select option {
   background-color: white;
   color: #50616d;
   font-size: 0.875rem;
-  transition: all 0.15s ease;
+  transition:
+    background-color var(--motion-duration-fast) var(--motion-ease-standard),
+    color var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 select option:hover {
@@ -439,7 +468,10 @@ input[type="date"],
 input[type="datetime-local"],
 input[type="time"],
 textarea {
-  transition: all 0.25s ease;
+  transition:
+    border-color var(--motion-duration-base) var(--motion-ease-standard),
+    background-color var(--motion-duration-base) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-base) var(--motion-ease-standard);
 }
 
 input[type="text"]:focus,
@@ -462,7 +494,9 @@ input[type="checkbox"],
 input[type="radio"] {
   accent-color: #88ada6;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    transform var(--motion-duration-base) var(--motion-ease-standard),
+    outline-color var(--motion-duration-base) var(--motion-ease-standard);
 }
 
 input[type="checkbox"]:hover,
@@ -478,7 +512,12 @@ input[type="radio"]:focus {
 
 /* 按钮基础过渡动效 */
 button {
-  transition: all 0.2s ease;
+  transition:
+    transform var(--motion-duration-base) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-base) var(--motion-ease-standard),
+    background-color var(--motion-duration-base) var(--motion-ease-standard),
+    color var(--motion-duration-base) var(--motion-ease-standard),
+    border-color var(--motion-duration-base) var(--motion-ease-standard);
 }
 
 button:not(:disabled):hover {
@@ -534,20 +573,20 @@ button:not(:disabled):active {
 }
 
 .modal-enter-active {
-  animation: modal-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: modal-enter var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .modal-leave-active {
-  animation: modal-leave 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: modal-leave var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 /* 遮罩淡入淡出 */
 .modal-overlay-enter-active {
-  transition: opacity 0.25s ease-out;
+  transition: opacity var(--motion-duration-base) var(--motion-ease-standard);
 }
 
 .modal-overlay-leave-active {
-  transition: opacity 0.2s ease-in;
+  transition: opacity var(--motion-duration-base) var(--motion-ease-standard);
 }
 
 .modal-overlay-enter-from,

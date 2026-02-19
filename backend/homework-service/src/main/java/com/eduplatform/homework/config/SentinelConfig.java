@@ -47,7 +47,8 @@ public class SentinelConfig {
     public BlockExceptionHandler blockExceptionHandler() {
         return new BlockExceptionHandler() {
             @Override
-            public void handle(HttpServletRequest request, HttpServletResponse response, String resourceName, BlockException e) throws Exception {
+            public void handle(HttpServletRequest request, HttpServletResponse response, String resourceName,
+                    BlockException e) throws Exception {
                 Map<String, Object> result = new HashMap<>();
 
                 // 根据异常类型设置不同的错误信息

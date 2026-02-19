@@ -55,7 +55,10 @@ onUnmounted(() => {
 
 .slide-enter-active,
 .slide-leave-active {
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  /* P1 第二批：离线提示过渡压缩 */
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-standard),
+    opacity var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .slide-enter-from,

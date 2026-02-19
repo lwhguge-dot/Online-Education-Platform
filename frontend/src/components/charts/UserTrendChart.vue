@@ -252,7 +252,8 @@ const tooltipData = computed(() => getTooltipData(hoveredIndex.value))
 path {
   stroke-dasharray: 1000;
   stroke-dashoffset: 1000;
-  animation: draw 1s ease-out forwards;
+  /* P1 第二批：趋势图绘制动画压缩 */
+  animation: draw var(--motion-duration-medium) var(--motion-ease-standard) forwards;
 }
 
 @keyframes draw {

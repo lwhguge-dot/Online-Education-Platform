@@ -95,7 +95,8 @@ onBeforeUnmount(() => {
 <style scoped>
 .modal-enter-active,
 .modal-leave-active {
-  transition: all 0.25s ease;
+  /* P1：蒙层过渡仅保留透明度 */
+  transition: opacity var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .modal-enter-from,
@@ -110,6 +111,6 @@ onBeforeUnmount(() => {
 
 /* 弹窗内容动画使用全局 scale-in */
 .animate-scale-in {
-  animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: scale-in var(--motion-duration-medium) var(--motion-ease-standard) forwards;
 }
 </style>

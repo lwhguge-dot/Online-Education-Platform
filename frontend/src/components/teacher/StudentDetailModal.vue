@@ -277,7 +277,8 @@ watch(() => props.visible, (val) => {
 <style scoped>
 .modal-enter-active,
 .modal-leave-active {
-  transition: all 0.3s ease;
+  /* P1：遮罩过渡限定透明度 */
+  transition: opacity var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .modal-enter-from,
@@ -291,7 +292,7 @@ watch(() => props.visible, (val) => {
 }
 
 .animate-scale-in {
-  animation: scaleIn 0.3s ease-out;
+  animation: scaleIn var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes scaleIn {

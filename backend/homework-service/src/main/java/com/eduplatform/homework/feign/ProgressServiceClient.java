@@ -12,10 +12,10 @@ import java.util.Map;
  */
 @FeignClient(name = "progress-service", fallback = ProgressServiceClientFallback.class)
 public interface ProgressServiceClient {
-    
+
     @GetMapping("/api/progress/course/{courseId}/completion-rate")
     Map<String, Object> getCourseCompletionRate(@PathVariable("courseId") Long courseId);
-    
+
     @GetMapping("/api/progress/teacher/{teacherId}/weekly-stats")
     Map<String, Object> getTeacherWeeklyStats(@PathVariable("teacherId") Long teacherId);
 }

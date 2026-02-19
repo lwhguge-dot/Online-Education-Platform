@@ -563,7 +563,9 @@ onUnmounted(() => {
 /* 页面切换过渡动画 - 向上滑入（与管理员中心一致） */
 .slide-up-enter-active,
 .slide-up-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .slide-up-enter-from {
@@ -579,7 +581,9 @@ onUnmounted(() => {
 /* 页面切换过渡动画 - 向下滑入（与管理员中心一致） */
 .slide-down-enter-active,
 .slide-down-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .slide-down-enter-from {
@@ -594,7 +598,10 @@ onUnmounted(() => {
 
 /* 侧边栏滑动指示器动画 */
 .slide-indicator-enter-active {
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* P1：指示器动画统一标准曲线 */
+  transition:
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 /* 菜单项光效动画 */
@@ -614,7 +621,8 @@ onUnmounted(() => {
 }
 
 .menu-item-glow:hover::after {
-  animation: menu-shimmer 0.6s ease-out;
+  /* P1 第二批：侧栏光效时长压缩 */
+  animation: menu-shimmer var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes menu-shimmer {
@@ -633,7 +641,7 @@ onUnmounted(() => {
 
 /* 通知铃铛摇晃动画 */
 .animate-bell-shake {
-  animation: bell-shake 0.6s ease-in-out;
+  animation: bell-shake var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes bell-shake {

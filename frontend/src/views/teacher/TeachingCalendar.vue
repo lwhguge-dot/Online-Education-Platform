@@ -606,7 +606,8 @@ onMounted(() => {
 <style scoped>
 /* 今日日期脉冲动画 */
 .animate-today-pulse {
-  animation: today-pulse 2s ease-in-out infinite;
+  /* P1 第二批：日历反馈时长压缩，减少持续动画负担 */
+  animation: today-pulse var(--motion-duration-medium) var(--motion-ease-standard) infinite;
 }
 
 @keyframes today-pulse {
@@ -620,7 +621,7 @@ onMounted(() => {
 
 /* 日历月份切换动画 - 向左（下一月） */
 .animate-calendar-slide-left {
-  animation: calendar-slide-left 0.3s ease-out forwards;
+  animation: calendar-slide-left var(--motion-duration-medium) var(--motion-ease-standard) forwards;
 }
 
 @keyframes calendar-slide-left {
@@ -636,7 +637,7 @@ onMounted(() => {
 
 /* 日历月份切换动画 - 向右（上一月） */
 .animate-calendar-slide-right {
-  animation: calendar-slide-right 0.3s ease-out forwards;
+  animation: calendar-slide-right var(--motion-duration-medium) var(--motion-ease-standard) forwards;
 }
 
 @keyframes calendar-slide-right {

@@ -1,26 +1,20 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { MessageSquare, Plus, MessageCircle, X, Image, Upload, Loader2, Trash2, CheckCircle, Clock, ChevronDown, ChevronUp, BookOpen, FileText } from 'lucide-vue-next'
-
 import GlassCard from '../../components/ui/GlassCard.vue'
 import BaseButton from '../../components/ui/BaseButton.vue'
 import { fileAPI, chapterAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
+import { useAuthStore } from '../../stores/auth'
+import { useStudentQuestions } from '../../composables/useStudentQuestions'
+import { useStudentCourses } from '../../composables/useStudentCourses'
 
-const props = defineProps({
-  questions: {
-    type: Array,
-    default: () => []
-  },
-  // 新增：已选课程列表，用于关联问题
-  enrolledCourses: {
-    type: Array,
-    default: () => []
-  }
-})
-
-const emit = defineEmits(['submit'])
 const toast = useToastStore()
+const authStore = useAuthStore()
+
+// Composables
+const { questions, loading: questionsLoading, loadQuestions, submitQuestion: doSubmit } = useStudentQuestions()
+const { enrolledCourses, loadEnrolledCourses } = useStudentCourses()
 
 const showAskModal = ref(false)
 const newQuestion = ref({ courseId: '', chapterId: '', courseName: '', chapterName: '', title: '', content: '', imageUrl: '' })
@@ -55,7 +49,7 @@ watch(() => newQuestion.value.courseId, async (courseId) => {
     loadingChapters.value = false
     
     // 设置课程名称
-    const course = props.enrolledCourses.find(c => c.id == courseId)
+    const course = enrolledCourses.value.find(c => c.id == courseId)
     if (course) {
       newQuestion.value.courseName = course.title
     }
@@ -79,7 +73,8 @@ const getQuestionStatus = (question) => {
   }
   // 检查是否超过24小时
   if (question.time) {
-    const questionTime = new Date(question.time)
+    const questionTime = new Date(question.time.replace(/-/g, '/')) // Simple parsing for comparison
+    if (isNaN(questionTime.getTime())) return 'pending' 
     const now = new Date()
     const hoursDiff = (now - questionTime) / (1000 * 60 * 60)
     if (hoursDiff > 24) {
@@ -126,7 +121,7 @@ const isExpanded = (questionId) => {
 }
 
 const openAskModal = () => {
-  if (!props.enrolledCourses || props.enrolledCourses.length === 0) {
+  if (!enrolledCourses.value || enrolledCourses.value.length === 0) {
     toast.warning('请先报名课程后再提问')
     return
   }
@@ -175,7 +170,7 @@ const removeImage = () => {
 
 // 上传图片并提交问题
 const submitQuestion = async () => {
-  if (!props.enrolledCourses || props.enrolledCourses.length === 0) {
+  if (!enrolledCourses.value || enrolledCourses.value.length === 0) {
     toast.warning('请先报名课程后再提问')
     return
   }
@@ -212,18 +207,32 @@ const submitQuestion = async () => {
     uploading.value = false
   }
   
-  emit('submit', { ...newQuestion.value })
-  showAskModal.value = false
+  const studentId = authStore.user?.id
+  const success = await doSubmit(studentId, newQuestion.value)
+  if (success) {
+      showAskModal.value = false
+  }
 }
+
+onMounted(async () => {
+    const userId = authStore.user?.id
+    if (userId) {
+        await Promise.all([
+            loadQuestions(userId),
+            loadEnrolledCourses(userId)
+        ])
+    }
+})
 </script>
 
 <template>
   <div class="space-y-6 animate-fade-in">
     <!-- 工具栏 -->
-    <GlassCard class="p-4 flex flex-col md:flex-row justify-between items-center gap-4" style="animation: fade-in-up 0.4s ease-out forwards;">
+    <GlassCard class="p-4 flex flex-col md:flex-row justify-between items-center gap-4 animate-slide-up" style="animation-fill-mode: both;">
        <h3 class="text-lg font-bold text-shuimo flex items-center gap-2 font-song">
           <MessageCircle class="w-5 h-5 text-zijinghui icon-hover-rotate" />
           我的提问
+          <span v-if="questionsLoading" class="text-xs font-normal text-shuimo/50 animate-pulse ml-2">加载中...</span>
        </h3>
        
        <BaseButton @click="openAskModal" icon="Plus" variant="primary" class="btn-ripple">我要提问</BaseButton>
@@ -234,8 +243,8 @@ const submitQuestion = async () => {
        <GlassCard 
          v-for="(q, index) in questions" 
          :key="q.id"
-         class="p-4 transition-all hover:bg-slate-50 cursor-pointer card-hover-lift stagger-item h-fit"
-         :style="{ animationDelay: `${index * 0.08}s`, opacity: 0, animation: `fade-in-up 0.4s ease-out ${index * 0.08}s forwards` }"
+         class="p-4 transition-all hover:bg-slate-50 cursor-pointer card-hover-lift stagger-item h-fit animate-slide-up"
+         :style="{ animationDelay: `${index * 0.08}s`, animationFillMode: 'both' }"
          @click="toggleExpand(q.id)"
        >
          <div class="flex items-start gap-4">
@@ -297,7 +306,7 @@ const submitQuestion = async () => {
                      </div>
                    </div>
                    <div v-else class="text-sm text-shuimo/50 italic">
-                     回复内容加载中...
+                     暂无详细回复内容
                    </div>
                  </div>
                </Transition>
@@ -315,7 +324,7 @@ const submitQuestion = async () => {
          </div>
        </GlassCard>
 
-       <div v-if="questions.length === 0" class="col-span-full text-center py-20" style="animation: fade-in-up 0.5s ease-out forwards;">
+       <div v-if="!questionsLoading && questions.length === 0" class="col-span-full text-center py-20 animate-fade-in">
           <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-zijinghui/10 flex items-center justify-center empty-state-float">
             <MessageSquare class="w-8 h-8 text-zijinghui/50" />
           </div>
@@ -330,7 +339,7 @@ const submitQuestion = async () => {
        </div>
     </div>
 
-    <!-- 提问弹窗（与教师中心公告发布弹窗使用同款遮罩层风格） -->
+    <!-- 提问弹窗 -->
     <Teleport to="body">
       <div v-if="showAskModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-[2px]" @click="showAskModal = false"></div>
@@ -463,13 +472,17 @@ const submitQuestion = async () => {
 
 <style scoped>
 .animate-scale-in {
-  animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: scale-in var(--motion-duration-medium) var(--motion-ease-standard) forwards;
 }
 
 /* 展开/收起动画 */
 .expand-enter-active,
 .expand-leave-active {
-  transition: all 0.3s ease-out;
+  /* P1：展开动画仅保留必要属性 */
+  transition:
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-standard),
+    max-height var(--motion-duration-medium) var(--motion-ease-standard);
   overflow: hidden;
 }
 

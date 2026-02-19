@@ -558,11 +558,12 @@ onUnmounted(() => {
 <style scoped>
 /* 章节信息切换动画 */
 .chapter-info-enter-active {
-  animation: chapter-info-in 0.4s ease-out;
+  /* P1 第二批：章节动效统一压缩到 200ms 档 */
+  animation: chapter-info-in var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .chapter-info-leave-active {
-  animation: chapter-info-out 0.3s ease-in;
+  animation: chapter-info-out var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes chapter-info-in {
@@ -589,7 +590,7 @@ onUnmounted(() => {
 
 /* 完成徽章弹出动画 */
 .badge-pop-enter-active {
-  animation: badge-pop-in 0.4s ease-out;
+  animation: badge-pop-in var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .badge-pop-leave-active {
@@ -623,7 +624,7 @@ onUnmounted(() => {
 
 /* 完成徽章样式 */
 .completed-badge {
-  animation: badge-glow 2s ease-in-out infinite;
+  animation: badge-glow var(--motion-duration-medium) var(--motion-ease-standard) infinite;
 }
 
 @keyframes badge-glow {
@@ -637,12 +638,12 @@ onUnmounted(() => {
 
 /* 章节列表动画 */
 .chapter-list-move {
-  transition: transform 0.3s ease;
+  transition: transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 /* 指示条滑入动画 */
 .indicator-slide-enter-active {
-  animation: indicator-in 0.3s ease-out;
+  animation: indicator-in var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .indicator-slide-leave-active {
@@ -673,7 +674,7 @@ onUnmounted(() => {
 
 /* 章节项激活状态 */
 .active-chapter {
-  animation: chapter-active 0.3s ease-out;
+  animation: chapter-active var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes chapter-active {
@@ -690,7 +691,7 @@ onUnmounted(() => {
 
 /* 完成打勾动画 */
 .check-icon {
-  animation: check-pop 0.4s ease-out;
+  animation: check-pop var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes check-pop {
@@ -727,7 +728,7 @@ onUnmounted(() => {
 
 /* 上滑动画 */
 .slide-up-enter-active {
-  animation: slide-up-in 0.3s ease-out;
+  animation: slide-up-in var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .slide-up-leave-active {

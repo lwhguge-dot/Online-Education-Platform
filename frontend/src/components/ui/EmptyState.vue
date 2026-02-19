@@ -228,7 +228,8 @@ const handleAction = () => {
 <style scoped>
 /* 悬浮动画 */
 .empty-state-float {
-  animation: hover-float 4s ease-in-out infinite;
+  /* P1 第二批：空状态动画统一 200ms 档 */
+  animation: hover-float var(--motion-duration-medium) var(--motion-ease-standard) infinite;
 }
 
 @keyframes hover-float {
@@ -242,7 +243,9 @@ const handleAction = () => {
 
 /* 错误状态的图标抖动动画 */
 .empty-state-error .empty-state-float {
-  animation: shake-gentle 0.5s ease-in-out, hover-float 4s ease-in-out infinite 0.5s;
+  animation:
+    shake-gentle var(--motion-duration-medium) var(--motion-ease-standard),
+    hover-float var(--motion-duration-medium) var(--motion-ease-standard) infinite var(--motion-duration-medium);
 }
 
 @keyframes shake-gentle {
@@ -253,7 +256,9 @@ const handleAction = () => {
 
 /* 成功状态的图标缩放动画 */
 .empty-state-success .empty-state-float {
-  animation: scale-bounce 0.5s ease-out, hover-float 4s ease-in-out infinite 0.5s;
+  animation:
+    scale-bounce var(--motion-duration-medium) var(--motion-ease-standard),
+    hover-float var(--motion-duration-medium) var(--motion-ease-standard) infinite var(--motion-duration-medium);
 }
 
 @keyframes scale-bounce {

@@ -147,7 +147,8 @@ const toggleSubject = (subject) => {
 <template>
   <div class="space-y-6 animate-fade-in">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <GlassCard class="p-6 col-span-2 card-hover-glow" overflow="visible" style="animation: fade-in-up 0.5s ease-out forwards;">
+      <!-- P1 第二批：教师资料首屏卡片入场时长压缩 -->
+      <GlassCard class="p-6 col-span-2 card-hover-glow" overflow="visible" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) forwards;">
         <div class="flex items-center justify-between mb-6">
           <h3 class="text-lg font-bold text-shuimo flex items-center gap-2 font-song">
             <User class="w-5 h-5 text-qinghua icon-hover-rotate" />
@@ -192,25 +193,25 @@ const toggleSubject = (subject) => {
           </div>
 
           <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="space-y-1.5 stagger-item" style="animation: fade-in-up 0.4s ease-out 0.1s forwards; opacity: 0;">
+            <div class="space-y-1.5 stagger-item" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.1s forwards; opacity: 0;">
               <label for="teacher-profile-username" class="text-xs font-bold text-shuimo/60">用户名/昵称</label>
               <input id="teacher-profile-username" name="username" v-model="fullProfile.username" :disabled="!isEditing" autocomplete="username"
                      class="w-full bg-slate-50/80 border border-slate-200/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-qinghua/20 focus:border-qinghua/30 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:text-shuimo transition-all duration-300" />
               <p v-if="isEditing" class="text-xs text-shuimo/40">用户名在系统内显示，可随意修改</p>
             </div>
-            <div class="space-y-1.5 stagger-item" style="animation: fade-in-up 0.4s ease-out 0.15s forwards; opacity: 0;">
+            <div class="space-y-1.5 stagger-item" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.15s forwards; opacity: 0;">
               <label for="teacher-profile-realname" class="text-xs font-bold text-shuimo/60">真实姓名（登录账号）</label>
               <input id="teacher-profile-realname" name="realName" v-model="fullProfile.realName" disabled autocomplete="name"
                      class="w-full bg-transparent border-transparent px-0 py-2.5 text-sm text-shuimo cursor-not-allowed" />
               <p class="text-xs text-shuimo/40">真实姓名为登录账号，不可修改</p>
             </div>
-            <div class="space-y-1.5 stagger-item" style="animation: fade-in-up 0.4s ease-out 0.2s forwards; opacity: 0;">
+            <div class="space-y-1.5 stagger-item" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.2s forwards; opacity: 0;">
               <label for="teacher-profile-email" class="text-xs font-bold text-shuimo/60 flex items-center gap-1"><Mail class="w-3.5 h-3.5"/>邮箱（登录账号）</label>
               <input id="teacher-profile-email" name="email" v-model="fullProfile.email" disabled autocomplete="email"
                      class="w-full bg-transparent border-transparent px-0 py-2.5 text-sm text-shuimo cursor-not-allowed" />
               <p class="text-xs text-shuimo/40">邮箱为登录账号，不可修改</p>
             </div>
-            <div class="space-y-1.5 stagger-item" style="animation: fade-in-up 0.4s ease-out 0.25s forwards; opacity: 0;">
+            <div class="space-y-1.5 stagger-item" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.25s forwards; opacity: 0;">
               <label for="teacher-profile-phone" class="text-xs font-bold text-shuimo/60 flex items-center gap-1"><Phone class="w-3.5 h-3.5"/>手机号</label>
               <input id="teacher-profile-phone" name="phone" v-model="fullProfile.phone" :disabled="!isEditing" autocomplete="tel"
                      class="w-full bg-slate-50/80 border border-slate-200/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-qinghua/20 focus:border-qinghua/30 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:text-shuimo transition-all duration-300" />
@@ -220,7 +221,7 @@ const toggleSubject = (subject) => {
       </GlassCard>
 
       <div class="space-y-6">
-        <GlassCard class="p-6 card-hover-glow" style="animation: fade-in-up 0.5s ease-out 0.2s forwards; opacity: 0;">
+        <GlassCard class="p-6 card-hover-glow" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.2s forwards; opacity: 0;">
           <h3 class="text-lg font-bold text-shuimo mb-6 flex items-center gap-2 font-song">
             <Bell class="w-5 h-5 text-zhizi icon-hover-rotate" />
             消息通知
@@ -238,7 +239,7 @@ const toggleSubject = (subject) => {
           </div>
         </GlassCard>
 
-        <GlassCard class="p-6 card-hover-glow" style="animation: fade-in-up 0.5s ease-out 0.3s forwards; opacity: 0;">
+        <GlassCard class="p-6 card-hover-glow" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.2s forwards; opacity: 0;">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-bold text-shuimo flex items-center gap-2 font-song">
               <BookOpen class="w-5 h-5 text-tianlv icon-hover-rotate" />
@@ -296,7 +297,10 @@ const toggleSubject = (subject) => {
   background: linear-gradient(135deg, #2dd4bf, #14b8a6);
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(45, 212, 191, 0.4);
-  transition: all 0.2s;
+  /* P1：滑块仅过渡缩放和阴影 */
+  transition:
+    transform var(--motion-duration-base) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-base) var(--motion-ease-standard);
 }
 
 .slider-tianlv::-webkit-slider-thumb:hover {

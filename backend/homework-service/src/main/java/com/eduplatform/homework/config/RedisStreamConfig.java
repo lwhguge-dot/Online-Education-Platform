@@ -38,18 +38,18 @@ public class RedisStreamConfig {
      * 创建并启动 StreamMessageListenerContainer
      */
     @Bean
-    public StreamMessageListenerContainer<String, MapRecord<String, String, String>>
-            streamMessageListenerContainer(RedisConnectionFactory factory) {
+    public StreamMessageListenerContainer<String, MapRecord<String, String, String>> streamMessageListenerContainer(
+            RedisConnectionFactory factory) {
 
-        StreamMessageListenerContainer.StreamMessageListenerContainerOptions<String, MapRecord<String, String, String>> options =
-                StreamMessageListenerContainer.StreamMessageListenerContainerOptions.builder()
-                        .pollTimeout(Duration.ofSeconds(1))
-                        .executor(Executors.newFixedThreadPool(1))
-                        .errorHandler(t -> log.error("homework-service Redis Stream 消费异常", t))
-                        .build();
+        StreamMessageListenerContainer.StreamMessageListenerContainerOptions<String, MapRecord<String, String, String>> options = StreamMessageListenerContainer.StreamMessageListenerContainerOptions
+                .builder()
+                .pollTimeout(Duration.ofSeconds(1))
+                .executor(Executors.newFixedThreadPool(1))
+                .errorHandler(t -> log.error("homework-service Redis Stream 消费异常", t))
+                .build();
 
-        StreamMessageListenerContainer<String, MapRecord<String, String, String>> container =
-                StreamMessageListenerContainer.create(factory, options);
+        StreamMessageListenerContainer<String, MapRecord<String, String, String>> container = StreamMessageListenerContainer
+                .create(factory, options);
 
         // 幂等创建 Consumer Group
         createConsumerGroupIfAbsent(EventType.CHAPTER_COMPLETED.getStreamKey());

@@ -332,7 +332,8 @@ const getGenderLabel = (value) => {
   <div class="space-y-6 animate-fade-in">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
        <!-- Profile Card -->
-       <GlassCard class="p-6 col-span-2 card-hover-glow" overflow="visible" style="animation: fade-in-up 0.5s ease-out forwards;">
+       <!-- P1 第二批：个人资料首屏卡片入场时长压缩 -->
+       <GlassCard class="p-6 col-span-2 card-hover-glow" overflow="visible" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) forwards;">
           <div class="flex items-center justify-between mb-6">
              <h3 class="text-lg font-bold text-shuimo flex items-center gap-2 font-song">
                 <User class="w-5 h-5 text-qinghua icon-hover-rotate" />
@@ -377,13 +378,13 @@ const getGenderLabel = (value) => {
 
              <!-- Form -->
              <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="space-y-1.5 stagger-item" style="animation: fade-in-up 0.4s ease-out 0.1s forwards; opacity: 0;">
+                <div class="space-y-1.5 stagger-item" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.1s forwards; opacity: 0;">
                    <label for="profile-username" class="text-xs font-bold text-shuimo/60">用户名/昵称</label>
                    <input id="profile-username" name="username" v-model="formData.username" :disabled="!isEditing" autocomplete="username"
                           class="w-full bg-slate-50/80 border border-slate-200/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-qinghua/20 focus:border-qinghua/30 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:text-shuimo transition-all duration-300" />
                    <p v-if="isEditing" class="text-xs text-shuimo/40">用户名在系统内显示，可随意修改</p>
                 </div>
-                <div class="space-y-1.5 stagger-item" style="animation: fade-in-up 0.4s ease-out 0.15s forwards; opacity: 0;">
+                <div class="space-y-1.5 stagger-item" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.15s forwards; opacity: 0;">
                    <label for="profile-realname" class="text-xs font-bold text-shuimo/60">真实姓名（登录账号）</label>
                    <input id="profile-realname" name="realName" v-model="formData.realName" disabled autocomplete="name"
                           class="w-full bg-transparent border-transparent px-0 py-2.5 text-sm text-shuimo cursor-not-allowed" />
@@ -566,7 +567,7 @@ const getGenderLabel = (value) => {
 
        <div class="space-y-6">
           <!-- Notification Settings -->
-          <GlassCard class="p-6 card-hover-glow" style="animation: fade-in-up 0.5s ease-out 0.2s forwards; opacity: 0;">
+          <GlassCard class="p-6 card-hover-glow" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.2s forwards; opacity: 0;">
              <h3 class="text-lg font-bold text-shuimo mb-6 flex items-center gap-2 font-song">
                 <Bell class="w-5 h-5 text-zhizi icon-hover-rotate" />
                 消息通知
@@ -591,7 +592,7 @@ const getGenderLabel = (value) => {
           </GlassCard>
 
           <!-- Study Goal -->
-          <GlassCard class="p-6 card-hover-glow" style="animation: fade-in-up 0.5s ease-out 0.3s forwards; opacity: 0;">
+          <GlassCard class="p-6 card-hover-glow" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.2s forwards; opacity: 0;">
              <h3 class="text-lg font-bold text-shuimo mb-6 flex items-center gap-2 font-song">
                 <Target class="w-5 h-5 text-tianlv icon-hover-rotate" />
                 学习目标
@@ -628,7 +629,10 @@ const getGenderLabel = (value) => {
 <style scoped>
 .dropdown-enter-active,
 .dropdown-leave-active {
-  transition: all 0.2s ease-out;
+  /* P1：下拉层仅过渡透明度与位移缩放 */
+  transition:
+    opacity var(--motion-duration-base) var(--motion-ease-standard),
+    transform var(--motion-duration-base) var(--motion-ease-standard);
 }
 .dropdown-enter-from,
 .dropdown-leave-to {
@@ -638,7 +642,9 @@ const getGenderLabel = (value) => {
 
 .fade-enter-active,
 .fade-leave-active {
-  transition: all 0.15s ease-out;
+  transition:
+    opacity var(--motion-duration-fast) var(--motion-ease-standard),
+    transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 .fade-enter-from,
 .fade-leave-to {
@@ -655,7 +661,9 @@ const getGenderLabel = (value) => {
   background: linear-gradient(135deg, #2dd4bf, #14b8a6);
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(45, 212, 191, 0.4);
-  transition: all 0.2s;
+  transition:
+    transform var(--motion-duration-base) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-base) var(--motion-ease-standard);
 }
 .slider-tianlv::-webkit-slider-thumb:hover {
   transform: scale(1.1);

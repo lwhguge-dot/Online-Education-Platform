@@ -483,12 +483,13 @@ const goBack = () => {
 <style scoped>
 /* 题目卡片入场动画 */
 .question-list-enter-active {
-  animation: question-enter 0.5s ease-out both;
+  /* P1 第二批：作业页入场/反馈动效统一到 200ms */
+  animation: question-enter var(--motion-duration-medium) var(--motion-ease-standard) both;
   animation-delay: var(--delay, 0s);
 }
 
 .question-list-leave-active {
-  animation: question-leave 0.3s ease-in both;
+  animation: question-leave var(--motion-duration-medium) var(--motion-ease-standard) both;
 }
 
 @keyframes question-enter {
@@ -515,7 +516,7 @@ const goBack = () => {
 
 /* 题号动画 */
 .question-number {
-  animation: number-pop 0.4s ease-out both;
+  animation: number-pop var(--motion-duration-medium) var(--motion-ease-standard) both;
   animation-delay: calc(var(--delay, 0s) + 0.2s);
 }
 
@@ -535,7 +536,7 @@ const goBack = () => {
 
 /* 选项选中弹性动画 */
 .animate-option-select {
-  animation: option-bounce 0.3s ease-out;
+  animation: option-bounce var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes option-bounce {
@@ -568,11 +569,11 @@ const goBack = () => {
 
 /* 批改结果展开动画 */
 .result-expand-enter-active {
-  animation: result-expand 0.4s ease-out;
+  animation: result-expand var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .result-expand-leave-active {
-  animation: result-collapse 0.3s ease-in;
+  animation: result-collapse var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes result-expand {
@@ -601,7 +602,7 @@ const goBack = () => {
 
 /* 正确答案打勾动画 */
 .animate-check-mark {
-  animation: check-mark 0.4s ease-out;
+  animation: check-mark var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes check-mark {
@@ -620,7 +621,7 @@ const goBack = () => {
 
 /* 下滑动画 */
 .animate-slide-down {
-  animation: slide-down 0.4s ease-out both;
+  animation: slide-down var(--motion-duration-medium) var(--motion-ease-standard) both;
 }
 
 @keyframes slide-down {
@@ -636,7 +637,7 @@ const goBack = () => {
 
 /* 微弱脉冲动画（完成状态按钮） */
 .animate-pulse-subtle {
-  animation: pulse-subtle 2s ease-in-out infinite;
+  animation: pulse-subtle var(--motion-duration-medium) var(--motion-ease-standard) infinite;
 }
 
 @keyframes pulse-subtle {

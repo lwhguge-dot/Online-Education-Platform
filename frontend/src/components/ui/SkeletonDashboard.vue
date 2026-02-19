@@ -168,7 +168,8 @@ defineProps({
 }
 
 .skeleton-dashboard .bg-slate-200 {
-  animation: shimmer 1.5s ease-in-out infinite;
+  /* P1 第二批：仪表盘骨架动画压缩 */
+  animation: shimmer var(--motion-duration-medium) var(--motion-ease-standard) infinite;
 }
 
 .skeleton-stat-card,

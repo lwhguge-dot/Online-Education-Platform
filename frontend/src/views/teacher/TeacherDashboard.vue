@@ -388,7 +388,10 @@ const weeklyTrendDirection = computed(() => {
 <style scoped>
 /* 统计卡片悬停效果 */
 .stat-card {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  /* P1：卡片仅过渡位移与阴影 */
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .stat-card:hover {
@@ -398,7 +401,9 @@ const weeklyTrendDirection = computed(() => {
 
 /* 统计卡片装饰图标动画 */
 .stat-card-icon {
-  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    transform var(--motion-duration-slow) var(--motion-ease-standard),
+    opacity var(--motion-duration-slow) var(--motion-ease-standard);
 }
 
 .stat-card:hover .stat-card-icon {
@@ -408,11 +413,12 @@ const weeklyTrendDirection = computed(() => {
 
 /* 快捷操作按钮图标弹跳 */
 .icon-bounce {
-  transition: transform 0.3s ease;
+  /* P1 第二批：教师看板交互动效压缩到 200ms 档 */
+  transition: transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .group:hover .icon-bounce {
-  animation: icon-bounce 0.5s ease-in-out;
+  animation: icon-bounce var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes icon-bounce {
@@ -438,19 +444,21 @@ const weeklyTrendDirection = computed(() => {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 0;
-  height: 0;
+  width: 100%;
+  height: 100%;
   background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, transparent 70%);
   border-radius: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(0);
   opacity: 0;
   pointer-events: none;
 }
 
 .quick-action-btn:active::after {
-  width: 200%;
-  height: 200%;
+  /* 动效优化：点击涟漪改为 transform 缩放，避免 width/height 动画引发布局计算 */
+  transform: translate(-50%, -50%) scale(2);
   opacity: 1;
-  transition: width 0.4s ease-out, height 0.4s ease-out, opacity 0.4s ease-out;
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-standard),
+    opacity var(--motion-duration-medium) var(--motion-ease-standard);
 }
 </style>

@@ -219,16 +219,12 @@ const disabledUsersCount = computed(() => allUsers.value.filter(u => u.status ==
       ::-webkit-scrollbar-thumb:hover {
         background: linear-gradient(180deg, rgba(82, 45, 128, 0.4), rgba(18, 53, 85, 0.4));
       }
-
-      .sidebar-spring {
-        transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
     </component>
 
     <!-- Sidebar -->
     <aside
-      class="fixed top-0 left-0 h-full bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/60 dark:border-slate-700/60 z-50 sidebar-spring flex flex-col"
-      :class="sidebarOpen ? 'w-64' : 'w-20'"
+      class="fixed top-0 left-0 h-full w-64 bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/60 dark:border-slate-700/60 z-50 sidebar-spring flex flex-col"
+      :class="sidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'"
     >
       <!-- Logo -->
       <div class="h-20 flex items-center px-6 border-b border-slate-100/50 dark:border-slate-700/50">
@@ -384,10 +380,27 @@ const disabledUsersCount = computed(() => allUsers.value.filter(u => u.status ==
   background: #94a3b8;
 }
 
+/* P1 收尾：侧边栏改为 clip-path 过渡，移除 width 布局属性动画风险 */
+.sidebar-spring {
+  transition: clip-path var(--motion-duration-medium) var(--motion-ease-standard);
+  will-change: clip-path;
+}
+
+.sidebar-expanded {
+  clip-path: inset(0 0 0 0);
+}
+
+.sidebar-collapsed {
+  clip-path: inset(0 calc(100% - 5rem) 0 0);
+}
+
 /* 页面切换动画 */
 .page-fade-enter-active,
 .page-fade-leave-active {
-  transition: all 0.25s ease-out;
+  /* P1：仅过渡透明度与位移，减少无关属性参与动画 */
+  transition:
+    opacity 0.25s var(--motion-ease-standard),
+    transform 0.25s var(--motion-ease-standard);
 }
 
 .page-fade-enter-from {
@@ -402,11 +415,15 @@ const disabledUsersCount = computed(() => allUsers.value.filter(u => u.status ==
 
 /* 侧边栏文字淡出动画 */
 .sidebar-text-enter-active {
-  transition: all 0.2s ease-out 0.1s;
+  transition:
+    opacity var(--motion-duration-base) var(--motion-ease-standard) 0.1s,
+    transform var(--motion-duration-base) var(--motion-ease-standard) 0.1s;
 }
 
 .sidebar-text-leave-active {
-  transition: all 0.15s ease-in;
+  transition:
+    opacity var(--motion-duration-fast) var(--motion-ease-standard),
+    transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .sidebar-text-enter-from,
@@ -418,7 +435,9 @@ const disabledUsersCount = computed(() => allUsers.value.filter(u => u.status ==
 /* 页面切换过渡动画 - 向上滑入 */
 .slide-up-enter-active,
 .slide-up-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .slide-up-enter-from {
@@ -434,7 +453,9 @@ const disabledUsersCount = computed(() => allUsers.value.filter(u => u.status ==
 /* 页面切换过渡动画 - 向下滑入 */
 .slide-down-enter-active,
 .slide-down-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    opacity var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .slide-down-enter-from {

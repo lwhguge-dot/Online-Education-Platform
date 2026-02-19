@@ -43,7 +43,8 @@ public class ChapterCompletedListener implements StreamListener<String, MapRecor
 
             log.info("收到章节完成事件: recordId={}, messageId={}", message.getId(), messageId);
 
-            Map<String, Object> data = objectMapper.readValue(dataJson, new TypeReference<>() {});
+            Map<String, Object> data = objectMapper.readValue(dataJson, new TypeReference<>() {
+            });
 
             Long studentId = toLong(data.get("studentId"));
             Long chapterId = toLong(data.get("chapterId"));

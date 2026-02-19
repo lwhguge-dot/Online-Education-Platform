@@ -78,9 +78,34 @@ const handleCancel = () => { emit('cancel'); close() }
 </template>
 
 <style scoped>
-.modal-enter-active, .modal-leave-active { transition: all 0.3s ease; }
-.modal-enter-from, .modal-leave-to { opacity: 0; }
-.modal-enter-from .animate-scale-in, .modal-leave-to .animate-scale-in { transform: scale(0.9); }
-.animate-scale-in { animation: scaleIn 0.3s ease forwards; }
-@keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+/* P1：弹窗遮罩仅过渡透明度，避免 all 带来额外开销 */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-from .animate-scale-in,
+.modal-leave-to .animate-scale-in {
+  transform: scale(0.9);
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 </style>

@@ -54,6 +54,7 @@ const props = defineProps({
 .skeleton-card {
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  /* P1 第二批：骨架屏流光时长压缩 */
+  animation: shimmer var(--motion-duration-medium) infinite;
 }
 </style>

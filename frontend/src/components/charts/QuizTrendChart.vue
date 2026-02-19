@@ -291,12 +291,13 @@ onMounted(() => {
 .chart-line {
   stroke-dasharray: 500;
   stroke-dashoffset: 500;
-  animation: drawLine 1.5s ease-out forwards;
+  /* P1 第二批：图表入场动画压缩 */
+  animation: drawLine var(--motion-duration-medium) var(--motion-ease-standard) forwards;
 }
 
 .chart-dot {
   opacity: 0;
-  animation: fadeIn 0.3s ease-out forwards;
+  animation: fadeIn var(--motion-duration-medium) var(--motion-ease-standard) forwards;
 }
 
 .chart-dot:nth-child(1) { animation-delay: 0.3s; }

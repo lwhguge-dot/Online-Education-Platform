@@ -66,7 +66,8 @@ const topCoursesBySubject = computed(() => {
 
 const getSubjectBtnStyle = (subject) => {
   const styles = {
-    '语文': 'bg-yanzhi hover:bg-qianhong text-white',
+    // 无障碍：语文按钮改为更高对比度配色
+    '语文': 'bg-yanzhihong hover:bg-yanzhi text-white',
     '数学': 'bg-qinghua hover:bg-halanzi text-white',
     '英语': 'bg-danqing hover:bg-qingbai text-white',
     '物理': 'bg-zijinghui hover:bg-qianniuzi text-white',
@@ -307,7 +308,9 @@ const goToCenter = () => {
     <!-- ... (keep rest of template) -->
 
     <!-- Hero Carousel Section -->
-    <section class="relative py-6 overflow-hidden">
+    <section class="relative py-6 overflow-hidden" aria-labelledby="home-featured-heading">
+      <!-- 无障碍：补充首页主标题，避免页面缺失 H1 -->
+      <h1 id="home-featured-heading" class="sr-only">智慧课堂精选课程</h1>
       <div class="max-w-6xl mx-auto px-6">
         <div 
           class="relative rounded-2xl overflow-hidden group shadow-2xl"
@@ -343,7 +346,7 @@ const goToCenter = () => {
                       <span class="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/20 text-white text-sm font-medium">
                         精选推荐
                       </span>
-                      <div class="flex items-center gap-1 text-zhizi">
+                      <div class="flex items-center gap-1 text-white/95" aria-label="课程评分">
                         <Star class="w-4 h-4 fill-current" aria-hidden="true" />
                         <span class="text-white font-bold">{{ course.rating }}</span>
                       </div>
@@ -378,12 +381,14 @@ const goToCenter = () => {
             <button 
               @click.stop="prevSlide"
               class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-105 transition-all text-white/50 hover:text-white"
+              aria-label="上一张课程"
             >
               <ChevronLeft class="w-6 h-6" aria-hidden="true" />
             </button>
             <button 
               @click.stop="nextSlide"
               class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-105 transition-all text-white/50 hover:text-white"
+              aria-label="下一张课程"
             >
               <ChevronRight class="w-6 h-6" aria-hidden="true" />
             </button>
@@ -399,6 +404,7 @@ const goToCenter = () => {
                 'w-2.5 h-1 rounded-full transition-all duration-300',
                 currentSlide === index ? 'bg-white w-8' : 'bg-white/30 hover:bg-white/50'
               ]"
+              :aria-label="`切换到第 ${index + 1} 张课程`"
             />
           </div>
         </div>
@@ -419,8 +425,9 @@ const goToCenter = () => {
               'flex items-center gap-2 px-5 py-2.5 rounded-full font-medium transition-all duration-300 border',
               selectedSubject === subject.name
                 ? `bg-gradient-to-r ${subject.color} border-transparent text-white shadow-lg shadow-danqing/20 scale-105`
-                : 'bg-white border-slate-100 text-shuimo/60 hover:border-danqing/30 hover:text-danqing hover:shadow-md'
+                : 'bg-white border-slate-100 text-shuimo hover:border-danqing/30 hover:text-danqing hover:shadow-md'
             ]"
+            :aria-label="`筛选学科：${subject.name}`"
           >
             <component :is="subject.icon" class="w-4 h-4" aria-hidden="true" />
             {{ subject.name }}
@@ -522,7 +529,8 @@ const goToCenter = () => {
 <style scoped>
 .carousel-fade-enter-active,
 .carousel-fade-leave-active {
-  transition: opacity 0.6s ease;
+  /* P1 第二批：首页核心视觉动效统一 200ms 档 */
+  transition: opacity var(--motion-duration-medium) var(--motion-ease-standard);
 }
 .carousel-fade-enter-from,
 .carousel-fade-leave-to {
@@ -538,11 +546,16 @@ const goToCenter = () => {
   -webkit-font-smoothing: subpixel-antialiased;
 }
 
-/* 列表过渡动画 */
-.list-move,
+/* 列表过渡动画：P1 限定属性，避免 all 带来的非必要重绘 */
+.list-move {
+  transition: transform var(--motion-duration-slow) var(--motion-ease-standard);
+}
+
 .list-enter-active,
 .list-leave-active {
-  transition: all 0.5s ease;
+  transition:
+    opacity var(--motion-duration-slow) var(--motion-ease-standard),
+    transform var(--motion-duration-slow) var(--motion-ease-standard);
 }
 
 .list-enter-from,
@@ -563,7 +576,7 @@ const goToCenter = () => {
 }
 
 .group-hover\:animate-spin-slow:hover {
-  animation: spin-slow 2s linear infinite;
+  animation: spin-slow var(--motion-duration-medium) linear infinite;
 }
 
 /* Footer bounce animation */
@@ -573,12 +586,25 @@ const goToCenter = () => {
 }
 
 .group-hover\:animate-bounce-subtle {
-  animation: bounce-subtle 0.6s ease-in-out;
+  animation: bounce-subtle var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+/* 无障碍：仅屏幕阅读器可见标题 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Footer tagline hover effects */
 .footer-tagline span {
-  transition: all 0.3s ease;
+  transition: transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .footer-tagline span:hover {
@@ -587,7 +613,7 @@ const goToCenter = () => {
 
 /* Footer section fade-in on scroll */
 .footer-section {
-  animation: footer-fade-in 0.8s ease-out;
+  animation: footer-fade-in var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes footer-fade-in {

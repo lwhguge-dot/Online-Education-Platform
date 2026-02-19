@@ -23,6 +23,7 @@ const emit = defineEmits(['click'])
       <img 
         v-if="course.coverImage" 
         :src="getImageUrl(course.coverImage)" 
+        :alt="course.title ? `${course.title} 课程封面` : '课程封面'"
         loading="lazy" 
         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
       />

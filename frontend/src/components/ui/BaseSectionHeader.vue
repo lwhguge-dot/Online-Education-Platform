@@ -34,7 +34,8 @@ defineProps({
 
 <style scoped>
 .icon-hover-rotate {
-  transition: transform 0.3s ease;
+  /* P1 第二批：标题图标过渡压缩 */
+  transition: transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 .icon-hover-rotate:hover {
   transform: rotate(15deg);

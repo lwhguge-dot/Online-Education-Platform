@@ -1,38 +1,32 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { FileText, Clock, CheckCircle, AlertCircle, ChevronRight, Filter, RotateCcw, AlertTriangle } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
-import BaseEmptyState from '../../components/ui/BaseEmptyState.vue'
+import EmptyState from '../../components/ui/EmptyState.vue'
 import BaseSelect from '../../components/ui/BaseSelect.vue'
 import { formatDateTimeCN } from '../../utils/datetime'
+import { useAuthStore } from '../../stores/auth'
+import { useStudentCourses } from '../../composables/useStudentCourses'
+import { useStudentHomeworks } from '../../composables/useStudentHomeworks'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+// Composables
+const { enrolledCourses, loadEnrolledCourses } = useStudentCourses()
+const { pendingHomeworks, completedHomeworks, loadHomeworks, loading } = useStudentHomeworks()
+
+const activeTab = ref('pending')
+const courseFilter = ref('all')
 
 const formatDisplayDateTime = (dateStr) => {
   return formatDateTimeCN(dateStr, '未知时间')
 }
 
-const props = defineProps({
-  pendingHomeworks: {
-    type: Array,
-    default: () => []
-  },
-  completedHomeworks: {
-    type: Array,
-    default: () => []
-  },
-  loading: {
-    type: Boolean,
-    default: false
-  }
-})
-
-const emit = defineEmits(['start', 'view', 'review-mistakes'])
-
-const activeTab = ref('pending')
-const courseFilter = ref('all')
-
 // 从全部作业中提取课程列表
 const availableCourses = computed(() => {
-  const allHomeworks = [...props.pendingHomeworks, ...props.completedHomeworks]
+  const allHomeworks = [...pendingHomeworks.value, ...completedHomeworks.value]
   const courses = [...new Set(allHomeworks.map(hw => hw.course).filter(Boolean))]
   return courses.sort()
 })
@@ -91,7 +85,7 @@ const urgencyStyles = {
 // 按紧急程度排序的待完成作业
 const sortedPendingHomeworks = computed(() => {
   const urgencyOrder = { overdue: 0, critical: 1, warning: 2, normal: 3, none: 4 }
-  return [...props.pendingHomeworks].sort((a, b) => {
+  return [...pendingHomeworks.value].sort((a, b) => {
     const urgencyA = getHomeworkUrgency(a.daysLeft)
     const urgencyB = getHomeworkUrgency(b.daysLeft)
     return urgencyOrder[urgencyA] - urgencyOrder[urgencyB]
@@ -106,8 +100,8 @@ const filteredPending = computed(() => {
 })
 
 const filteredCompleted = computed(() => {
-  if (courseFilter.value === 'all') return props.completedHomeworks
-  return props.completedHomeworks.filter(hw => hw.course === courseFilter.value)
+  if (courseFilter.value === 'all') return completedHomeworks.value
+  return completedHomeworks.value.filter(hw => hw.course === courseFilter.value)
 })
 
 // 判断作业是否存在错题（分数小于 100）
@@ -137,16 +131,33 @@ const formatDeadline = (days) => {
   return `${days}天后截止`
 }
 
-// 计算倒计时显示（仅在需要额外强调时显示，避免与formatDeadline重复）
 const getCountdown = (daysLeft) => {
   if (daysLeft === null || daysLeft === undefined) return null
-  // 已过期和今天截止已经在formatDeadline中显示，不需要重复
   if (daysLeft < 0) return null
   if (daysLeft === 0) return null
-  // 只有在1天内但不是今天时，显示剩余小时数
   if (daysLeft > 0 && daysLeft < 1) return { text: `剩余 ${Math.ceil(daysLeft * 24)} 小时`, urgent: true }
   return null
 }
+
+const handleStartHomework = (hw) => {
+   router.push(`/homework/${hw.id}`)
+}
+
+const handleViewHomework = (hw) => {
+   router.push(`/homework/${hw.id}?view=true`)
+}
+
+onMounted(async () => {
+  const userId = authStore.user?.id
+  if (userId) {
+     // Check if we need to load courses first (if not already loaded by other views or kept in keep-alive, but let's be safe)
+     // useStudentCourses uses local state, so we must load.
+     await loadEnrolledCourses(userId)
+     if (enrolledCourses.value.length > 0) {
+        await loadHomeworks(userId, enrolledCourses.value)
+     }
+  }
+})
 </script>
 
 <template>
@@ -201,7 +212,7 @@ const getCountdown = (daysLeft) => {
             class="p-4 flex flex-col justify-between gap-4 transition-all cursor-pointer group card-hover-lift stagger-item h-full animate-slide-up"
             :class="urgencyStyles[getHomeworkUrgency(hw.daysLeft)].card"
             :style="{ animationDelay: `${index * 0.08}s`, animationFillMode: 'both' }"
-            @click="emit('start', hw)"
+            @click="handleStartHomework(hw)"
           >
              <div class="flex items-start gap-4">
                 <div 
@@ -266,10 +277,12 @@ const getCountdown = (daysLeft) => {
              </div>
           </GlassCard>
 
-          <BaseEmptyState 
+          <EmptyState
             v-if="pendingHomeworks.length === 0" 
             title="所有作业都完成了，太棒了！" 
-            :icon="CheckCircle"
+            icon="check"
+            type="success"
+            size="sm"
             class="col-span-full"
           />
        </template>
@@ -281,7 +294,7 @@ const getCountdown = (daysLeft) => {
             :key="hw.id"
             class="p-4 flex flex-col justify-between gap-4 hover:bg-slate-50 transition-all cursor-pointer stagger-item card-hover-lift h-full animate-slide-up"
             :style="{ animationDelay: `${index * 0.08}s`, animationFillMode: 'both' }"
-            @click="emit('view', hw)"
+            @click="handleViewHomework(hw)"
           >
              <div class="flex items-start gap-4">
                 <!-- 根据分数调整图标颜色 -->
@@ -318,7 +331,7 @@ const getCountdown = (daysLeft) => {
                 <!-- 查看错题按钮 -->
                 <button 
                   v-if="hasMistakes(hw)"
-                  @click.stop="emit('view', hw)"
+                  @click.stop="handleViewHomework(hw)"
                   class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yanzhi/10 text-yanzhi text-xs font-bold hover:bg-yanzhi hover:text-white transition-all whitespace-nowrap btn-ripple hover:scale-105"
                 >
                   <RotateCcw class="w-3.5 h-3.5" />
@@ -328,10 +341,12 @@ const getCountdown = (daysLeft) => {
              </div>
           </GlassCard>
 
-          <BaseEmptyState 
+          <EmptyState
             v-if="filteredCompleted.length === 0"
             title="还没有提交过作业"
-            :icon="AlertCircle"
+            icon="alert"
+            type="empty"
+            size="sm"
             class="col-span-full"
           />
        </template>

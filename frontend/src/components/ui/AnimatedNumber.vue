@@ -130,7 +130,11 @@ onMounted(() => {
 
 <style scoped>
 .animated-number {
-  transition: all 0.3s ease;
+  /* P1：数字组件只过渡必要属性 */
+  transition:
+    color var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-standard),
+    text-shadow var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 /* 上升高亮 - 绿色 */
@@ -139,7 +143,8 @@ onMounted(() => {
 }
 
 .highlight-up .number-value {
-  animation: pulse-highlight-up 0.6s ease-out;
+  /* P1 第二批：数字反馈动效压缩，避免长时高亮 */
+  animation: pulse-highlight-up var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 /* 下降高亮 - 红色 */
@@ -148,7 +153,7 @@ onMounted(() => {
 }
 
 .highlight-down .number-value {
-  animation: pulse-highlight-down 0.6s ease-out;
+  animation: pulse-highlight-down var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 /* 脉冲高亮动画 - 上升 */
@@ -185,7 +190,7 @@ onMounted(() => {
 
 /* 趋势指示器动画 */
 .trend-indicator {
-  animation: trend-bounce 0.5s ease-out;
+  animation: trend-bounce var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes trend-bounce {

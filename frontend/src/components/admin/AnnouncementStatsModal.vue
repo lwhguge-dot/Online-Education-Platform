@@ -278,7 +278,8 @@ onMounted(() => {
 /* 弹窗入场动画 */
 .modal-enter-active,
 .modal-leave-active {
-  transition: opacity 0.3s ease;
+  /* P1 第二批：统计弹窗过渡压缩 */
+  transition: opacity var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .modal-enter-from,
@@ -287,7 +288,8 @@ onMounted(() => {
 }
 
 .animate-scale-in {
-  animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* P1：弹窗缩放动画统一标准曲线 */
+  animation: scaleIn var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes scaleIn {

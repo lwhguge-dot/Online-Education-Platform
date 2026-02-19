@@ -12,78 +12,15 @@ import KnowledgeMasteryChart from '../../components/charts/KnowledgeMasteryChart
 import SkeletonCard from '../../components/ui/SkeletonCard.vue'
 import { chapterAPI, progressAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
+import { useStudentStats } from '../../composables/useStudentStats'
 
 const router = useRouter()
 const authStore = useAuthStore()
-
-/**
- * 每日学习时长数据结构
- */
-interface WeeklyStudyDay {
-  day: string
-  hours: number
-}
-
-/**
- * 学习足迹项数据结构
- */
-interface TimelineItem {
-  title: string
-  time: string
-  action: string
-  courseId?: number | string
-  chapterId?: number | string
-  chapterTitle?: string
-  duration?: number
-  progress?: number
-  type?: string
-}
-
-/**
- * 测验成绩项数据结构
- */
-interface QuizScoreItem {
-  title: string
-  time: string
-  score: number
-  chapterId?: number | string
-  courseId?: number | string
-}
-
-/**
- * 组件属性类型定义
- */
-interface StudentRecordsProps {
-  timeline?: TimelineItem[]
-  quizScores?: QuizScoreItem[]
-  weeklyStudyHours?: WeeklyStudyDay[]
-  lastWeekStudyHours?: WeeklyStudyDay[]
-  thisWeekMinutes?: number
-  lastWeekMinutes?: number
-  weeklyChange?: number
-}
-
-const props = withDefaults(defineProps<StudentRecordsProps>(), {
-  timeline: () => [],
-  quizScores: () => [],
-  weeklyStudyHours: () => [
-    { day: '周一', hours: 0 },
-    { day: '周二', hours: 0 },
-    { day: '周三', hours: 0 },
-    { day: '周四', hours: 0 },
-    { day: '周五', hours: 0 },
-    { day: '周六', hours: 0 },
-    { day: '周日', hours: 0 }
-  ],
-  lastWeekStudyHours: () => [],
-  thisWeekMinutes: 0,
-  lastWeekMinutes: 0,
-  weeklyChange: 0
-})
+const { dashboardStats, quizzes, loadStudentStats } = useStudentStats()
 
 // 学习轨迹真实数据状态
 const learningTrackLoading = ref(false)
-const learningTrack = ref<TimelineItem[]>([])
+const learningTrack = ref<any[]>([])
 
 /**
  * 加载学习轨迹真实数据
@@ -111,7 +48,7 @@ const loadLearningTrack = async () => {
 
       if (chapterId && (!courseId || !chapterTitle)) {
         try {
-          const chapterRes = await chapterAPI.getDetail(chapterId)
+          const chapterRes = await chapterAPI.getDetail(Number(chapterId))
           if (chapterRes?.code === 200 && chapterRes?.data) {
             courseId = courseId ?? chapterRes.data.courseId
             chapterTitle = chapterTitle ?? chapterRes.data.title
@@ -138,54 +75,56 @@ const loadLearningTrack = async () => {
       .map((r: any) => r.value)
   } catch (e) {
     console.error('加载学习轨迹失败:', e)
-    // 如果API失败，使用父组件传入的timeline数据
-    learningTrack.value = []
   } finally {
     learningTrackLoading.value = false
   }
 }
 
-// 计算最终显示的时间线数据（优先使用API数据，否则使用props）
+// 计算最终显示的时间线数据
 const displayTimeline = computed(() => {
-  return learningTrack.value.length > 0 ? learningTrack.value : props.timeline
+  return learningTrack.value
 })
+
+const weeklyStudyHours = computed(() => dashboardStats.value.weeklyStudyHours || [])
 
 // 计算图表缩放所需的最大时长
 const maxHours = computed(() => {
-  const max = Math.max(...props.weeklyStudyHours.map(d => d.hours), 1)
+  const max = Math.max(...weeklyStudyHours.value.map(d => d.hours), 1)
   return max
 })
 
 // 本周总学习小时数
 const thisWeekHours = computed(() => {
-  return Math.round(props.thisWeekMinutes / 60 * 10) / 10
+  return Math.round((dashboardStats.value.thisWeekMinutes || 0) / 60 * 10) / 10
 })
 
 // 上周总学习小时数
 const lastWeekHours = computed(() => {
-  return Math.round(props.lastWeekMinutes / 60 * 10) / 10
+  return Math.round((dashboardStats.value.lastWeekMinutes || 0) / 60 * 10) / 10
 })
 
 // 周对比状态
 const weeklyCompareStatus = computed(() => {
-  if (props.weeklyChange > 0) return 'up'
-  if (props.weeklyChange < 0) return 'down'
+  const change = dashboardStats.value.weeklyChange || 0
+  if (change > 0) return 'up'
+  if (change < 0) return 'down'
   return 'same'
 })
 
 // 周对比提示文案
 const weeklyCompareMessage = computed(() => {
-  if (props.weeklyChange > 20) return '进步神速！继续保持！'
-  if (props.weeklyChange > 0) return '有进步，继续加油！'
-  if (props.weeklyChange === 0) return '保持稳定，再接再厉！'
-  if (props.weeklyChange > -20) return '稍有下降，调整状态！'
+  const change = dashboardStats.value.weeklyChange || 0
+  if (change > 20) return '进步神速！继续保持！'
+  if (change > 0) return '有进步，继续加油！'
+  if (change === 0) return '保持稳定，再接再厉！'
+  if (change > -20) return '稍有下降，调整状态！'
   return '学习时间减少了，加把劲！'
 })
 
 /**
  * 点击学习足迹跳转到对应章节
  */
-const handleTimelineClick = (item: TimelineItem) => {
+const handleTimelineClick = (item: any) => {
   if (item.courseId && item.chapterId) {
     router.push(`/study/${item.courseId}?chapter=${item.chapterId}&from=student`)
   } else if (item.courseId) {
@@ -196,7 +135,7 @@ const handleTimelineClick = (item: TimelineItem) => {
 /**
  * 点击测验跳转到对应章节
  */
-const handleQuizClick = async (quiz: QuizScoreItem) => {
+const handleQuizClick = async (quiz: any) => {
   const chapterId = quiz?.chapterId
   if (!chapterId) return
 
@@ -206,7 +145,7 @@ const handleQuizClick = async (quiz: QuizScoreItem) => {
   }
 
   try {
-    const res = await chapterAPI.getDetail(chapterId)
+    const res = await chapterAPI.getDetail(Number(chapterId))
     if (res?.code === 200 && res?.data?.courseId) {
       router.push(`/study/${res.data.courseId}?chapter=${chapterId}&from=student`)
     }
@@ -234,8 +173,14 @@ const refreshTrack = () => {
 }
 
 // 组件挂载时加载学习轨迹
-onMounted(() => {
-  loadLearningTrack()
+onMounted(async () => {
+  const userId = authStore.user?.id
+  if (userId) {
+     await Promise.all([
+        loadLearningTrack(),
+        loadStudentStats(userId)
+     ])
+  }
 })
 </script>
 
@@ -253,7 +198,7 @@ onMounted(() => {
         <div class="h-64 flex items-end justify-between gap-2 px-2">
            <div 
              v-for="(day, index) in weeklyStudyHours" 
-             :key="day.day" 
+             :key="index" 
              class="flex flex-col items-center gap-2 flex-1 group"
              style="height: 100%;"
            >
@@ -307,7 +252,7 @@ onMounted(() => {
                   'text-slate-500': weeklyCompareStatus === 'same'
                 }"
               >
-                {{ weeklyChange > 0 ? '+' : '' }}{{ weeklyChange }}%
+                {{ dashboardStats.weeklyChange > 0 ? '+' : '' }}{{ dashboardStats.weeklyChange }}%
               </span>
             </div>
           </div>
@@ -335,7 +280,7 @@ onMounted(() => {
            </div>
            <p class="text-sm text-shuimo/60">平均测验成绩</p>
            <p class="text-3xl font-bold font-mono text-zhizi mt-1 number-pop">
-              {{ quizScores.length > 0 ? Math.round(quizScores.reduce((a, b) => a + b.score, 0) / quizScores.length) : 0 }}<span class="text-sm text-shuimo/40 ml-1">分</span>
+              {{ quizzes.length > 0 ? Math.round(quizzes.reduce((a, b) => a + b.score, 0) / quizzes.length) : 0 }}<span class="text-sm text-shuimo/40 ml-1">分</span>
            </p>
         </div>
       </GlassCard>
@@ -406,7 +351,7 @@ onMounted(() => {
                 <p class="text-shuimo/50 text-sm">暂无记录，开始学习吧！</p>
                 <p class="text-xs text-shuimo/30 mt-1">完成章节学习后这里会显示足迹</p>
                 <button
-                  @click="$emit('navigate', 'courses')"
+                  @click="router.push('/student/courses')"
                   class="mt-4 px-4 py-2 rounded-xl bg-qinghua text-white text-sm font-medium hover:bg-qinghua/90 transition-colors"
                 >
                   去选课
@@ -423,7 +368,7 @@ onMounted(() => {
           </h3>
           <div class="space-y-3">
              <div 
-               v-for="(quiz, index) in quizScores" 
+               v-for="(quiz, index) in quizzes" 
                :key="index" 
                class="flex items-center justify-between p-3 rounded-xl bg-slate-50 transition-all hover:shadow-sm stagger-item"
                :class="quiz?.chapterId ? 'hover:bg-slate-100 cursor-pointer' : 'opacity-60 cursor-not-allowed'"
@@ -446,7 +391,7 @@ onMounted(() => {
                    {{ quiz.score }}
                 </div>
              </div>
-             <div v-if="quizScores.length === 0" class="text-center py-10">
+             <div v-if="quizzes.length === 0" class="text-center py-10">
                 <div class="w-14 h-14 mx-auto mb-3 rounded-full bg-yanzhi/10 flex items-center justify-center empty-state-float">
                   <TrendingUp class="w-7 h-7 text-yanzhi/50" />
                 </div>

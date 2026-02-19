@@ -22,7 +22,7 @@ const styles = {
 </script>
 
 <template>
-  <div class="fixed top-24 right-4 z-[9999] flex flex-col gap-3 pointer-events-none">
+  <div class="fixed top-24 right-4 z-[9999] flex flex-col gap-3 pointer-events-none" role="region" aria-label="系统消息通知">
     <TransitionGroup name="toast">
       <div
         v-for="toast in toasts"
@@ -33,7 +33,7 @@ const styles = {
       >
         <component :is="icons[toast.type]" class="w-5 h-5 flex-shrink-0" />
         <span class="flex-1 text-sm font-medium tracking-wide">{{ toast.message }}</span>
-        <button class="p-1 hover:bg-white/20 rounded-lg transition-colors">
+        <button class="p-1 hover:bg-white/20 rounded-lg transition-colors" aria-label="关闭提示消息">
           <X class="w-4 h-4 opacity-80" />
         </button>
       </div>
@@ -44,7 +44,10 @@ const styles = {
 <style scoped>
 .toast-enter-active,
 .toast-leave-active {
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* P1：Toast 动画限定到透明度和位移缩放 */
+  transition:
+    opacity var(--motion-duration-slow) var(--motion-ease-standard),
+    transform var(--motion-duration-slow) var(--motion-ease-standard);
 }
 
 .toast-enter-from {

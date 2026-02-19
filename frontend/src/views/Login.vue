@@ -249,20 +249,26 @@ const clearError = () => {
         <!-- Toggle -->
         <div class="flex bg-white/50 rounded-xl p-1 mb-5">
           <button
+            type="button"
             @click="isLogin = true; showPassword = false; showConfirmPassword = false"
             :class="[
               'flex-1 py-2.5 rounded-lg font-medium transition-all duration-300 text-sm',
-              isLogin ? 'bg-white shadow-md text-danqing' : 'text-shuimo/60 hover:text-shuimo'
+              isLogin ? 'bg-white shadow-md text-shuimo' : 'text-shuimo/80 hover:text-shuimo'
             ]"
+            :aria-pressed="isLogin"
+            aria-label="切换到登录表单"
           >
             登录
           </button>
           <button
+            type="button"
             @click="isLogin = false; showPassword = false; showConfirmPassword = false"
             :class="[
               'flex-1 py-2.5 rounded-lg font-medium transition-all duration-300 text-sm',
-              !isLogin ? 'bg-white shadow-md text-danqing' : 'text-shuimo/60 hover:text-shuimo'
+              !isLogin ? 'bg-white shadow-md text-shuimo' : 'text-shuimo/80 hover:text-shuimo'
             ]"
+            :aria-pressed="!isLogin"
+            aria-label="切换到注册表单"
           >
             注册
           </button>
@@ -366,6 +372,7 @@ const clearError = () => {
                   @click="showPassword = !showPassword"
                   class="text-shuimo/40 hover:text-shuimo transition-colors eye-toggle"
                   tabindex="-1"
+                  :aria-label="showPassword ? '隐藏密码' : '显示密码'"
                 >
                   <Eye v-if="showPassword" class="w-5 h-5" />
                   <EyeOff v-else class="w-5 h-5" />
@@ -390,6 +397,7 @@ const clearError = () => {
                   @click="showConfirmPassword = !showConfirmPassword"
                   class="text-shuimo/40 hover:text-shuimo transition-colors eye-toggle"
                   tabindex="-1"
+                  :aria-label="showConfirmPassword ? '隐藏确认密码' : '显示确认密码'"
                 >
                   <Eye v-if="showConfirmPassword" class="w-5 h-5" />
                   <EyeOff v-else class="w-5 h-5" />
@@ -435,7 +443,11 @@ const clearError = () => {
                 <KeyRound class="w-5 h-5 text-qinghua" />
                 {{ resetSuccess ? '密码重置成功' : '重置密码' }}
               </h3>
-              <button @click="closeResetModal" class="p-1 rounded-lg hover:bg-slate-100 text-shuimo/50 hover:text-shuimo transition-colors">
+              <button
+                @click="closeResetModal"
+                class="p-1 rounded-lg hover:bg-slate-100 text-shuimo/50 hover:text-shuimo transition-colors"
+                aria-label="关闭重置密码弹窗"
+              >
                 <X class="w-5 h-5" />
               </button>
             </div>
@@ -506,6 +518,7 @@ const clearError = () => {
                       @click="showNewPassword = !showNewPassword"
                       class="text-shuimo/40 hover:text-shuimo transition-colors"
                       tabindex="-1"
+                      :aria-label="showNewPassword ? '隐藏新密码' : '显示新密码'"
                     >
                       <Eye v-if="showNewPassword" class="w-5 h-5" />
                       <EyeOff v-else class="w-5 h-5" />
@@ -569,7 +582,8 @@ const clearError = () => {
 }
 
 .animate-shake {
-  animation: shake 0.5s ease-in-out;
+  /* P1 第二批：登录页反馈时长压缩，保证 100ms 内有响应 */
+  animation: shake var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 /* Enhanced input focus glow effect */
@@ -593,7 +607,7 @@ const clearError = () => {
 
 /* Toggle button slide indicator */
 .toggle-indicator {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 /* Form field stagger animation */
@@ -609,7 +623,7 @@ const clearError = () => {
 }
 
 .form-field-animate {
-  animation: field-appear 0.3s ease-out forwards;
+  animation: field-appear var(--motion-duration-medium) var(--motion-ease-standard) forwards;
 }
 
 /* Success checkmark animation */
@@ -620,7 +634,7 @@ const clearError = () => {
 }
 
 .success-checkmark {
-  animation: checkmark-pop 0.4s ease-out;
+  animation: checkmark-pop var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 /* Password visibility toggle animation */
@@ -633,9 +647,22 @@ const clearError = () => {
   animation: eye-blink 0.2s ease;
 }
 
+/* 无障碍：仅屏幕阅读器可见文本 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Logo hover effect */
 .logo-hover:hover .logo-icon {
-  animation: logo-bounce 0.5s ease;
+  animation: logo-bounce var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes logo-bounce {
@@ -658,6 +685,6 @@ const clearError = () => {
 }
 
 .animate-float {
-  animation: float-enhanced 6s ease-in-out infinite;
+  animation: float-enhanced var(--motion-duration-medium) var(--motion-ease-standard) infinite;
 }
 </style>

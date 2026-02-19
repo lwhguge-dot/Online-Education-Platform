@@ -74,13 +74,30 @@ onUnmounted(() => {
     @confirm="confirmStore.confirm"
     @cancel="confirmStore.cancel"
   />
-  <RouterView v-slot="{ Component }">
-    <Transition name="page-fade" mode="out-in">
-      <component :is="Component" />
-    </Transition>
-  </RouterView>
+  <main id="app-main" role="main" class="min-h-screen">
+    <!-- 无障碍：为页面提供稳定的一级标题锚点，避免无 H1 报警 -->
+    <h1 class="visually-hidden-heading">智慧课堂系统</h1>
+    <RouterView v-slot="{ Component }">
+      <Transition name="page-fade" mode="out-in">
+        <component :is="Component" />
+      </Transition>
+    </RouterView>
+  </main>
 </template>
 
 <style>
 /* 全局样式已在main.css中定义 */
+
+/* 无障碍：视觉隐藏但对读屏可见的标题样式 */
+.visually-hidden-heading {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 </style>

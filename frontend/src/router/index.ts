@@ -47,9 +47,50 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/student',
-    name: 'StudentCenter',
-    component: () => import('../views/StudentCenter.vue'),
-    meta: { requiresAuth: true, allowedRoles: ['student'], title: '学生中心' }
+    component: () => import('../layouts/StudentLayout.vue'),
+    meta: { requiresAuth: true, allowedRoles: ['student'], title: '学生中心' },
+    children: [
+      {
+        path: '',
+        redirect: '/student/dashboard'
+      },
+      {
+        path: 'dashboard',
+        name: 'StudentDashboard',
+        component: () => import('../views/student/StudentDashboard.vue'),
+        meta: { title: '学习概览' }
+      },
+      {
+        path: 'courses',
+        name: 'StudentCourses',
+        component: () => import('../views/student/StudentMyCourses.vue'),
+        meta: { title: '我的课程' }
+      },
+      {
+        path: 'homeworks',
+        name: 'StudentHomeworks',
+        component: () => import('../views/student/StudentHomeworks.vue'),
+        meta: { title: '作业中心' }
+      },
+      {
+        path: 'records',
+        name: 'StudentRecords',
+        component: () => import('../views/student/StudentRecords.vue'),
+        meta: { title: '学习记录' }
+      },
+      {
+        path: 'questions',
+        name: 'StudentQuestions',
+        component: () => import('../views/student/StudentQuestions.vue'),
+        meta: { title: '问答互动' }
+      },
+      {
+        path: 'profile',
+        name: 'StudentProfile',
+        component: () => import('../views/student/StudentProfile.vue'),
+        meta: { title: '个人设置' }
+      }
+    ]
   },
   {
     path: '/study/:id',

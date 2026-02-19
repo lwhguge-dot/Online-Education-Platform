@@ -68,7 +68,8 @@ const goBack = () => {
 
 <style scoped>
 .animate-pulse-slow {
-  animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  /* P1：统一错误页脉冲动效曲线 */
+  animation: pulse var(--motion-duration-slow) var(--motion-ease-standard) infinite;
 }
 
 @keyframes pulse {

@@ -87,8 +87,7 @@ class EnrollmentServiceTest {
             // 验证插入了选课记录
             verify(enrollmentMapper).insert(any(Enrollment.class));
             // 验证课程学生数 +1
-            verify(courseMapper).updateById(argThat(course ->
-                    course.getStudentCount() == 11));
+            verify(courseMapper).updateById(argThat(course -> course.getStudentCount() == 11));
         }
 
         @Test
@@ -150,11 +149,9 @@ class EnrollmentServiceTest {
             enrollmentService.drop(1L, 100L);
 
             // 验证状态变为 DROPPED
-            verify(enrollmentMapper).updateById(argThat(e ->
-                    Enrollment.STATUS_DROPPED.equals(e.getStatus())));
+            verify(enrollmentMapper).updateById(argThat(e -> Enrollment.STATUS_DROPPED.equals(e.getStatus())));
             // 验证课程学生数 -1
-            verify(courseMapper).updateById(argThat(course ->
-                    course.getStudentCount() == 9));
+            verify(courseMapper).updateById(argThat(course -> course.getStudentCount() == 9));
         }
 
         @Test
