@@ -2,7 +2,7 @@
 import { ref, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { authAPI, setSkipFirstCheck } from '../services/api'
+import { authAPI } from '../services/api'
 import BaseInput from '../components/ui/BaseInput.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
 import GlassCard from '../components/ui/GlassCard.vue'
@@ -52,6 +52,8 @@ const formData = ref({
 const resetData = ref({
   email: '',
   realName: '',
+  // 一次性重置令牌，仅在第一步校验通过后下发
+  resetToken: '',
   newPassword: '',
   confirmNewPassword: ''
 })
@@ -85,7 +87,6 @@ const handleSubmit = async () => {
     if (isLogin.value) {
       // 登录：使用邮箱+密码
       const result = await authAPI.login(formData.value.email, formData.value.password)
-      setSkipFirstCheck()
       authStore.login(result.data.token, result.data.user)
       
       const role = result.data.user.role
@@ -129,7 +130,6 @@ const handleSubmit = async () => {
         formData.value.password,
         selectedRole.value
       )
-      setSkipFirstCheck()
       authStore.login(result.data.token, result.data.user)
 
       if (selectedRole.value === 'teacher') {
@@ -154,6 +154,7 @@ const openResetModal = () => {
   resetData.value = {
     email: '',
     realName: '',
+    resetToken: '',
     newPassword: '',
     confirmNewPassword: ''
   }
@@ -185,7 +186,22 @@ const handleResetPassword = async () => {
         resetLoading.value = false
         return
       }
-      // 进入下一步
+
+      // 第一步先向后端申请一次性重置令牌，避免直接暴露旧接口
+      const issueResult = await authAPI.requestPasswordResetToken(
+        resetData.value.email,
+        resetData.value.realName
+      )
+      const token = issueResult?.data?.resetToken
+      if (!token) {
+        // 统一提示，避免暴露账号是否存在
+        resetError.value = '请求已受理，请核对信息后重试'
+        resetLoading.value = false
+        return
+      }
+      resetData.value.resetToken = token
+
+      // 令牌获取成功后进入下一步
       resetStep.value = 2
     } else {
       // 设置新密码
@@ -200,10 +216,9 @@ const handleResetPassword = async () => {
         return
       }
 
-      // 调用API重置密码
-      await authAPI.resetPassword(
-        resetData.value.email,
-        resetData.value.realName,
+      // 第二步使用一次性令牌完成密码重置
+      await authAPI.confirmPasswordReset(
+        resetData.value.resetToken,
         resetData.value.newPassword
       )
       
@@ -215,7 +230,14 @@ const handleResetPassword = async () => {
       }, 2000)
     }
   } catch (err) {
-    resetError.value = err.message || '操作失败，请检查邮箱和真实姓名是否正确'
+    const message = err?.message || ''
+    if (message.includes('频繁')) {
+      resetError.value = '操作过于频繁，请稍后再试'
+    } else if (message.includes('令牌') || message.includes('无效') || message.includes('失效')) {
+      resetError.value = '重置凭证已失效，请返回上一步重新申请'
+    } else {
+      resetError.value = message || '操作失败，请稍后重试'
+    }
   } finally {
     resetLoading.value = false
   }
@@ -501,7 +523,7 @@ const clearError = () => {
 
               <!-- 步骤2：设置新密码 -->
               <template v-else>
-                <p class="text-sm text-shuimo/70 mb-4">请设置您的新密码</p>
+                <p class="text-sm text-shuimo/70 mb-4">请设置您的新密码（若提示令牌失效，请返回上一步重新申请）</p>
                 
                 <BaseInput
                   v-model="resetData.newPassword"

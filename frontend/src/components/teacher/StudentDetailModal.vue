@@ -1,9 +1,8 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { X, TrendingUp, BookOpen, Clock, Award, AlertTriangle, Calendar } from 'lucide-vue-next'
 import { progressAPI } from '../../services/api'
 import GlassCard from '../ui/GlassCard.vue'
-import BaseButton from '../ui/BaseButton.vue'
 import BaseModal from '../ui/BaseModal.vue'
 
 const props = defineProps({
@@ -63,6 +62,39 @@ const quizTrendData = computed(() => {
   }
 })
 
+// 读屏摘要：为图表补充可理解的文本说明
+const trajectorySummary = computed(() => {
+  const values = trajectoryChartData.value.values
+  if (!values.length) return '最近14天暂无学习轨迹数据。'
+
+  const total = values.reduce((sum, item) => sum + item, 0)
+  const max = Math.max(...values)
+  const avg = Math.round(total / values.length)
+  return `最近 ${values.length} 天累计学习 ${total} 分钟，单日最高 ${max} 分钟，日均 ${avg} 分钟。`
+})
+
+const quizSummary = computed(() => {
+  const values = quizTrendData.value.values
+  if (!values.length) return '暂无测验分数趋势数据。'
+
+  const total = values.reduce((sum, item) => sum + item, 0)
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const avg = (total / values.length).toFixed(1)
+  const latest = values[values.length - 1]
+  return `共 ${values.length} 次测验，平均分 ${avg}，最高分 ${max}，最低分 ${min}，最近一次 ${latest} 分。`
+})
+
+const chapterSummary = computed(() => {
+  const chapters = analyticsData.value?.chapterProgress || []
+  if (!chapters.length) return '暂无章节学习详情数据。'
+
+  const avgVideoRate = Math.round(
+    chapters.reduce((sum, chapter) => sum + (chapter.videoRate || 0), 0) / chapters.length
+  )
+  return `共 ${chapters.length} 个章节，平均视频完成率 ${avgVideoRate}%。`
+})
+
 // 计算图表最大值
 const getMaxValue = (values) => Math.max(...values, 1)
 
@@ -115,14 +147,15 @@ watch(() => props.visible, (val) => {
             </div>
           </div>
         </div>
-        <button @click="close" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
+        <button @click="close" aria-label="关闭学生详情弹窗" class="p-2 hover:bg-slate-100 rounded-full transition-colors">
           <X class="w-5 h-5 text-shuimo/60" />
         </button>
       </div>
     </template>
 
-    <div v-if="loading" class="flex items-center justify-center py-20">
+    <div v-if="loading" class="flex items-center justify-center py-20" role="status" aria-live="polite">
       <div class="animate-spin w-8 h-8 border-2 border-tianlv border-t-transparent rounded-full"></div>
+      <span class="sr-only">正在加载学生学情数据</span>
     </div>
 
     <div v-else class="space-y-6">
@@ -166,41 +199,44 @@ watch(() => props.visible, (val) => {
       </GlassCard>
 
       <GlassCard class="p-4">
-        <h3 class="font-bold text-shuimo mb-4 flex items-center gap-2">
+        <h3 id="trajectory-chart-title" class="font-bold text-shuimo mb-4 flex items-center gap-2">
           <Calendar class="w-5 h-5 text-tianlv" />
           学习轨迹（近14天）
         </h3>
-        <div v-if="trajectoryChartData.values.length" class="h-40">
+        <p class="sr-only">{{ trajectorySummary }}</p>
+        <div v-if="trajectoryChartData.values.length" class="h-40" role="group" aria-labelledby="trajectory-chart-title">
           <div class="flex items-end justify-between gap-1 h-32 px-2">
             <div v-for="(value, index) in trajectoryChartData.values" :key="index" class="flex-1 flex flex-col items-center gap-1">
               <div
                 class="w-full max-w-6 bg-tianlv/80 rounded-t transition-all duration-500 hover:bg-tianlv"
                 :style="{ height: getBarHeight(value, getMaxValue(trajectoryChartData.values)) + '%' }"
                 :title="`${trajectoryChartData.labels[index]}: ${value}分钟`"
+                aria-hidden="true"
               ></div>
-              <span class="text-[10px] text-shuimo/50 truncate w-full text-center">{{ trajectoryChartData.labels[index] }}</span>
+              <span class="text-[10px] text-shuimo/50 truncate w-full text-center" aria-hidden="true">{{ trajectoryChartData.labels[index] }}</span>
             </div>
           </div>
         </div>
-        <div v-else class="text-center py-8 text-shuimo/40">暂无学习轨迹数据</div>
+        <div v-else class="text-center py-8 text-shuimo/40" role="status" aria-live="polite">暂无学习轨迹数据</div>
       </GlassCard>
 
       <GlassCard class="p-4">
-        <h3 class="font-bold text-shuimo mb-4 flex items-center gap-2">
+        <h3 id="quiz-trend-title" class="font-bold text-shuimo mb-4 flex items-center gap-2">
           <TrendingUp class="w-5 h-5 text-qingsong" />
           测验分数趋势
         </h3>
-        <div v-if="quizTrendData.values.length" class="h-40">
+        <p class="sr-only">{{ quizSummary }}</p>
+        <div v-if="quizTrendData.values.length" class="h-40" role="group" aria-labelledby="quiz-trend-title">
           <div class="relative h-32 px-4">
-            <div class="absolute inset-0 flex flex-col justify-between pointer-events-none">
-              <div class="border-b border-dashed border-slate-200 text-[10px] text-shuimo/40 text-right pr-1">100</div>
-              <div class="border-b border-dashed border-slate-200 text-[10px] text-shuimo/40 text-right pr-1">75</div>
-              <div class="border-b border-dashed border-slate-200 text-[10px] text-shuimo/40 text-right pr-1">50</div>
-              <div class="border-b border-dashed border-slate-200 text-[10px] text-shuimo/40 text-right pr-1">25</div>
-              <div class="text-[10px] text-shuimo/40 text-right pr-1">0</div>
+            <div class="absolute inset-0 flex flex-col justify-between pointer-events-none" aria-hidden="true">
+              <div class="border-b border-dashed border-slate-200 text-[10px] text-shuimo/40 text-right pr-1" aria-hidden="true">100</div>
+              <div class="border-b border-dashed border-slate-200 text-[10px] text-shuimo/40 text-right pr-1" aria-hidden="true">75</div>
+              <div class="border-b border-dashed border-slate-200 text-[10px] text-shuimo/40 text-right pr-1" aria-hidden="true">50</div>
+              <div class="border-b border-dashed border-slate-200 text-[10px] text-shuimo/40 text-right pr-1" aria-hidden="true">25</div>
+              <div class="text-[10px] text-shuimo/40 text-right pr-1" aria-hidden="true">0</div>
             </div>
 
-            <svg class="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none">
+            <svg class="absolute inset-0 w-full h-full overflow-visible" preserveAspectRatio="none" aria-hidden="true">
               <polyline
                 :points="getLinePoints(quizTrendData.values, 100)"
                 fill="none"
@@ -221,11 +257,11 @@ watch(() => props.visible, (val) => {
                 stroke-width="2"
                 class="cursor-pointer hover:r-6"
               >
-                <title>{{ quizTrendData.labels[index] }}: {{ value }}分</title>
+                  <title>{{ quizTrendData.labels[index] }}: {{ value }}分</title>
               </circle>
             </svg>
           </div>
-          <div class="flex justify-between px-4 mt-2">
+          <div class="flex justify-between px-4 mt-2" aria-hidden="true">
             <span
               v-for="(label, index) in quizTrendData.labels"
               :key="index"
@@ -236,14 +272,15 @@ watch(() => props.visible, (val) => {
             </span>
           </div>
         </div>
-        <div v-else class="text-center py-8 text-shuimo/40">暂无测验数据</div>
+        <div v-else class="text-center py-8 text-shuimo/40" role="status" aria-live="polite">暂无测验数据</div>
       </GlassCard>
 
       <GlassCard v-if="analyticsData?.chapterProgress?.length" class="p-4">
-        <h3 class="font-bold text-shuimo mb-4 flex items-center gap-2">
+        <h3 id="chapter-progress-title" class="font-bold text-shuimo mb-4 flex items-center gap-2">
           <BookOpen class="w-5 h-5 text-qinghua" />
           章节学习详情
         </h3>
+        <p class="sr-only">{{ chapterSummary }}</p>
         <div class="space-y-3">
           <div
             v-for="chapter in analyticsData.chapterProgress"
@@ -254,7 +291,7 @@ watch(() => props.visible, (val) => {
               <div class="font-medium text-sm text-shuimo">{{ chapter.title }}</div>
               <div class="flex items-center gap-3 mt-1">
                 <div class="flex items-center gap-1">
-                  <div class="w-20 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div class="w-20 h-1.5 bg-slate-200 rounded-full overflow-hidden" role="img" :aria-label="`${chapter.title} 视频完成率 ${chapter.videoRate}%`">
                     <div class="h-full bg-tianlv rounded-full" :style="{ width: chapter.videoRate + '%' }"></div>
                   </div>
                   <span class="text-xs text-shuimo/60">视频 {{ chapter.videoRate }}%</span>

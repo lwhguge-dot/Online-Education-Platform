@@ -296,7 +296,7 @@ const loadAllData = async () => {
 
 // === 导航与操作 ===
 
-const handleNavigate = ({ menu, tab, action }) => {
+const handleNavigate = ({ menu }) => {
   activeMenu.value = menu
   // 如果后续需要基于 action 传参，可通过 store 或事件总线扩展
 }
@@ -463,7 +463,12 @@ onUnmounted(() => {
               <p class="text-sm font-bold text-shuimo">{{ authStore.user?.username || '教师' }}</p>
               <p class="text-xs text-shuimo/50">{{ roleLabel }}</p>
             </div>
-            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-tianlv to-qingsong flex items-center justify-center text-white font-bold shadow-lg shadow-tianlv/20 cursor-pointer hover:scale-105 transition-transform overflow-hidden" @click="activeMenu = 'settings'">
+            <button
+              type="button"
+              class="w-10 h-10 rounded-full bg-gradient-to-br from-tianlv to-qingsong flex items-center justify-center text-white font-bold shadow-lg shadow-tianlv/20 cursor-pointer hover:scale-105 transition-transform overflow-hidden"
+              aria-label="打开个人设置"
+              @click="activeMenu = 'settings'"
+            >
               <!-- 优先展示已上传头像；无头像时回退到首字母 -->
               <img
                 v-if="authStore.user?.avatar"
@@ -472,7 +477,7 @@ onUnmounted(() => {
                 class="w-full h-full object-cover"
               />
               <span v-else>{{ authStore.user?.username?.charAt(0).toUpperCase() || 'T' }}</span>
-            </div>
+            </button>
           </div>
         </div>
       </header>

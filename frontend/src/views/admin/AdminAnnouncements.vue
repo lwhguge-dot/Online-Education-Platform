@@ -40,15 +40,6 @@ const formData = ref({
 })
 const saving = ref(false)
 
-// 状态映射
-const statusOptions = [
-  { value: '', label: '全部状态' },
-  { value: 'DRAFT', label: '草稿' },
-  { value: 'SCHEDULED', label: '定时发布' },
-  { value: 'PUBLISHED', label: '已发布' },
-  { value: 'EXPIRED', label: '已过期' },
-]
-
 const statusStyleMap = {
   DRAFT: { label: '草稿', class: 'bg-slate-100 text-slate-600', icon: EyeOff },
   SCHEDULED: { label: '定时发布', class: 'bg-blue-100 text-blue-600', icon: Clock },
@@ -76,7 +67,8 @@ const fetchAnnouncements = async () => {
     // 后端返回 data.records，兼容 data.content
     announcements.value = res.data?.records || res.data?.content || res.data || []
     totalCount.value = res.data?.total || res.data?.totalElements || announcements.value.length
-  } catch (e) {
+  } catch (error) {
+    console.error('获取公告列表失败:', error)
     toast.error('获取公告列表失败')
     announcements.value = []
   } finally {
@@ -152,7 +144,8 @@ const saveAnnouncement = async () => {
     }
     showModal.value = false
     fetchAnnouncements()
-  } catch (e) {
+  } catch (error) {
+    console.error('保存公告失败:', error)
     toast.error('保存失败')
   } finally {
     saving.value = false
@@ -173,7 +166,8 @@ const confirmPublish = async (announcement) => {
     await announcementAPI.publish(announcement.id)
     toast.success('公告已发布')
     fetchAnnouncements()
-  } catch (e) {
+  } catch (error) {
+    console.error('发布公告失败:', error)
     toast.error('发布失败')
   }
 }
@@ -192,7 +186,8 @@ const confirmDelete = async (announcement) => {
     await announcementAPI.delete(announcement.id)
     toast.success('公告已删除')
     fetchAnnouncements()
-  } catch (e) {
+  } catch (error) {
+    console.error('删除公告失败:', error)
     toast.error('删除失败')
   }
 }

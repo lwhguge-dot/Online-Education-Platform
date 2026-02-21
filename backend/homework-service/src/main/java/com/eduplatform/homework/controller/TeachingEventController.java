@@ -3,6 +3,7 @@ package com.eduplatform.homework.controller;
 import com.eduplatform.common.result.Result;
 import com.eduplatform.homework.dto.TeachingEventDTO;
 import com.eduplatform.homework.service.TeachingEventService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -102,7 +103,7 @@ public class TeachingEventController {
      */
     @PostMapping("/events")
     public Result<TeachingEventDTO> createEvent(
-            @RequestBody TeachingEventDTO dto,
+            @Valid @RequestBody TeachingEventDTO dto,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 创建教学事件时以网关身份为准，禁止伪造 teacherId
@@ -126,7 +127,7 @@ public class TeachingEventController {
     @PutMapping("/events/{id}")
     public Result<TeachingEventDTO> updateEvent(
             @PathVariable Long id,
-            @RequestBody TeachingEventDTO dto,
+            @Valid @RequestBody TeachingEventDTO dto,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 更新教学事件时同样校验教师身份并覆盖 teacherId

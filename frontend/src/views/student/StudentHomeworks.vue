@@ -15,7 +15,7 @@ const authStore = useAuthStore()
 
 // Composables
 const { enrolledCourses, loadEnrolledCourses } = useStudentCourses()
-const { pendingHomeworks, completedHomeworks, loadHomeworks, loading } = useStudentHomeworks()
+const { pendingHomeworks, completedHomeworks, loadHomeworks } = useStudentHomeworks()
 
 const activeTab = ref('pending')
 const courseFilter = ref('all')

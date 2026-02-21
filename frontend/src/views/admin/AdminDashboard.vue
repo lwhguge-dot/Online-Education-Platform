@@ -4,10 +4,10 @@
  * 展示系统概况、数据趋势图表、待办事项和最近活动。
  * 集成骨架屏加载、数据可视化图表和 stagger 入场动画。
  */
-import { computed, ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import {
   TrendingUp, UserPlus, LogIn, Users, BookOpen,
-  Bell, Eye, Ban, CheckCircle, ChevronRight, RefreshCw
+  Bell, Eye, Ban, ChevronRight, RefreshCw
 } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
 import AnimatedNumber from '../../components/ui/AnimatedNumber.vue'
@@ -18,7 +18,7 @@ import CourseDistributionChart from '../../components/charts/CourseDistributionC
 import OnlineUsersModal from '../../components/admin/OnlineUsersModal.vue'
 import { statsAPI, courseAPI } from '../../services/api'
 
-const props = defineProps({
+defineProps({
   stats: {
     type: Object,
     default: () => ({ total: 0, students: 0, teachers: 0, admins: 0 })
@@ -212,13 +212,19 @@ const getRoleName = (role) => {
             </div>
             <div class="text-xs text-emerald-600/70 dark:text-emerald-400/70 font-medium">今日活跃</div>
           </div>
-          <div class="stagger-item text-center p-4 rounded-xl bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 hover:shadow-lg hover:shadow-green-100 dark:hover:shadow-green-900/20 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer" @click="showOnlineUsersModal = true" title="点击查看在线用户详情">
+          <button
+            type="button"
+            class="stagger-item text-center p-4 rounded-xl bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 hover:shadow-lg hover:shadow-green-100 dark:hover:shadow-green-900/20 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer w-full"
+            @click="showOnlineUsersModal = true"
+            title="点击查看在线用户详情"
+            aria-label="查看在线用户详情"
+          >
             <Users class="w-6 h-6 text-green-500 mx-auto mb-2" />
             <div class="text-2xl font-bold text-green-600 dark:text-green-400 font-mono">
               <AnimatedNumber :value="todayStats.onlineUsers || 0" :duration="800" :show-trend="true" />
             </div>
             <div class="text-xs text-green-600/70 dark:text-green-400/70 font-medium">当前在线</div>
-          </div>
+          </button>
           <div class="stagger-item text-center p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:shadow-lg hover:shadow-amber-100 dark:hover:shadow-amber-900/20 hover:-translate-y-0.5 transition-all duration-300 cursor-default">
             <BookOpen class="w-6 h-6 text-amber-500 mx-auto mb-2" />
             <div class="text-2xl font-bold text-amber-600 dark:text-amber-400 font-mono">
@@ -240,10 +246,12 @@ const getRoleName = (role) => {
 
         <div class="space-y-3">
           <!-- 待审核课程 -->
-          <div
+          <button
             v-if="courseStats.pending > 0"
+            type="button"
             @click="emit('navigate', { menu: 'courses', filter: '0' })"
-            class="stagger-item flex items-center gap-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-all group"
+            class="stagger-item flex items-center gap-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-all group text-left w-full"
+            aria-label="查看待审核课程详情"
           >
             <div class="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-800/30 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Eye class="w-6 h-6 text-amber-600 dark:text-amber-400" />
@@ -253,13 +261,15 @@ const getRoleName = (role) => {
               <p class="text-xs md:text-sm text-amber-600/70 dark:text-amber-400/60 mt-0.5">点击立即处理</p>
             </div>
             <ChevronRight class="w-5 h-5 text-amber-500 dark:text-amber-400 group-hover:translate-x-1 transition-transform" />
-          </div>
+          </button>
 
           <!-- 已禁用用户 -->
-          <div
+          <button
             v-if="disabledUsersCount > 0"
+            type="button"
             @click="emit('navigate', { menu: 'users', filter: 'disabled' })"
-            class="stagger-item flex items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-600/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all group"
+            class="stagger-item flex items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-600/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all group text-left w-full"
+            aria-label="查看已禁用用户详情"
           >
             <div class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-600/30 flex items-center justify-center group-hover:scale-110 transition-transform">
               <Ban class="w-6 h-6 text-slate-500 dark:text-slate-400" />
@@ -269,7 +279,7 @@ const getRoleName = (role) => {
               <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">点击查看详情</p>
             </div>
             <ChevronRight class="w-5 h-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
-          </div>
+          </button>
 
           <!-- 空状态 -->
           <EmptyState

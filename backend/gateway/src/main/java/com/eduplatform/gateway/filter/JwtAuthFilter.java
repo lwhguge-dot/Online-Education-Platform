@@ -6,6 +6,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
@@ -25,6 +27,7 @@ import java.util.HashMap;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * 网关 JWT 鉴权过滤器。
@@ -44,6 +47,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     private static final String HEADER_USER_ROLE = "X-User-Role";
     private static final String HEADER_USER_TS = "X-User-Ts";
     private static final String HEADER_USER_SIGNATURE = "X-User-Signature";
+    private static final String HEADER_TRACE_ID = "X-Trace-Id";
 
     /**
      * 白名单接口：无需登录即可访问。
@@ -51,12 +55,14 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     private static final Set<String> PUBLIC_PATHS = Set.of(
             "/api/auth/login",
             "/api/auth/register",
+            "/api/auth/password-reset/request",
+            "/api/auth/password-reset/confirm",
             "/api/auth/health",
-            "/api/auth/reset-password",
             "/api/courses/published"
     );
 
     private final ObjectMapper objectMapper;
+    private final WebClient userServiceWebClient;
 
     @Value("${jwt.secret}")
     private String jwtSecret;
@@ -64,8 +70,9 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     @Value("${security.internal-token}")
     private String internalToken;
 
-    public JwtAuthFilter(ObjectMapper objectMapper) {
+    public JwtAuthFilter(ObjectMapper objectMapper, @LoadBalanced WebClient.Builder webClientBuilder) {
         this.objectMapper = objectMapper;
+        this.userServiceWebClient = webClientBuilder.build();
     }
 
     @Override
@@ -128,23 +135,31 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
         long ts = Instant.now().getEpochSecond();
         String signature = signUserHeaders(internalToken, userId, username, role, ts);
-        ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
-                .headers(headers -> {
-                    headers.remove(HEADER_INTERNAL_TOKEN);
-                    headers.remove(HEADER_USER_ID);
-                    headers.remove(HEADER_USER_NAME);
-                    headers.remove(HEADER_USER_ROLE);
-                    headers.remove(HEADER_USER_TS);
-                    headers.remove(HEADER_USER_SIGNATURE);
-                    headers.add(HEADER_USER_ID, userId);
-                    headers.add(HEADER_USER_NAME, username);
-                    headers.add(HEADER_USER_ROLE, role);
-                    headers.add(HEADER_USER_TS, String.valueOf(ts));
-                    headers.add(HEADER_USER_SIGNATURE, signature);
-                })
-                .build();
+        // 在网关鉴权链闭环会话有效性：签名正确但已失效的 jti 不允许继续访问。
+        return validateSession(userId, username, role, token, ts, signature)
+                .flatMap(sessionValid -> {
+                    if (!sessionValid) {
+                        return writeError(exchange, HttpStatus.UNAUTHORIZED, 401, "身份认证失败：会话已失效，请重新登录");
+                    }
 
-        return chain.filter(exchange.mutate().request(mutatedRequest).build());
+                    ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+                            .headers(headers -> {
+                                headers.remove(HEADER_INTERNAL_TOKEN);
+                                headers.remove(HEADER_USER_ID);
+                                headers.remove(HEADER_USER_NAME);
+                                headers.remove(HEADER_USER_ROLE);
+                                headers.remove(HEADER_USER_TS);
+                                headers.remove(HEADER_USER_SIGNATURE);
+                                headers.add(HEADER_USER_ID, userId);
+                                headers.add(HEADER_USER_NAME, username);
+                                headers.add(HEADER_USER_ROLE, role);
+                                headers.add(HEADER_USER_TS, String.valueOf(ts));
+                                headers.add(HEADER_USER_SIGNATURE, signature);
+                            })
+                            .build();
+
+                    return chain.filter(exchange.mutate().request(mutatedRequest).build());
+                });
     }
 
     private boolean isPublicPath(String path) {
@@ -189,6 +204,48 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
                 .getPayload();
     }
 
+    /**
+     * 校验会话是否仍有效（jti 在服务端白名单中）。
+     * 说明：调用 user-service 的 validate-token 接口，并沿用网关签名头，避免身份头被伪造。
+     */
+    private Mono<Boolean> validateSession(
+            String userId,
+            String username,
+            String role,
+            String token,
+            long ts,
+            String signature) {
+        return userServiceWebClient.get()
+                .uri("http://user-service/api/auth/validate-token/{userId}", userId)
+                .header(HEADER_AUTHORIZATION, "Bearer " + token)
+                .header(HEADER_USER_ID, userId)
+                .header(HEADER_USER_NAME, username)
+                .header(HEADER_USER_ROLE, role)
+                .header(HEADER_USER_TS, String.valueOf(ts))
+                .header(HEADER_USER_SIGNATURE, signature)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .map(this::isValidateTokenResponseSuccess)
+                .onErrorResume(e -> {
+                    log.warn("网关会话校验失败: userId={}, error={}", userId, e.getMessage());
+                    return Mono.just(false);
+                });
+    }
+
+    /**
+     * 解析 user-service 返回的 Result，判定会话校验是否通过。
+     */
+    private boolean isValidateTokenResponseSuccess(Map<String, Object> payload) {
+        if (payload == null) {
+            return false;
+        }
+        Object code = payload.get("code");
+        Object data = payload.get("data");
+        boolean codeOk = "200".equals(String.valueOf(code));
+        boolean dataOk = Boolean.TRUE.equals(data) || "true".equalsIgnoreCase(String.valueOf(data));
+        return codeOk && dataOk;
+    }
+
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
@@ -210,14 +267,18 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
      * 统一输出错误响应，前端可按 code/message 解析。
      */
     private Mono<Void> writeError(ServerWebExchange exchange, HttpStatus status, int code, String message) {
+        String traceId = resolveTraceId(exchange);
         exchange.getResponse().setStatusCode(status);
         exchange.getResponse().getHeaders().set("Content-Type", "application/json;charset=UTF-8");
+        // 将 traceId 透传到响应头，便于前端与日志联动排障。
+        exchange.getResponse().getHeaders().set(HEADER_TRACE_ID, traceId);
 
         try {
             Map<String, Object> payload = new HashMap<>();
             payload.put("code", code);
             payload.put("message", message);
             payload.put("data", null);
+            payload.put("traceId", traceId);
             byte[] bytes = objectMapper.writeValueAsBytes(payload);
             return exchange.getResponse()
                     .writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(bytes)));
@@ -225,6 +286,59 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             log.error("网关写入鉴权错误响应失败", e);
             return exchange.getResponse().setComplete();
         }
+    }
+
+    /**
+     * 提取或生成 traceId，保证网关错误响应具备可追踪性。
+     */
+    private String resolveTraceId(ServerWebExchange exchange) {
+        String directTraceId = firstNonBlank(
+                exchange.getRequest().getHeaders().getFirst(HEADER_TRACE_ID),
+                exchange.getRequest().getHeaders().getFirst("X-B3-TraceId"),
+                exchange.getRequest().getHeaders().getFirst("X-Request-Id"));
+        if (StringUtils.hasText(directTraceId)) {
+            return directTraceId;
+        }
+
+        String traceIdFromTraceParent = extractTraceIdFromTraceParent(
+                exchange.getRequest().getHeaders().getFirst("traceparent"));
+        if (StringUtils.hasText(traceIdFromTraceParent)) {
+            return traceIdFromTraceParent;
+        }
+        return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /**
+     * 从 W3C traceparent 报文中提取 traceId。
+     */
+    private String extractTraceIdFromTraceParent(String traceParent) {
+        if (!StringUtils.hasText(traceParent)) {
+            return null;
+        }
+        String[] parts = traceParent.trim().split("-");
+        if (parts.length < 4) {
+            return null;
+        }
+        String traceId = parts[1];
+        if (traceId.length() != 32) {
+            return null;
+        }
+        return traceId;
+    }
+
+    /**
+     * 返回首个非空白字符串。
+     */
+    private String firstNonBlank(String... candidates) {
+        if (candidates == null) {
+            return null;
+        }
+        for (String candidate : candidates) {
+            if (StringUtils.hasText(candidate)) {
+                return candidate.trim();
+            }
+        }
+        return null;
     }
 
     @Override

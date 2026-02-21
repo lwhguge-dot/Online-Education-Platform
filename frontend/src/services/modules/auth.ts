@@ -1,5 +1,5 @@
 import { request } from '../request'
-import type { Result, LoginResponse } from '../../types/api'
+import type { Result, LoginResponse, PasswordResetTokenResponse } from '../../types/api'
 
 export const authAPI = {
     // 登录：使用邮箱+密码
@@ -14,11 +14,17 @@ export const authAPI = {
             method: 'POST',
             body: JSON.stringify({ email, username, realName, password, role }),
         }),
-    // 密码重置：邮箱+真实姓名+新密码
-    resetPassword: (email: string, realName: string, newPassword: string): Promise<Result<void>> =>
-        request<void>('/auth/reset-password', {
+    // 申请密码重置令牌：邮箱+真实姓名
+    requestPasswordResetToken: (email: string, realName: string): Promise<Result<PasswordResetTokenResponse>> =>
+        request<PasswordResetTokenResponse>('/auth/password-reset/request', {
             method: 'POST',
-            body: JSON.stringify({ email, realName, newPassword }),
+            body: JSON.stringify({ email, realName }),
+        }),
+    // 使用一次性令牌确认重置密码
+    confirmPasswordReset: (resetToken: string, newPassword: string): Promise<Result<boolean>> =>
+        request<boolean>('/auth/password-reset/confirm', {
+            method: 'POST',
+            body: JSON.stringify({ resetToken, newPassword }),
         }),
     logout: (): Promise<Result<void>> =>
         request<void>('/auth/logout', {

@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-02-20 22:24:44",
+  "student_email": "audit_student_20260220222438@example.com",
+  "teacher_email": "audit_teacher_20260220222438@example.com",
+  "password": "Audit#12345",
+  "student_register_code": 200,
+  "teacher_register_code": 200,
+  "student_login_code": 200,
+  "teacher_login_code": 200,
+  "student_user_role": "student",
+  "teacher_user_role": "teacher",
+  "student_user_id": 12,
+  "teacher_user_id": 13
+}

@@ -1,4 +1,4 @@
-import { request, resolveUserId, clearCache, API_BASE } from '../request'
+import { request, requestBlob, resolveUserId } from '../request'
 import type { Result, User } from '../../types/api'
 
 export const userAPI = {
@@ -9,39 +9,27 @@ export const userAPI = {
 
     getStats: (): Promise<Result<any>> => request('/users/stats'),
 
-    updateStatus: async (id: number, status: number, operatorId: number, operatorName: string): Promise<Result<any>> => {
-        const token = sessionStorage.getItem('token')
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-            ...(token && { Authorization: `Bearer ${token}` }),
+    updateStatus: (id: number, status: number, operatorId?: number | null, _operatorName?: string): Promise<Result<any>> => {
+        const headers: Record<string, string> = {}
+        if (operatorId !== null && operatorId !== undefined) {
+            headers['X-User-Id'] = operatorId.toString()
         }
-        if (operatorId) headers['X-User-Id'] = operatorId.toString()
-        const response = await fetch(`${API_BASE}/users/${id}/status`, {
+        return request(`/users/${id}/status`, {
             method: 'PUT',
             headers,
             body: JSON.stringify({ status }),
         })
-        const data: Result<any> = await response.json()
-        if (data.code !== 200) throw new Error(data.message)
-        clearCache()
-        return data
     },
 
-    deleteUser: async (id: number, operatorId: number, operatorName: string): Promise<Result<any>> => {
-        const token = sessionStorage.getItem('token')
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-            ...(token && { Authorization: `Bearer ${token}` }),
+    deleteUser: (id: number, operatorId?: number | null, _operatorName?: string): Promise<Result<any>> => {
+        const headers: Record<string, string> = {}
+        if (operatorId !== null && operatorId !== undefined) {
+            headers['X-User-Id'] = operatorId.toString()
         }
-        if (operatorId) headers['X-User-Id'] = operatorId.toString()
-        const response = await fetch(`${API_BASE}/users/${id}`, {
+        return request(`/users/${id}`, {
             method: 'DELETE',
             headers,
         })
-        const data: Result<any> = await response.json()
-        if (data.code !== 200) throw new Error(data.message)
-        clearCache()
-        return data
     },
 
     updateProfile: (id: number, profileData: any): Promise<Result<any>> =>
@@ -74,20 +62,12 @@ export const userAPI = {
     getSessions: (id: number): Promise<Result<any>> => request(`/users/${id}/sessions`),
 
     exportCSV: async () => {
-        const token = sessionStorage.getItem('token')
-        const response = await fetch(`${API_BASE}/users/export?format=csv`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-        if (!response.ok) throw new Error('导出失败')
-        const blob = await response.blob()
+        // 统一走请求层，复用鉴权、错误处理与日志采集
+        const { blob, filename } = await requestBlob('/users/export?format=csv')
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        const disposition = response.headers.get('Content-Disposition')
-        const filename = disposition?.match(/filename="?(.+)"?/)?.[1] || `users_${Date.now()}.csv`
-        a.download = filename
+        a.download = filename || `users_${Date.now()}.csv`
         document.body.appendChild(a)
         a.click()
         window.URL.revokeObjectURL(url)

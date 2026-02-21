@@ -1,4 +1,4 @@
-import { request, resolveUserId, API_BASE } from '../request'
+import { request, requestBlob, resolveUserId } from '../request'
 
 export const enrollmentAPI = {
     enroll: (courseId: number, studentId: number | null = null) => {
@@ -65,26 +65,18 @@ export const enrollmentAPI = {
     // 导出教师学生数据CSV
     exportStudentsCSV: async (teacherId: number | null = null, courseId: number | null = null) => {
         const resolvedTeacherId = resolveUserId(teacherId, '教师')
-        const token = sessionStorage.getItem('token');
         const url = courseId
-            ? `${API_BASE}/enrollments/teacher/${resolvedTeacherId}/students/export?courseId=${courseId}`
-            : `${API_BASE}/enrollments/teacher/${resolvedTeacherId}/students/export`;
-        const response = await fetch(url, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-        if (!response.ok) throw new Error('导出失败');
-        const blob = await response.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        const disposition = response.headers.get('Content-Disposition');
-        const filename = disposition?.match(/filename="?(.+)"?/)?.[1] || `students_${Date.now()}.csv`;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(blobUrl);
-        a.remove();
+            ? `/enrollments/teacher/${resolvedTeacherId}/students/export?courseId=${courseId}`
+            : `/enrollments/teacher/${resolvedTeacherId}/students/export`
+        // 统一走请求层，确保导出接口行为与其他接口一致
+        const { blob, filename } = await requestBlob(url)
+        const blobUrl = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = blobUrl
+        a.download = filename || `students_${Date.now()}.csv`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(blobUrl)
+        a.remove()
     },
 }

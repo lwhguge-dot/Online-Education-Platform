@@ -244,7 +244,7 @@ const disabledUsersCount = computed(() => allUsers.value.filter(u => u.status ==
       <!-- Navigation -->
       <nav class="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
         <button
-          v-for="(item, index) in menuItems"
+          v-for="item in menuItems"
           :key="item.id"
           @click="activeMenu = item.id"
           class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden"

@@ -1,12 +1,17 @@
 package com.eduplatform.homework.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.homework.dto.PostCommentRequest;
+import com.eduplatform.homework.dto.PostQuestionRequest;
+import com.eduplatform.homework.dto.PublishAnswerRequest;
 import com.eduplatform.homework.entity.SubjectiveComment;
 import com.eduplatform.homework.service.CommentService;
 import com.eduplatform.homework.service.HomeworkService;
 import com.eduplatform.homework.vo.SubjectiveAnswerPermissionVO;
 import com.eduplatform.homework.vo.SubjectiveCommentVO;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -20,6 +25,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/comments")
 @RequiredArgsConstructor
+@Slf4j
 public class CommentController {
 
     private final CommentService commentService;
@@ -35,17 +41,18 @@ public class CommentController {
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestParam Long studentId,
             @RequestParam Long questionId,
-            @RequestBody Map<String, String> body) {
+            @Valid @RequestBody PublishAnswerRequest body) {
         if (!hasSelfOrAdminAccess(studentId, currentUserIdHeader, currentUserRole)) {
             return Result.failure(403, "权限不足，仅本人或管理员可发布答案");
         }
         try {
-            String answerContent = body.get("answerContent");
+            String answerContent = body.getAnswerContent();
             return Result.success("答案已发布，评论区已解锁",
                     commentService.convertToPermissionVO(
                             commentService.publishAnswer(studentId, questionId, answerContent)));
         } catch (Exception e) {
-            return Result.error("发布失败: " + e.getMessage());
+            log.error("发布答案失败: studentId={}, questionId={}", studentId, questionId, e);
+            return Result.error("发布失败，请稍后重试");
         }
     }
 
@@ -84,17 +91,18 @@ public class CommentController {
             @RequestParam Long userId,
             @RequestParam(required = false) Long parentId,
             @RequestParam(defaultValue = "false") boolean isTeacher,
-            @RequestBody Map<String, String> body) {
+            @Valid @RequestBody PostCommentRequest body) {
         Long currentUserId = parseUserId(currentUserIdHeader);
         if (currentUserId != null) {
             userId = currentUserId;
         }
         try {
-            String content = body.get("content");
+            String content = body.getContent();
             SubjectiveComment comment = commentService.postComment(questionId, userId, content, parentId, isTeacher);
             return Result.success("评论发布成功", homeworkService.convertToCommentVO(comment));
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            log.error("发布评论失败: questionId={}, userId={}", questionId, userId, e);
+            return Result.error("发布失败，请稍后重试");
         }
     }
 
@@ -112,7 +120,7 @@ public class CommentController {
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestParam Long teacherId,
-            @RequestBody Map<String, String> body) {
+            @Valid @RequestBody PostQuestionRequest body) {
         if (!isTeacherOrAdmin(currentUserRole)) {
             return Result.failure(403, "权限不足，仅教师或管理员可发布题目");
         }
@@ -121,11 +129,12 @@ public class CommentController {
             teacherId = currentUserId;
         }
         try {
-            String questionContent = body.get("questionContent");
+            String questionContent = body.getQuestionContent();
             SubjectiveComment comment = commentService.postQuestion(questionId, teacherId, questionContent);
             return Result.success("题目已发布", homeworkService.convertToCommentVO(comment));
         } catch (Exception e) {
-            return Result.error("发布失败: " + e.getMessage());
+            log.error("发布题目失败: questionId={}, teacherId={}", questionId, teacherId, e);
+            return Result.error("发布失败，请稍后重试");
         }
     }
 
@@ -143,7 +152,8 @@ public class CommentController {
             commentService.toggleTop(commentId);
             return Result.success("操作成功", null);
         } catch (Exception e) {
-            return Result.error("操作失败: " + e.getMessage());
+            log.error("置顶评论失败: commentId={}", commentId, e);
+            return Result.error("操作失败，请稍后重试");
         }
     }
 
@@ -163,7 +173,8 @@ public class CommentController {
             commentService.deleteComment(commentId, currentUserId, isAdmin(currentUserRole));
             return Result.success("删除成功", null);
         } catch (Exception e) {
-            return Result.error("删除失败: " + e.getMessage());
+            log.error("删除评论失败: commentId={}, userId={}", commentId, currentUserId, e);
+            return Result.error("删除失败，请稍后重试");
         }
     }
 
@@ -197,7 +208,8 @@ public class CommentController {
         try {
             return Result.success(commentService.getStudentQuestions(studentId));
         } catch (Exception e) {
-            return Result.error("获取问题列表失败: " + e.getMessage());
+            log.error("获取学生问题列表失败: studentId={}", studentId, e);
+            return Result.error("获取问题列表失败，请稍后重试");
         }
     }
 
@@ -215,7 +227,8 @@ public class CommentController {
         try {
             return Result.success(commentService.getTeacherQuestions(teacherId));
         } catch (Exception e) {
-            return Result.error("获取问题列表失败: " + e.getMessage());
+            log.error("获取教师问题列表失败: teacherId={}", teacherId, e);
+            return Result.error("获取问题列表失败，请稍后重试");
         }
     }
 

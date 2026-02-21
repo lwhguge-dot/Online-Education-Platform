@@ -3,6 +3,7 @@ package com.eduplatform.user.controller;
 import com.eduplatform.common.result.Result;
 import com.eduplatform.user.dto.TeacherProfileDTO;
 import com.eduplatform.user.service.TeacherProfileService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -53,7 +54,7 @@ public class TeacherProfileController {
     @PutMapping("/{userId}/profile")
     public Result<Void> updateProfile(
             @PathVariable("userId") Long userId,
-            @RequestBody TeacherProfileDTO dto,
+            @Valid @RequestBody TeacherProfileDTO dto,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 更新教师档案仅允许本人或管理员
@@ -98,7 +99,7 @@ public class TeacherProfileController {
     @PutMapping("/{userId}/notification-settings")
     public Result<Void> updateNotificationSettings(
             @PathVariable("userId") Long userId,
-            @RequestBody TeacherProfileDTO.NotificationSettings settings,
+            @Valid @RequestBody TeacherProfileDTO.NotificationSettings settings,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 通知设置仅允许本人或管理员
@@ -118,7 +119,7 @@ public class TeacherProfileController {
     @PutMapping("/{userId}/grading-criteria")
     public Result<Void> updateGradingCriteria(
             @PathVariable("userId") Long userId,
-            @RequestBody TeacherProfileDTO.GradingCriteria criteria,
+            @Valid @RequestBody TeacherProfileDTO.GradingCriteria criteria,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 评分标准仅允许本人或管理员
@@ -138,7 +139,7 @@ public class TeacherProfileController {
     @PutMapping("/{userId}/dashboard-layout")
     public Result<Void> updateDashboardLayout(
             @PathVariable("userId") Long userId,
-            @RequestBody TeacherProfileDTO.DashboardLayout layout,
+            @Valid @RequestBody TeacherProfileDTO.DashboardLayout layout,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 工作台布局仅允许本人或管理员更新

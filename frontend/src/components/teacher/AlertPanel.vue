@@ -1,10 +1,9 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { AlertTriangle, Users, Clock, TrendingDown, ChevronRight, Bell, X, Send, MessageCircle } from 'lucide-vue-next'
 import { useAuthStore } from '../../stores/auth'
 import { enrollmentAPI, notificationAPI } from '../../services/api'
 import GlassCard from '../ui/GlassCard.vue'
-import BaseButton from '../ui/BaseButton.vue'
 
 const props = defineProps({
   maxItems: { type: Number, default: 5 },
@@ -191,15 +190,11 @@ const quickSendReminder = async (student, event) => {
   
   const teacherName = authStore.user?.name || '老师'
   const alertType = getAlertType(student)
-  let content = ''
-  
-  if (alertType === 'inactive') {
-    content = `同学你好，老师注意到你已经有一段时间没有学习《${student.courseName}》了。希望你能抽时间继续学习，如有任何问题欢迎随时联系老师。`
-  } else if (alertType === 'low-progress') {
-    content = `同学你好，你在《${student.courseName}》的学习进度目前是${student.courseProgress}%，建议加快学习进度。如果遇到困难，欢迎在讨论区提问。`
-  } else {
-    content = `同学你好，老师注意到你在《${student.courseName}》的学习中可能遇到了一些困难。如果有任何不理解的地方，欢迎随时联系老师。`
-  }
+  const content = alertType === 'inactive'
+    ? `同学你好，老师注意到你已经有一段时间没有学习《${student.courseName}》了。希望你能抽时间继续学习，如有任何问题欢迎随时联系老师。`
+    : alertType === 'low-progress'
+      ? `同学你好，你在《${student.courseName}》的学习进度目前是${student.courseProgress}%，建议加快学习进度。如果遇到困难，欢迎在讨论区提问。`
+      : `同学你好，老师注意到你在《${student.courseName}》的学习中可能遇到了一些困难。如果有任何不理解的地方，欢迎随时联系老师。`
   
   try {
     const res = await notificationAPI.send(
@@ -353,7 +348,15 @@ defineExpose({ refresh: loadAlertStudents })
   
   <!-- 发送消息弹窗 -->
   <Teleport to="body">
-    <div v-if="showMessageModal" class="fixed inset-0 z-50 flex items-center justify-center">
+    <div
+      v-if="showMessageModal"
+      class="fixed inset-0 z-50 flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-label="发送提醒消息弹窗"
+      tabindex="-1"
+      @keydown.esc="closeMessageModal"
+    >
       <!-- 遮罩 -->
       <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-[2px]" @click="closeMessageModal"></div>
       

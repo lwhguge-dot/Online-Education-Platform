@@ -7,6 +7,7 @@ import com.eduplatform.progress.entity.ChapterProgress;
 import com.eduplatform.progress.service.ProgressCascadeDeleteService;
 import com.eduplatform.progress.service.ProgressService;
 import com.eduplatform.progress.vo.ChapterProgressVO;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
@@ -35,7 +36,7 @@ public class ProgressController {
      */
     @PostMapping("/video/report")
     public Result<Map<String, Object>> reportVideoProgress(
-            @RequestBody VideoProgressDTO dto,
+            @Valid @RequestBody VideoProgressDTO dto,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 视频进度上报默认以网关注入身份为准，防止伪造 studentId
@@ -63,7 +64,7 @@ public class ProgressController {
      */
     @PostMapping("/quiz/submit")
     public Result<Map<String, Object>> submitQuiz(
-            @RequestBody QuizSubmitDTO dto,
+            @Valid @RequestBody QuizSubmitDTO dto,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 测验提交默认以网关注入身份为准，防止伪造 studentId

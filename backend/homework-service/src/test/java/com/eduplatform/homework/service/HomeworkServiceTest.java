@@ -1,11 +1,13 @@
 package com.eduplatform.homework.service;
 
+import com.eduplatform.common.event.RedisStreamPublisher;
 import com.eduplatform.homework.entity.Homework;
-import com.eduplatform.homework.entity.HomeworkQuestion;
+import com.eduplatform.homework.dto.GradeSubmissionDTO;
+import com.eduplatform.homework.dto.HomeworkCreateDTO;
+import com.eduplatform.homework.dto.HomeworkSubmitDTO;
 import com.eduplatform.homework.feign.UserServiceClient;
 import com.eduplatform.homework.mapper.*;
 import com.eduplatform.homework.vo.HomeworkVO;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -18,8 +20,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * HomeworkService 单元测试
@@ -56,6 +62,24 @@ class HomeworkServiceTest {
 
     @Mock
     private UserServiceClient userServiceClient;
+
+    @Mock
+    private RedisStreamPublisher redisStreamPublisher;
+
+    @Mock
+    private HomeworkReadService homeworkReadService;
+
+    @Mock
+    private HomeworkDiscussionService homeworkDiscussionService;
+
+    @Mock
+    private HomeworkGradingService homeworkGradingService;
+
+    @Mock
+    private HomeworkAuthoringService homeworkAuthoringService;
+
+    @Mock
+    private HomeworkSubmissionService homeworkSubmissionService;
 
     /**
      * 通过反射调用 private 方法 compareAnswer
@@ -155,6 +179,100 @@ class HomeworkServiceTest {
             assertEquals(100L, vo.getCourseId());
             assertEquals(10L, vo.getChapterId());
             assertEquals(100, vo.getTotalScore());
+        }
+    }
+
+    // =========================================================================
+    // 读方法委托测试
+    // =========================================================================
+    @Nested
+    @DisplayName("读方法委托测试")
+    class DelegationTests {
+
+        @Test
+        @DisplayName("教师待回复问题数量应委托给 HomeworkReadService")
+        void shouldDelegateTeacherPendingQuestionsCountToReadService() {
+            when(homeworkReadService.getTeacherPendingQuestionsCount(99L)).thenReturn(3);
+
+            int count = homeworkService.getTeacherPendingQuestionsCount(99L);
+
+            assertEquals(3, count);
+            verify(homeworkReadService).getTeacherPendingQuestionsCount(99L);
+        }
+
+        @Test
+        @DisplayName("学生提问应委托给 HomeworkDiscussionService")
+        void shouldDelegateAskQuestionToDiscussionService() {
+            homeworkService.askQuestion(10L, 1L, 100L, "老师这题怎么做？");
+
+            verify(homeworkDiscussionService).askQuestion(10L, 1L, 100L, "老师这题怎么做？");
+        }
+
+        @Test
+        @DisplayName("教师回复应委托给 HomeworkDiscussionService")
+        void shouldDelegateReplyQuestionToDiscussionService() {
+            homeworkService.replyQuestion(20L, 99L, "请先复习上节课例题");
+
+            verify(homeworkDiscussionService).replyQuestion(20L, 99L, "请先复习上节课例题");
+        }
+
+        @Test
+        @DisplayName("提交作业应委托给 HomeworkSubmissionService")
+        void shouldDelegateSubmitHomeworkToSubmissionService() {
+            HomeworkSubmitDTO dto = new HomeworkSubmitDTO();
+            Map<String, Object> expected = new HashMap<>();
+            when(homeworkSubmissionService.submitHomework(dto)).thenReturn(expected);
+
+            Map<String, Object> actual = homeworkService.submitHomework(dto);
+
+            assertSame(expected, actual);
+            verify(homeworkSubmissionService).submitHomework(dto);
+        }
+
+        @Test
+        @DisplayName("主观题批改应委托给 HomeworkGradingService")
+        void shouldDelegateGradeSubjectiveToGradingService() {
+            homeworkService.gradeSubjective(30L, 200L, 8, "思路正确，注意细节");
+
+            verify(homeworkGradingService).gradeSubjective(30L, 200L, 8, "思路正确，注意细节");
+        }
+
+        @Test
+        @DisplayName("批量批改应委托给 HomeworkGradingService")
+        void shouldDelegateGradeSubmissionToGradingService() {
+            GradeSubmissionDTO dto = new GradeSubmissionDTO();
+            homeworkService.gradeSubmission(40L, dto);
+
+            verify(homeworkGradingService).gradeSubmission(40L, dto);
+        }
+
+        @Test
+        @DisplayName("发布作业应委托给 HomeworkAuthoringService")
+        void shouldDelegateCreateHomeworkToAuthoringService() {
+            HomeworkCreateDTO dto = new HomeworkCreateDTO();
+            Homework expected = new Homework();
+            when(homeworkAuthoringService.createHomework(dto)).thenReturn(expected);
+
+            Homework actual = homeworkService.createHomework(dto);
+
+            assertSame(expected, actual);
+            verify(homeworkAuthoringService).createHomework(dto);
+        }
+
+        @Test
+        @DisplayName("复制作业应委托给 HomeworkAuthoringService")
+        void shouldDelegateDuplicateHomeworkToAuthoringService() {
+            homeworkService.duplicateHomework(50L, 88L, "新作业副本");
+
+            verify(homeworkAuthoringService).duplicateHomework(50L, 88L, "新作业副本");
+        }
+
+        @Test
+        @DisplayName("批量导入题目应委托给 HomeworkAuthoringService")
+        void shouldDelegateImportQuestionsToAuthoringService() {
+            homeworkService.importQuestions(60L, java.util.Collections.emptyList());
+
+            verify(homeworkAuthoringService).importQuestions(60L, java.util.Collections.emptyList());
         }
     }
 }

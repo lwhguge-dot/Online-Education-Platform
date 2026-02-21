@@ -1,6 +1,7 @@
 package com.eduplatform.homework.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.eduplatform.homework.dto.TeacherCourseSummaryDTO;
 import com.eduplatform.homework.dto.TeacherDashboardDTO;
 import com.eduplatform.homework.entity.Homework;
 import com.eduplatform.homework.entity.HomeworkSubmission;
@@ -35,52 +36,54 @@ public class TeacherStatsService {
     /**
      * 获取教师仪表盘聚合数据
      */
-    public TeacherDashboardDTO getTeacherDashboard(Long teacherId, List<Map<String, Object>> courses) {
+    public TeacherDashboardDTO getTeacherDashboard(Long teacherId, List<TeacherCourseSummaryDTO> courses) {
         TeacherDashboardDTO dto = new TeacherDashboardDTO();
         dto.setTimestamp(LocalDateTime.now());
-        
+
+        List<TeacherCourseSummaryDTO> safeCourses = courses != null ? courses : Collections.emptyList();
+
         // 从课程列表中提取统计数据
-        int myCourses = courses.size();
+        int myCourses = safeCourses.size();
         int publishedCourses = 0;
         int totalStudents = 0;
         List<Long> courseIds = new ArrayList<>();
-        
-        for (Map<String, Object> course : courses) {
-            courseIds.add(getLongValue(course, "id"));
-            String status = getStringValue(course, "status");
+
+        for (TeacherCourseSummaryDTO course : safeCourses) {
+            courseIds.add(course.getId());
+            String status = course.getStatus();
             if ("PUBLISHED".equals(status)) {
                 publishedCourses++;
             }
-            totalStudents += getIntValue(course, "studentCount");
+            totalStudents += course.getStudentCount() != null ? course.getStudentCount() : 0;
         }
-        
+
         dto.setMyCourses(myCourses);
         dto.setPublishedCourses(publishedCourses);
         dto.setTotalStudents(totalStudents);
-        
+
         // 计算待批改作业数
         int pendingHomework = countPendingHomework(courseIds);
         dto.setPendingHomework(pendingHomework);
-        
+
         // 计算今日新增学生（需要从课程服务获取，这里暂时返回0）
         dto.setNewStudentsToday(0);
-        
+
         // 计算本周互动数
         int weeklyInteractions = countWeeklyInteractions(courseIds);
         dto.setWeeklyInteractions(weeklyInteractions);
-        
+
         // 获取紧急事项
-        List<TeacherDashboardDTO.UrgentItem> urgentItems = getUrgentItems(courseIds, courses);
+        List<TeacherDashboardDTO.UrgentItem> urgentItems = getUrgentItems(courseIds, safeCourses);
         dto.setUrgentItems(urgentItems);
-        
+
         // 获取课程完成率排名
-        List<TeacherDashboardDTO.CourseRanking> rankings = getCourseRankings(courses);
+        List<TeacherDashboardDTO.CourseRanking> rankings = getCourseRankings(safeCourses);
         dto.setCourseRankings(rankings);
-        
+
         // 获取周趋势数据
         TeacherDashboardDTO.WeeklyTrend trend = getWeeklyTrend(courseIds);
         dto.setWeeklyTrend(trend);
-        
+
         return dto;
     }
 
@@ -195,21 +198,23 @@ public class TeacherStatsService {
     /**
      * 获取紧急事项列表
      */
-    private List<TeacherDashboardDTO.UrgentItem> getUrgentItems(List<Long> courseIds, List<Map<String, Object>> courses) {
+    private List<TeacherDashboardDTO.UrgentItem> getUrgentItems(
+            List<Long> courseIds,
+            List<TeacherCourseSummaryDTO> courses) {
         List<TeacherDashboardDTO.UrgentItem> items = new ArrayList<>();
-        
+
         if (courseIds.isEmpty()) {
             return items;
         }
-        
+
         // 创建课程ID到课程名称的映射
         Map<Long, String> courseNameMap = new HashMap<>();
-        for (Map<String, Object> course : courses) {
-            Long id = getLongValue(course, "id");
-            String title = getStringValue(course, "title");
-            courseNameMap.put(id, title);
+        for (TeacherCourseSummaryDTO course : courses) {
+            if (course.getId() != null) {
+                courseNameMap.put(course.getId(), course.getTitle());
+            }
         }
-        
+
         // 获取课程下的章节ID，并建立章节到课程的映射
         Map<Long, Long> chapterToCourseMap = new HashMap<>();
         for (Long courseId : courseIds) {
@@ -229,15 +234,15 @@ public class TeacherStatsService {
                 log.warn("获取课程{}的章节失败: {}", courseId, e.getMessage());
             }
         }
-        
+
         if (chapterToCourseMap.isEmpty()) {
             return items;
         }
-        
+
         // 1. 查找即将截止的作业（24小时内）
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime deadline24h = now.plusHours(24);
-        
+
         List<Homework> urgentHomeworks = homeworkMapper.selectList(
             new LambdaQueryWrapper<Homework>()
                 .in(Homework::getChapterId, chapterToCourseMap.keySet())
@@ -257,10 +262,10 @@ public class TeacherStatsService {
             item.setCourseName(courseNameMap.get(courseId));
             items.add(item);
         }
-        
+
         // 2. 查找超过48小时未回复的问题
         LocalDateTime threshold48h = now.minusHours(48);
-        
+
         List<SubjectiveComment> unansweredQuestions = commentMapper.selectList(
             new LambdaQueryWrapper<SubjectiveComment>()
                 .eq(SubjectiveComment::getIsAnswer, 0)
@@ -277,27 +282,27 @@ public class TeacherStatsService {
             item.setTitle("学生提问超48小时未回复");
             items.add(item);
         }
-        
+
         return items;
     }
 
     /**
      * 获取课程完成率排名
      */
-    private List<TeacherDashboardDTO.CourseRanking> getCourseRankings(List<Map<String, Object>> courses) {
+    private List<TeacherDashboardDTO.CourseRanking> getCourseRankings(List<TeacherCourseSummaryDTO> courses) {
         List<TeacherDashboardDTO.CourseRanking> rankings = new ArrayList<>();
-        
-        for (Map<String, Object> course : courses) {
-            String status = getStringValue(course, "status");
+
+        for (TeacherCourseSummaryDTO course : courses) {
+            String status = course.getStatus();
             if (!"PUBLISHED".equals(status)) {
                 continue;
             }
-            
+
             TeacherDashboardDTO.CourseRanking ranking = new TeacherDashboardDTO.CourseRanking();
-            ranking.setCourseId(getLongValue(course, "id"));
-            ranking.setTitle(getStringValue(course, "title"));
-            ranking.setStudentCount(getIntValue(course, "studentCount"));
-            
+            ranking.setCourseId(course.getId());
+            ranking.setTitle(course.getTitle());
+            ranking.setStudentCount(course.getStudentCount() != null ? course.getStudentCount() : 0);
+
             // 完成率需要从进度服务获取，这里暂时使用模拟计算
             // 实际应该调用 progress-service 获取真实数据
             int studentCount = ranking.getStudentCount();
@@ -307,13 +312,13 @@ public class TeacherStatsService {
             } else {
                 ranking.setCompletionRate(0.0);
             }
-            
+
             rankings.add(ranking);
         }
-        
+
         // 按完成率降序排序
         rankings.sort((a, b) -> Double.compare(b.getCompletionRate(), a.getCompletionRate()));
-        
+
         return rankings;
     }
 
@@ -402,19 +407,5 @@ public class TeacherStatsService {
         if (value instanceof Integer) return ((Integer) value).longValue();
         if (value instanceof String) return Long.parseLong((String) value);
         return 0L;
-    }
-    
-    private Integer getIntValue(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        if (value == null) return 0;
-        if (value instanceof Integer) return (Integer) value;
-        if (value instanceof Long) return ((Long) value).intValue();
-        if (value instanceof String) return Integer.parseInt((String) value);
-        return 0;
-    }
-    
-    private String getStringValue(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        return value != null ? value.toString() : "";
     }
 }

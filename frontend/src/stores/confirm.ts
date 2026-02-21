@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Ref } from 'vue'
 
-export type ConfirmType = 'warning' | 'info' | 'error' | 'success'
+export type ConfirmType = 'warning' | 'danger' | 'info' | 'question'
 
 export interface ConfirmOptions {
   title?: string
@@ -10,6 +10,11 @@ export interface ConfirmOptions {
   type?: ConfirmType
   confirmText?: string
   cancelText?: string
+}
+
+interface ConfirmQueueItem {
+  options: ConfirmOptions
+  resolve: (value: boolean) => void
 }
 
 export const useConfirmStore = defineStore('confirm', () => {
@@ -21,30 +26,62 @@ export const useConfirmStore = defineStore('confirm', () => {
   const cancelText: Ref<string> = ref('取消')
   const loading: Ref<boolean> = ref(false)
 
-  let resolvePromise: ((value: boolean) => void) | null = null
+  // 使用队列保证多个 confirm 并发触发时按顺序展示
+  const queue: ConfirmQueueItem[] = []
+  let activeResolver: ((value: boolean) => void) | null = null
 
-  const show = (options: ConfirmOptions = {}): Promise<boolean> => {
+  const applyOptions = (options: ConfirmOptions = {}): void => {
     title.value = options.title || '确认操作'
     message.value = options.message || '确定要执行此操作吗？'
     type.value = options.type || 'warning'
     confirmText.value = options.confirmText || '确定'
     cancelText.value = options.cancelText || '取消'
     loading.value = false
-    visible.value = true
+  }
 
+  const openNext = (): void => {
+    if (visible.value || queue.length === 0) {
+      return
+    }
+
+    const next = queue.shift()
+    if (!next) {
+      return
+    }
+
+    applyOptions(next.options)
+    activeResolver = next.resolve
+    visible.value = true
+  }
+
+  const finishCurrent = (confirmed: boolean): void => {
+    visible.value = false
+    loading.value = false
+
+    if (activeResolver) {
+      activeResolver(confirmed)
+      activeResolver = null
+    }
+
+    // 让弹窗先完成一次关闭渲染，再展示队列中的下一项
+    setTimeout(() => {
+      openNext()
+    }, 0)
+  }
+
+  const show = (options: ConfirmOptions = {}): Promise<boolean> => {
     return new Promise((resolve) => {
-      resolvePromise = resolve
+      queue.push({ options, resolve })
+      openNext()
     })
   }
 
   const confirm = (): void => {
-    visible.value = false
-    if (resolvePromise) resolvePromise(true)
+    finishCurrent(true)
   }
 
   const cancel = (): void => {
-    visible.value = false
-    if (resolvePromise) resolvePromise(false)
+    finishCurrent(false)
   }
 
   const setLoading = (val: boolean): void => {

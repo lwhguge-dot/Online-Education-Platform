@@ -1,11 +1,10 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import { useConfirmStore } from '../../stores/confirm'
 import { calendarAPI, courseAPI, chapterAPI } from '../../services/api'
 import {
-  Calendar, ChevronLeft, ChevronRight, Plus, X, Clock,
-  BookOpen, FileText, Users, Download, Edit2, Trash2
+  ChevronLeft, ChevronRight, Plus, X, Download, Trash2
 } from 'lucide-vue-next'
 import BaseSelect from '../../components/ui/BaseSelect.vue'
 
@@ -21,6 +20,8 @@ const showEventModal = ref(false)
 const editingEvent = ref(null)
 const courses = ref([])
 const chapters = ref([])
+const eventModalRef = ref(null)
+const previousActiveElement = ref(null)
 
 // 月份切换动画方向
 const calendarSlideDirection = ref('none') // 'left' / 'right' / 'none'
@@ -302,6 +303,67 @@ const exportCalendar = () => {
   window.open(url, '_blank')
 }
 
+const getFocusableElements = () => {
+  if (!eventModalRef.value) return []
+  const selectors = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])'
+  ]
+  return Array.from(eventModalRef.value.querySelectorAll(selectors.join(',')))
+}
+
+const focusFirstElement = () => {
+  const focusables = getFocusableElements()
+  if (focusables.length > 0) {
+    focusables[0].focus()
+    return
+  }
+  eventModalRef.value?.focus()
+}
+
+const trapFocus = (event) => {
+  const focusables = getFocusableElements()
+  if (focusables.length === 0) {
+    event.preventDefault()
+    eventModalRef.value?.focus()
+    return
+  }
+
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  const active = document.activeElement
+
+  if (event.shiftKey && active === first) {
+    event.preventDefault()
+    last.focus()
+    return
+  }
+
+  if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
+// 统一处理事件弹窗键盘行为，保证 Esc 与 Tab 都可预测
+const handleEventModalKeydown = (event) => {
+  if (!showEventModal.value) return
+
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    showEventModal.value = false
+    return
+  }
+
+  if (event.key === 'Tab') {
+    trapFocus(event)
+  }
+}
+
 // 获取事件类型颜色
 const getEventColor = (type) => {
   return eventTypes.find(t => t.value === type)?.color || 'bg-shuimo'
@@ -314,6 +376,21 @@ watch([viewMode, currentDate], () => {
 
 watch(() => eventForm.value.courseId, (newVal) => {
   loadChapters(newVal)
+})
+
+watch(showEventModal, async (visible, oldVisible) => {
+  if (visible && !oldVisible) {
+    // 记录打开前焦点并在弹窗打开后将焦点引导至弹窗内部
+    previousActiveElement.value = document.activeElement
+    await nextTick()
+    focusFirstElement()
+    return
+  }
+
+  if (!visible && oldVisible) {
+    previousActiveElement.value?.focus?.()
+    previousActiveElement.value = null
+  }
 })
 
 onMounted(() => {
@@ -467,7 +544,12 @@ onMounted(() => {
               v-for="event in getEventsForTimeSlot(day, 8 + idx)"
               :key="event.id"
               :class="['absolute inset-x-1 px-1 py-0.5 rounded text-xs text-white truncate cursor-pointer', getEventColor(event.eventType)]"
+              role="button"
+              tabindex="0"
+              :aria-label="`编辑事件：${event.title}`"
               @click="openEditModal(event)"
+              @keydown.enter.prevent="openEditModal(event)"
+              @keydown.space.prevent="openEditModal(event)"
             >
               {{ event.title }}
             </div>
@@ -483,12 +565,25 @@ onMounted(() => {
           <div class="w-20 py-4 px-3 text-sm text-shuimo/50 flex-shrink-0">
             {{ time }}
           </div>
-          <div class="flex-1 py-2 px-3 min-h-[60px] border-l border-slate-100 hover:bg-slate-50/50 cursor-pointer" @click="openCreateModal()">
+          <div
+            class="flex-1 py-2 px-3 min-h-[60px] border-l border-slate-100 hover:bg-slate-50/50 cursor-pointer"
+            role="button"
+            tabindex="0"
+            :aria-label="`在 ${time} 创建新事件`"
+            @click="openCreateModal()"
+            @keydown.enter.prevent="openCreateModal()"
+            @keydown.space.prevent="openCreateModal()"
+          >
             <div
               v-for="event in getEventsForTimeSlot(currentDate, parseInt(time))"
               :key="event.id"
               :class="['px-3 py-2 rounded-lg text-white mb-1 cursor-pointer', getEventColor(event.eventType)]"
+              role="button"
+              tabindex="0"
+              :aria-label="`编辑事件：${event.title}`"
               @click.stop="openEditModal(event)"
+              @keydown.enter.stop.prevent="openEditModal(event)"
+              @keydown.space.stop.prevent="openEditModal(event)"
             >
               <div class="font-medium">{{ event.title }}</div>
               <div class="text-xs opacity-80">{{ event.startTime?.split('T')[1]?.slice(0, 5) }} - {{ event.endTime?.split('T')[1]?.slice(0, 5) }}</div>
@@ -508,7 +603,17 @@ onMounted(() => {
     </div>
 
     <!-- 事件编辑弹窗 -->
-    <div v-if="showEventModal" class="fixed inset-0 bg-shuimo/20 backdrop-blur-[2px] flex items-center justify-center z-50" @click.self="showEventModal = false">
+    <div
+      v-if="showEventModal"
+      ref="eventModalRef"
+      class="fixed inset-0 bg-shuimo/20 backdrop-blur-[2px] flex items-center justify-center z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-label="编辑事件弹窗"
+      tabindex="-1"
+      @click.self="showEventModal = false"
+      @keydown="handleEventModalKeydown"
+    >
       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <h3 class="text-lg font-bold text-shuimo">{{ editingEvent ? '编辑事件' : '新建事件' }}</h3>
@@ -651,3 +756,4 @@ onMounted(() => {
   }
 }
 </style>
+

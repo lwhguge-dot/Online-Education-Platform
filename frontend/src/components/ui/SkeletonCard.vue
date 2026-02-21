@@ -1,5 +1,5 @@
 <script setup>
-const props = defineProps({
+defineProps({
   lines: {
     type: Number,
     default: 3

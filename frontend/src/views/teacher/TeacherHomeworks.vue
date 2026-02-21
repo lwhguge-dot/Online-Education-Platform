@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import {
-  Plus, FileText, X, Clock,
+  X, Clock,
   ClipboardCheck, BarChart3
 } from 'lucide-vue-next'
 import { useToastStore } from '../../stores/toast'
@@ -27,7 +27,6 @@ const props = defineProps({
 const loading = ref(false)
 const activeTab = ref('pending')
 const showCreateModal = ref(false)
-const showGradingMode = ref(false)
 const showGradingWorkbench = ref(false)
 const showQAManagement = ref(false)
 const showErrorReport = ref(false)
@@ -40,7 +39,6 @@ const statusFilter = ref('all')
 const typeFilter = ref('all')
 
 const homeworks = ref([])
-const submissions = ref([])
 
 // 类型映射
 const homeworkTypeMap = {
@@ -118,8 +116,8 @@ const loadHomeworks = async () => {
                 })
               })
             }
-          } catch (e) {
-            // 忽略单章节加载失败
+          } catch (error) {
+            console.error('加载章节作业失败', error)
           }
         }
       }
@@ -141,7 +139,8 @@ const onCourseChange = async () => {
   try {
     const res = await chapterAPI.getByCourse(newHomework.value.courseId)
     selectedCourseChapters.value = res.data || []
-  } catch (e) {
+  } catch (error) {
+    console.error('加载课程章节失败', error)
     selectedCourseChapters.value = []
   }
 }
@@ -534,7 +533,16 @@ watch(
 
     <!-- QA Management Modal -->
     <Teleport to="body">
-      <div v-if="showQAManagement && selectedHomework" class="fixed inset-0 z-[100] flex items-center justify-center p-6" @click.self="closeQAManagement">
+      <div
+        v-if="showQAManagement && selectedHomework"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-6"
+        role="dialog"
+        aria-modal="true"
+        aria-label="学生问答管理弹窗"
+        tabindex="-1"
+        @click.self="closeQAManagement"
+        @keydown.esc="closeQAManagement"
+      >
         <!-- 背景遮罩 -->
         <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-[2px]" @click="closeQAManagement"></div>
         <!-- 弹窗内容 -->
@@ -559,7 +567,16 @@ watch(
 
     <!-- Error Report Modal -->
     <Teleport to="body">
-      <div v-if="showErrorReport && selectedHomework" class="fixed inset-0 z-[100] flex items-center justify-center p-6" @click.self="closeErrorReport">
+      <div
+        v-if="showErrorReport && selectedHomework"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-6"
+        role="dialog"
+        aria-modal="true"
+        aria-label="错题分析报告弹窗"
+        tabindex="-1"
+        @click.self="closeErrorReport"
+        @keydown.esc="closeErrorReport"
+      >
         <!-- 背景遮罩 -->
         <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-[2px]" @click="closeErrorReport"></div>
         <!-- 弹窗内容 -->

@@ -3,13 +3,12 @@
  * 学生学习记录页面
  * 展示学习时长图表、周对比、学习足迹、测验成绩和知识点掌握度
  */
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { History, TrendingUp, Clock, CheckCircle, BarChart3, ArrowUp, ArrowDown, Minus, Play, RefreshCw, BookOpen } from 'lucide-vue-next'
+import { History, TrendingUp, Clock, CheckCircle, BarChart3, ArrowUp, ArrowDown, Minus, Play, RefreshCw } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
 import BaseSectionHeader from '../../components/ui/BaseSectionHeader.vue'
 import KnowledgeMasteryChart from '../../components/charts/KnowledgeMasteryChart.vue'
-import SkeletonCard from '../../components/ui/SkeletonCard.vue'
 import { chapterAPI, progressAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
 import { useStudentStats } from '../../composables/useStudentStats'

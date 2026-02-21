@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
-  Search, X, Calendar, User, FileText,
+  Search, X, User, FileText,
   ChevronLeft, ChevronRight, RefreshCw, Clock
 } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
@@ -24,18 +24,6 @@ const typeFilter = ref('')
 const operatorFilter = ref('')
 const startDate = ref('')
 const endDate = ref('')
-
-// 操作类型映射
-const operationTypes = [
-  { value: '', label: '全部类型' },
-  { value: 'USER_ENABLE', label: '启用用户' },
-  { value: 'USER_DISABLE', label: '禁用用户' },
-  { value: 'USER_DELETE', label: '删除用户' },
-  { value: 'COURSE_APPROVE', label: '审核通过课程' },
-  { value: 'COURSE_REJECT', label: '审核拒绝课程' },
-  { value: 'COURSE_OFFLINE', label: '下架课程' },
-  { value: 'COURSE_ONLINE', label: '上架课程' },
-]
 
 const typeStyleMap = {
   USER_ENABLE: { label: '启用用户', class: 'bg-emerald-100 text-emerald-600' },
@@ -64,7 +52,8 @@ const fetchLogs = async () => {
     // 后端返回 data.records，兼容 data.content
     logs.value = res.data?.records || res.data?.content || res.data || []
     totalCount.value = res.data?.total || res.data?.totalElements || logs.value.length
-  } catch (e) {
+  } catch (error) {
+    console.error('获取审计日志失败:', error)
     toast.error('获取审计日志失败')
     logs.value = []
   } finally {

@@ -46,7 +46,9 @@ const handleMenuClick = (path) => {
 const handleLogout = async () => {
    try {
      await authAPI.logout()
-   } catch (e) {}
+   } catch (error) {
+     console.error('登出 API 调用失败:', error)
+   }
    stopStatusCheck()
    authStore.logout()
    router.push('/login')

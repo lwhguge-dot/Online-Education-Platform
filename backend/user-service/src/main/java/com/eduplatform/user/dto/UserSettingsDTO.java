@@ -1,5 +1,8 @@
 package com.eduplatform.user.dto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.Data;
 
 /**
@@ -9,9 +12,11 @@ import lombok.Data;
 public class UserSettingsDTO {
     
     // 通知设置
+    @Valid
     private NotificationSettings notificationSettings;
     
     // 学习目标
+    @Valid
     private StudyGoal studyGoal;
     
     @Data
@@ -26,7 +31,11 @@ public class UserSettingsDTO {
     
     @Data
     public static class StudyGoal {
+        @Min(value = 1, message = "dailyMinutes最小为1")
+        @Max(value = 1440, message = "dailyMinutes最大为1440")
         private Integer dailyMinutes = 60;   // 每日学习目标（分钟）
+        @Min(value = 1, message = "weeklyHours最小为1")
+        @Max(value = 168, message = "weeklyHours最大为168")
         private Integer weeklyHours = 10;    // 每周学习目标（小时）
     }
 }

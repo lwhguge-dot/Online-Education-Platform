@@ -2,6 +2,7 @@ package com.eduplatform.user.controller;
 
 import com.eduplatform.common.result.Result;
 import com.eduplatform.user.dto.UserProfileDTO;
+import com.eduplatform.user.dto.UserStatusUpdateRequest;
 import com.eduplatform.user.dto.UserSettingsDTO;
 import com.eduplatform.user.entity.User;
 import com.eduplatform.user.service.StudentProfileService;
@@ -11,6 +12,7 @@ import com.eduplatform.user.service.UserService;
 import com.eduplatform.user.service.UserSessionService;
 import com.eduplatform.user.vo.UserBriefVO;
 import com.eduplatform.user.vo.UserVO;
+import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -138,9 +140,16 @@ public class UserController {
      * @return 用户简要信息列表
      */
     @PostMapping("/batch")
-    public Result<List<UserBriefVO>> getUsersByIds(@RequestBody List<Long> ids) {
+    public Result<List<UserBriefVO>> getUsersByIds(@Valid @RequestBody List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return Result.success(Collections.emptyList());
+        }
+        // 批量查询接口增加基础输入校验，避免无效 ID 打满下游查询。
+        if (ids.size() > 1000) {
+            return Result.failure(400, "ids数量不能超过1000");
+        }
+        if (ids.stream().anyMatch(id -> id == null || id <= 0)) {
+            return Result.failure(400, "ids中存在非法用户ID");
         }
 
         List<User> users = userService.getByIds(ids);
@@ -170,7 +179,7 @@ public class UserController {
     @PutMapping("/{id}/status")
     public Result<String> updateStatus(
             @PathVariable("id") Long id,
-            @RequestBody Map<String, Object> body,
+            @Valid @RequestBody UserStatusUpdateRequest body,
             @RequestHeader(value = "X-User-Id", required = false) String operatorIdStr,
             @RequestHeader(value = "X-User-Role", required = false) String operatorRole,
             @RequestHeader(value = "X-User-Name", required = false) String operatorName,
@@ -181,9 +190,7 @@ public class UserController {
             return Result.failure(403, "权限不足，仅管理员可修改用户状态");
         }
 
-        Integer status = body.get("status") instanceof Integer
-                ? (Integer) body.get("status")
-                : Integer.parseInt(body.get("status").toString());
+        Integer status = body.getStatus();
 
         Long operatorId = parseUserId(operatorIdStr);
         if (operatorId == null || operatorName == null) {
@@ -240,7 +247,7 @@ public class UserController {
             @PathVariable("id") Long id,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdStr,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
-            @RequestBody UserProfileDTO profileDTO) {
+            @Valid @RequestBody UserProfileDTO profileDTO) {
         // 仅本人或管理员可修改资料
         Long currentUserId = parseUserId(currentUserIdStr);
         if (!hasSelfOrAdminAccess(id, currentUserId, currentUserRole)) {
@@ -308,7 +315,7 @@ public class UserController {
             @PathVariable("id") Long id,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdStr,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
-            @RequestBody UserSettingsDTO settings) {
+            @Valid @RequestBody UserSettingsDTO settings) {
         Long currentUserId = parseUserId(currentUserIdStr);
         if (!hasSelfOrAdminAccess(id, currentUserId, currentUserRole)) {
             return Result.failure(403, "权限不足，仅本人或管理员可修改设置");
@@ -325,7 +332,7 @@ public class UserController {
             @PathVariable("id") Long id,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdStr,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
-            @RequestBody UserSettingsDTO settings) {
+            @Valid @RequestBody UserSettingsDTO settings) {
         return updateUserSettings(id, currentUserIdStr, currentUserRole, settings);
     }
 

@@ -2,11 +2,10 @@
 import { ref, computed, onMounted, onUnmounted, watch, onActivated, onDeactivated } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  Search, X, CheckCircle, XCircle, Ban, Eye,
-  BookOpen, Square, CheckSquare, Download, AlertTriangle
+  Search, CheckCircle, XCircle, Ban, Eye,
+  BookOpen, Square, CheckSquare, Download
 } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
-import BaseButton from '../../components/ui/BaseButton.vue'
 import BaseCourseCard from '../../components/ui/BaseCourseCard.vue'
 import BaseSelect from '../../components/ui/BaseSelect.vue'
 import BaseTooltip from '../../components/ui/BaseTooltip.vue'
@@ -188,7 +187,8 @@ const updateStatus = async (course, status) => {
     statusFilter.value = status == 2 ? '2' : '1'
     emit('refresh')
     toast.success('操作成功')
-  } catch (e) {
+  } catch (error) {
+    console.error('更新课程状态失败:', error)
     toast.error('操作失败')
   }
 }
@@ -210,7 +210,8 @@ const auditCourse = async (course, action) => {
     statusFilter.value = action === 'APPROVE' ? '1' : '2'
     emit('refresh')
     toast.success('操作成功')
-  } catch (e) {
+  } catch (error) {
+    console.error('审核课程失败:', error)
     toast.error('操作失败')
   }
 }
@@ -269,7 +270,8 @@ const exportCourses = async () => {
   try {
     await courseAPI.exportCSV()
     toast.success('课程数据导出成功')
-  } catch (e) {
+  } catch (error) {
+    console.error('导出课程数据失败:', error)
     toast.error('导出失败')
   } finally {
     exporting.value = false

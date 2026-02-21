@@ -12,11 +12,19 @@ export class SentryService {
     tags?: Record<string, string>
     extra?: Record<string, any>
   }) {
-    Sentry.captureException(error, {
+    const captureContext: Sentry.CaptureContext = {
       level: context?.level || 'error',
-      tags: context?.tags,
-      extra: context?.extra,
-    })
+    }
+
+    if (context?.tags) {
+      captureContext.tags = context.tags
+    }
+
+    if (context?.extra) {
+      captureContext.extra = context.extra
+    }
+
+    Sentry.captureException(error, captureContext)
   }
 
   /**
@@ -35,11 +43,16 @@ export class SentryService {
     email?: string
   } | null) {
     if (user) {
-      Sentry.setUser({
+      const sentryUser: Sentry.User = {
         id: String(user.id),
-        username: user.username,
-        email: user.email,
-      })
+      }
+      if (user.username !== undefined) {
+        sentryUser.username = user.username
+      }
+      if (user.email !== undefined) {
+        sentryUser.email = user.email
+      }
+      Sentry.setUser(sentryUser)
     } else {
       Sentry.setUser(null)
     }
@@ -54,12 +67,17 @@ export class SentryService {
     level?: 'fatal' | 'error' | 'warning' | 'info' | 'debug'
     data?: Record<string, any>
   }) {
-    Sentry.addBreadcrumb({
+    const nextBreadcrumb: Sentry.Breadcrumb = {
       message: breadcrumb.message,
       category: breadcrumb.category || 'user-action',
       level: breadcrumb.level || 'info',
-      data: breadcrumb.data,
-    })
+    }
+
+    if (breadcrumb.data) {
+      nextBreadcrumb.data = breadcrumb.data
+    }
+
+    Sentry.addBreadcrumb(nextBreadcrumb)
   }
 
   /**

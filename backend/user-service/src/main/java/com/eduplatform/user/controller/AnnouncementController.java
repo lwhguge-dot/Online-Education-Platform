@@ -8,6 +8,7 @@ import com.eduplatform.user.dto.TeacherAnnouncementDTO;
 import com.eduplatform.user.entity.Announcement;
 import com.eduplatform.user.service.AnnouncementService;
 import com.eduplatform.user.vo.AnnouncementVO;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
@@ -96,7 +97,7 @@ public class AnnouncementController {
     */
     @PostMapping
     public Result<AnnouncementVO> createAnnouncement(
-            @RequestBody AnnouncementRequestDTO request,
+            @Valid @RequestBody AnnouncementRequestDTO request,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 系统级公告创建仅允许管理员操作
         if (!isAdminRole(currentUserRole)) {
@@ -113,7 +114,7 @@ public class AnnouncementController {
     @PutMapping("/{id}")
     public Result<AnnouncementVO> updateAnnouncement(
             @PathVariable("id") Long id,
-            @RequestBody AnnouncementRequestDTO request,
+            @Valid @RequestBody AnnouncementRequestDTO request,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 系统级公告更新仅允许管理员操作
         if (!isAdminRole(currentUserRole)) {
@@ -167,7 +168,7 @@ public class AnnouncementController {
     @PostMapping("/teachers/{teacherId}")
     public Result<AnnouncementVO> createTeacherAnnouncement(
             @PathVariable("teacherId") Long teacherId,
-            @RequestBody TeacherAnnouncementDTO dto,
+            @Valid @RequestBody TeacherAnnouncementDTO dto,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 教师公告仅允许教师本人或管理员操作
@@ -187,7 +188,7 @@ public class AnnouncementController {
     public Result<AnnouncementVO> updateTeacherAnnouncement(
             @PathVariable("teacherId") Long teacherId,
             @PathVariable("announcementId") Long announcementId,
-            @RequestBody TeacherAnnouncementDTO dto,
+            @Valid @RequestBody TeacherAnnouncementDTO dto,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 教师公告更新仅允许教师本人或管理员操作

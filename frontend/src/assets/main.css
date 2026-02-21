@@ -85,33 +85,32 @@
 }
 
 /* 暗黑模式下的输入框 */
-.dark select,
-.dark input[type="text"],
-.dark input[type="email"],
-.dark input[type="password"],
-.dark input[type="number"],
-.dark input[type="search"],
-.dark textarea {
+/* P2-03：使用 :where 降低全局样式优先级，避免覆盖组件局部样式 */
+.dark :where(
+  select,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  textarea
+) {
   background-color: var(--color-bg-secondary);
   border-color: var(--color-border);
   color: var(--color-text-secondary);
 }
 
-.dark select:hover,
-.dark input:hover,
-.dark textarea:hover {
-  border-color: rgba(136, 173, 166, 0.5) !important;
-  background-color: var(--color-bg-tertiary) !important;
+.dark :where(select, input, textarea):hover {
+  border-color: rgba(136, 173, 166, 0.5);
+  background-color: var(--color-bg-tertiary);
 }
 
-.dark select:focus,
-.dark input:focus,
-.dark textarea:focus {
-  background-color: var(--color-bg-secondary) !important;
+.dark :where(select, input, textarea):focus {
+  background-color: var(--color-bg-secondary);
 }
 
 /* 暗黑模式下的下拉选项 */
-.dark select option {
+.dark :where(select option) {
   background-color: var(--color-bg-secondary);
   color: var(--color-text-secondary);
 }
@@ -392,18 +391,16 @@ h6 {
 }
 
 /* 统一下拉框样式 */
-select,
-select.px-3,
-select.p-2,
-select.p-2\.5 {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  -moz-appearance: none !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2388ada6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
-  background-repeat: no-repeat !important;
-  background-position: right 0.75rem center !important;
-  background-size: 1rem !important;
-  padding-right: 2.5rem !important;
+/* P2-03：全局表单基线改为低优先级，减小与组件样式的冲突 */
+:where(select) {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2388ada6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.5rem;
   cursor: pointer;
   transition:
     border-color var(--motion-duration-base) var(--motion-ease-standard),
@@ -414,27 +411,27 @@ select.p-2\.5 {
   background-color: rgba(255, 255, 255, 0.6);
 }
 
-select:hover {
-  border-color: rgba(136, 173, 166, 0.6) !important;
-  background-color: rgba(136, 173, 166, 0.08) !important;
+:where(select):hover {
+  border-color: rgba(136, 173, 166, 0.6);
+  background-color: rgba(136, 173, 166, 0.08);
   box-shadow: 0 2px 8px rgba(136, 173, 166, 0.1);
 }
 
-select:focus {
-  border-color: #88ada6 !important;
-  outline: none !important;
-  box-shadow: 0 0 0 3px rgba(136, 173, 166, 0.15), 0 2px 8px rgba(136, 173, 166, 0.1) !important;
-  background-color: rgba(255, 255, 255, 0.9) !important;
+:where(select):focus {
+  border-color: #88ada6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(136, 173, 166, 0.15), 0 2px 8px rgba(136, 173, 166, 0.1);
+  background-color: rgba(255, 255, 255, 0.9);
 }
 
-select:disabled {
+:where(select):disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  background-color: #f1f5f9 !important;
+  background-color: #f1f5f9;
 }
 
 /* 下拉框选项样式 - 增强版 */
-select option {
+:where(select option) {
   padding: 0.75rem 1rem;
   background-color: white;
   color: #50616d;
@@ -444,54 +441,56 @@ select option {
     color var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
-select option:hover {
-  background-color: rgba(136, 173, 166, 0.15) !important;
+:where(select option:hover) {
+  background-color: rgba(136, 173, 166, 0.15);
   color: #88ada6;
 }
 
-select option:checked,
-select option:focus {
+:where(select option:checked, select option:focus) {
   background: linear-gradient(0deg, rgba(136, 173, 166, 0.2) 0%, rgba(136, 173, 166, 0.2) 100%);
   color: #50616d;
   font-weight: 500;
 }
 
 /* 输入框统一样式 */
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
-input[type="search"],
-input[type="tel"],
-input[type="url"],
-input[type="date"],
-input[type="datetime-local"],
-input[type="time"],
-textarea {
+:where(
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"],
+  textarea
+) {
   transition:
     border-color var(--motion-duration-base) var(--motion-ease-standard),
     background-color var(--motion-duration-base) var(--motion-ease-standard),
     box-shadow var(--motion-duration-base) var(--motion-ease-standard);
 }
 
-input[type="text"]:focus,
-input[type="email"]:focus,
-input[type="password"]:focus,
-input[type="number"]:focus,
-input[type="search"]:focus,
-input[type="tel"]:focus,
-input[type="url"]:focus,
-input[type="date"]:focus,
-input[type="datetime-local"]:focus,
-input[type="time"]:focus,
-textarea:focus {
-  border-color: #88ada6 !important;
-  box-shadow: 0 0 0 3px rgba(136, 173, 166, 0.15), 0 2px 8px rgba(136, 173, 166, 0.1) !important;
+:where(
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  input[type="password"]:focus,
+  input[type="number"]:focus,
+  input[type="search"]:focus,
+  input[type="tel"]:focus,
+  input[type="url"]:focus,
+  input[type="date"]:focus,
+  input[type="datetime-local"]:focus,
+  input[type="time"]:focus,
+  textarea:focus
+) {
+  border-color: #88ada6;
+  box-shadow: 0 0 0 3px rgba(136, 173, 166, 0.15), 0 2px 8px rgba(136, 173, 166, 0.1);
 }
 
 /* 复选框和单选框统一样式 */
-input[type="checkbox"],
-input[type="radio"] {
+:where(input[type="checkbox"], input[type="radio"]) {
   accent-color: #88ada6;
   cursor: pointer;
   transition:
@@ -499,19 +498,17 @@ input[type="radio"] {
     outline-color var(--motion-duration-base) var(--motion-ease-standard);
 }
 
-input[type="checkbox"]:hover,
-input[type="radio"]:hover {
+:where(input[type="checkbox"]:hover, input[type="radio"]:hover) {
   transform: scale(1.1);
 }
 
-input[type="checkbox"]:focus,
-input[type="radio"]:focus {
+:where(input[type="checkbox"]:focus, input[type="radio"]:focus) {
   outline: 2px solid rgba(136, 173, 166, 0.3);
   outline-offset: 2px;
 }
 
 /* 按钮基础过渡动效 */
-button {
+:where(button) {
   transition:
     transform var(--motion-duration-base) var(--motion-ease-standard),
     box-shadow var(--motion-duration-base) var(--motion-ease-standard),
@@ -520,11 +517,11 @@ button {
     border-color var(--motion-duration-base) var(--motion-ease-standard);
 }
 
-button:not(:disabled):hover {
+:where(button:not(:disabled)):hover {
   transform: translateY(-1px);
 }
 
-button:not(:disabled):active {
+:where(button:not(:disabled)):active {
   transform: translateY(0) scale(0.98);
 }
 

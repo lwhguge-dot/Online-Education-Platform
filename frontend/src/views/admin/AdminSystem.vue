@@ -1,12 +1,11 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
+import { ref, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
 import {
   Shield, Database, Activity, HardDrive, Trash2,
   Users, BookOpen, BarChart3, Settings, Play,
   Check, X
 } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
-import BaseButton from '../../components/ui/BaseButton.vue'
 import { useAuthStore } from '../../stores/auth'
 import { useConfirmStore } from '../../stores/confirm'
 import { useRouter } from 'vue-router'
@@ -15,6 +14,26 @@ import { healthAPI } from '../../services/api'
 const router = useRouter()
 const authStore = useAuthStore()
 const confirmStore = useConfirmStore()
+
+// 应用自有存储键清单：仅清理本应用数据，避免误删同域其他系统数据
+const APP_SESSION_KEYS = ['token', 'user', 'adminActiveMenu', 'teacherActiveMenu']
+const APP_SESSION_KEY_PREFIXES = ['study_chapter_']
+const APP_LOCAL_KEYS = ['student_profile', 'notification_settings', 'study_goal']
+
+const removeScopedStorageKeys = (storage, exactKeys, prefixKeys = []) => {
+  exactKeys.forEach((key) => {
+    storage.removeItem(key)
+  })
+
+  // 逆序遍历，删除前缀匹配键时不会影响后续索引
+  for (let index = storage.length - 1; index >= 0; index--) {
+    const key = storage.key(index)
+    if (!key) continue
+    if (prefixKeys.some((prefix) => key.startsWith(prefix))) {
+      storage.removeItem(key)
+    }
+  }
+}
 
 // 系统运行时长
 const uptime = ref('...')
@@ -70,6 +89,7 @@ const checkHealth = async () => {
        services.value[2].message = res.data.database === 'UP' ? '连接成功 (edu_platform)' : '连接中断'
     }
   } catch (e) {
+    console.error('系统健康检查失败:', e)
     services.value[1].status = 'down'
     services.value[1].message = '后端服务无法连接'
     services.value[2].status = 'unknown'
@@ -102,8 +122,9 @@ const clearCache = async () => {
     } catch (e) {
       console.error('登出API调用失败:', e)
     }
-    localStorage.clear()
-    sessionStorage.clear()
+    // 仅清理应用命名空间内的存储键，避免影响同域其他应用
+    removeScopedStorageKeys(localStorage, APP_LOCAL_KEYS)
+    removeScopedStorageKeys(sessionStorage, APP_SESSION_KEYS, APP_SESSION_KEY_PREFIXES)
     authStore.logout()
     router.push('/login')
   }

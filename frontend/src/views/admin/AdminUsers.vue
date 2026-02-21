@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch, onUnmounted, onActivated, onDeactivated } from 'vue'
 import {
   Search, X, UserX, UserCheck, Shield, Trash2,
-  MoreVertical, CheckSquare, Square, Download,
+  CheckSquare, Square, Download,
   Wifi, WifiOff, Monitor, Clock, LogOut as LogOutIcon, Users
 } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
@@ -10,10 +10,13 @@ import BaseModal from '../../components/ui/BaseModal.vue'
 import { userAPI, authAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
 import { useConfirmStore } from '../../stores/confirm'
+import { useAuthStore } from '../../stores/auth'
 import { formatDateTimeCN } from '../../utils/datetime'
+import { mapWithConcurrency } from '../../utils/concurrency'
 
 
 const confirmStore = useConfirmStore()
+const authStore = useAuthStore()
 
 const props = defineProps({
   users: {
@@ -73,6 +76,10 @@ const formatDisplayDateTime = (dateStr) => {
 
 // 导出状态
 const exporting = ref(false)
+// 批量操作状态：防止重复触发造成请求放大
+const batchProcessing = ref(false)
+// 批量请求并发上限，避免瞬时压垮后端
+const BATCH_CONCURRENCY_LIMIT = 5
 
 // 映射配置
 const roleMap = {
@@ -88,6 +95,8 @@ const statusMap = {
 
 // 获取在线状态
 const fetchOnlineStatus = async () => {
+  // 防止轮询与手动刷新并发触发重复请求
+  if (loadingOnlineStatus.value) return
   loadingOnlineStatus.value = true
   try {
     const res = await userAPI.getOnlineStatus()
@@ -114,6 +123,7 @@ const fetchUserSessions = async (user) => {
     const res = await userAPI.getSessions(user.id)
     userSessions.value = res.data || []
   } catch (e) {
+    console.error('获取会话信息失败:', e)
     toast.error('获取会话信息失败')
   } finally {
     loadingSessions.value = false
@@ -140,6 +150,7 @@ const forceLogoutUser = async (user) => {
       showSessionModal.value = false
     }
   } catch (e) {
+    console.error('强制下线失败:', e)
     toast.error('强制下线失败')
   }
 }
@@ -151,6 +162,7 @@ const exportUsers = async () => {
     await userAPI.exportCSV()
     toast.success('用户数据导出成功')
   } catch (e) {
+    console.error('导出用户数据失败:', e)
     toast.error('导出失败')
   } finally {
     exporting.value = false
@@ -204,16 +216,6 @@ const toggleSelectUser = (id) => {
   }
 }
 
-// 操作方法
-const getCurrentUser = () => {
-  try {
-    const userStr = sessionStorage.getItem('user')
-    return userStr ? JSON.parse(userStr) : null
-  } catch {
-    return null
-  }
-}
-
 const toggleUserStatus = async (user) => {
   const newStatus = user.status === 1 ? 0 : 1
   const actionText = newStatus === 1 ? '启用' : '禁用'
@@ -225,12 +227,13 @@ const toggleUserStatus = async (user) => {
     cancelText: '取消'
   })
   if (!confirmed) return
-  const currentUser = getCurrentUser()
+  const currentUser = authStore.user
   try {
     await userAPI.updateStatus(user.id, newStatus, currentUser?.id, currentUser?.username)
     emit('refresh')
     toast.success(`用户${newStatus === 1 ? '已启用' : '已禁用'}`)
   } catch (e) {
+    console.error('更新用户状态失败:', e)
     toast.error('操作失败')
   }
 }
@@ -246,12 +249,13 @@ const confirmDeleteUser = (user) => {
 const deleteUser = async () => {
   if (!deleteConfirmUser.value) return
   const user = deleteConfirmUser.value
-  const currentUser = getCurrentUser()
+  const currentUser = authStore.user
   try {
     await userAPI.deleteUser(user.id, currentUser?.id, currentUser?.username)
     emit('refresh')
     toast.success('用户已删除')
   } catch (e) {
+    console.error('删除用户失败:', e)
     toast.error('删除失败')
   } finally {
     showDeleteModal.value = false
@@ -265,10 +269,11 @@ const cancelDelete = () => {
 }
 
 const batchAction = async (action) => {
-  if (selectedUsers.value.length === 0) return
+  if (selectedUsers.value.length === 0 || batchProcessing.value) return
   
   const status = action === 'enable' ? 1 : 0
   const confirmMsg = action === 'enable' ? '启用' : '禁用'
+  const currentUser = authStore.user
   
   const confirmed = await confirmStore.show({
     title: `批量${confirmMsg}用户`,
@@ -279,26 +284,38 @@ const batchAction = async (action) => {
   })
   if (!confirmed) return
   
-  for (const id of selectedUsers.value) {
-    try {
-      await userAPI.updateStatus(id, status)
-    } catch (e) {
-      console.error('批量更新用户状态失败:', e)
+  batchProcessing.value = true
+  try {
+    // 使用并发限流替代串行更新，提升批量操作吞吐并控制后端压力
+    const results = await mapWithConcurrency(
+      [...selectedUsers.value],
+      BATCH_CONCURRENCY_LIMIT,
+      async (id) => userAPI.updateStatus(id, status, currentUser?.id, currentUser?.username),
+    )
+
+    const failedCount = results.filter((item) => item.status === 'rejected').length
+    const successCount = results.length - failedCount
+
+    if (failedCount === 0) {
+      toast.success(`批量${confirmMsg}成功（${successCount} 个用户）`)
+    } else if (successCount === 0) {
+      toast.error(`批量${confirmMsg}失败，请稍后重试`)
+    } else {
+      toast.warning(`批量${confirmMsg}部分成功：成功 ${successCount}，失败 ${failedCount}`)
+      console.error('批量更新用户状态存在失败项', results)
     }
+
+    emit('refresh')
+  } finally {
+    batchProcessing.value = false
+    selectedUsers.value = []
   }
-  selectedUsers.value = []
-  emit('refresh')
 }
 
 // 生命周期
 onMounted(() => {
   fetchOnlineStatus()
 })
-
-// 用户列表变化时刷新在线状态
-watch(() => props.users, () => {
-  fetchOnlineStatus()
-}, { deep: true })
 
 // 每 30 秒自动刷新在线状态
 let onlineStatusTimer = null
@@ -371,7 +388,12 @@ onDeactivated(stopOnlineStatusTimer)
               aria-label="搜索用户名、姓名或邮箱"
               class="w-40 pl-9 pr-3 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-zijinghui/20 transition-all text-sm"
             />
-            <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-shuimo/40 hover:text-shuimo">
+            <button
+              v-if="searchQuery"
+              @click="searchQuery = ''"
+              aria-label="清空用户搜索关键词"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-shuimo/40 hover:text-shuimo"
+            >
               <X class="w-3 h-3" />
             </button>
           </div>
@@ -379,11 +401,19 @@ onDeactivated(stopOnlineStatusTimer)
           <!-- 批量操作按钮 -->
           <template v-if="selectedUsers.length > 0">
             <div class="w-px h-6 bg-slate-200"></div>
-            <button @click="batchAction('enable')" class="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-600 text-sm font-medium hover:bg-emerald-100 transition-colors whitespace-nowrap">
-              启用选中
+            <button
+              @click="batchAction('enable')"
+              :disabled="batchProcessing"
+              class="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-600 text-sm font-medium hover:bg-emerald-100 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ batchProcessing ? '处理中...' : '启用选中' }}
             </button>
-            <button @click="batchAction('disable')" class="px-3 py-2 rounded-xl bg-slate-100 text-slate-600 text-sm font-medium hover:bg-slate-200 transition-colors whitespace-nowrap">
-              禁用选中
+            <button
+              @click="batchAction('disable')"
+              :disabled="batchProcessing"
+              class="px-3 py-2 rounded-xl bg-slate-100 text-slate-600 text-sm font-medium hover:bg-slate-200 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ batchProcessing ? '处理中...' : '禁用选中' }}
             </button>
           </template>
           
@@ -408,7 +438,7 @@ onDeactivated(stopOnlineStatusTimer)
           <thead>
             <tr class="text-sm font-bold text-shuimo/60 border-b border-slate-100 bg-slate-50/50">
               <th class="p-4 w-12 text-center">
-                <button @click="toggleSelectAll" class="text-shuimo/40 hover:text-zijinghui" title="全选">
+                <button @click="toggleSelectAll" aria-label="切换全选用户" class="text-shuimo/40 hover:text-zijinghui" title="全选">
                    <component :is="isAllSelected ? CheckSquare : Square" class="w-5 h-5" />
                 </button>
               </th>
@@ -427,10 +457,12 @@ onDeactivated(stopOnlineStatusTimer)
                 :class="{'bg-zijinghui/5': selectedUsers.includes(user.id)}"
               >
                 <td class="p-4 text-center">
-                   <button @click="toggleSelectUser(user.id)" 
-                     :class="['transition-colors', selectedUsers.includes(user.id) ? 'text-zijinghui' : 'text-slate-300 hover:text-slate-400']"
-                   >
-                     <component :is="selectedUsers.includes(user.id) ? CheckSquare : Square" class="w-5 h-5" />
+                   <button
+                     @click="toggleSelectUser(user.id)"
+                     :aria-label="selectedUsers.includes(user.id) ? `取消选择用户 ${user.username}` : `选择用户 ${user.username}`"
+                      :class="['transition-colors', selectedUsers.includes(user.id) ? 'text-zijinghui' : 'text-slate-300 hover:text-slate-400']"
+                    >
+                      <component :is="selectedUsers.includes(user.id) ? CheckSquare : Square" class="w-5 h-5" />
                    </button>
                 </td>
                 <td class="p-4 pl-0">
@@ -466,6 +498,7 @@ onDeactivated(stopOnlineStatusTimer)
                 <td class="p-4">
                   <button 
                     @click="fetchUserSessions(user)"
+                    :aria-label="`查看用户 ${user.username} 会话详情`"
                     class="flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors hover:bg-slate-100"
                     :class="isUserOnline(user.id) ? 'text-emerald-600' : 'text-slate-400'"
                   >
@@ -486,27 +519,30 @@ onDeactivated(stopOnlineStatusTimer)
                 <td class="p-4 text-right pr-6">
                    <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <!-- 强制下线按钮 -->
-                      <button 
-                        v-if="isUserOnline(user.id)"
-                        @click="forceLogoutUser(user)"
-                        class="p-2 rounded-lg hover:bg-amber-50 text-amber-500 hover:text-amber-600 transition-colors"
-                        title="强制下线"
-                      >
+                       <button 
+                         v-if="isUserOnline(user.id)"
+                         @click="forceLogoutUser(user)"
+                         :aria-label="`强制下线用户 ${user.username}`"
+                         class="p-2 rounded-lg hover:bg-amber-50 text-amber-500 hover:text-amber-600 transition-colors"
+                         title="强制下线"
+                       >
                          <LogOutIcon class="w-4 h-4" />
                       </button>
-                      <button 
-                        @click="toggleUserStatus(user)"
-                        class="p-2 rounded-lg hover:bg-slate-100 transition-colors"
-                        :title="user.status === 1 ? '禁用用户' : '启用用户'"
-                        :class="user.status === 1 ? 'text-slate-400 hover:text-yanzhi' : 'text-emerald-500 hover:bg-emerald-50'"
+                       <button 
+                         @click="toggleUserStatus(user)"
+                         :aria-label="user.status === 1 ? `禁用用户 ${user.username}` : `启用用户 ${user.username}`"
+                         class="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                         :title="user.status === 1 ? '禁用用户' : '启用用户'"
+                         :class="user.status === 1 ? 'text-slate-400 hover:text-yanzhi' : 'text-emerald-500 hover:bg-emerald-50'"
                       >
                          <component :is="user.status === 1 ? UserX : UserCheck" class="w-4 h-4" />
                       </button>
-                      <button 
-                        @click="confirmDeleteUser(user)"
-                        class="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
-                        title="删除用户"
-                      >
+                       <button 
+                         @click="confirmDeleteUser(user)"
+                         :aria-label="`删除用户 ${user.username}`"
+                         class="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                         title="删除用户"
+                       >
                          <Trash2 class="w-4 h-4" />
                       </button>
                    </div>

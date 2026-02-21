@@ -1,0 +1,435 @@
+/* 组件动效层：进度条、卡片、按钮、图标、徽章等通用组件效果 */
+/* ===== 进度条增强样式 (GPU Accelerated) ===== */
+.progress-bar-animated {
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.progress-bar-animated::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: translateX(-100%);
+  animation: progress-shine-transform var(--motion-duration-medium) linear infinite;
+}
+
+@keyframes progress-shine-transform {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.progress-bar-striped {
+  background-image: linear-gradient(45deg,
+      rgba(255, 255, 255, 0.15) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.15) 50%,
+      rgba(255, 255, 255, 0.15) 75%,
+      transparent 75%,
+      transparent);
+  background-size: 40px 40px;
+  /* Striped animation is hard to GPU accelerate without mask/clip-path tricks or massive pseudo-element. 
+     Keeping as is but reducing frequency or accepting paint cost for this specific style, 
+     OR better: use a repeating-linear-gradient on a pseudo-element and translate it. */
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar-striped::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 200%; /* Make it wider to slide */
+  background: inherit;
+  animation: progress-stripes-transform var(--motion-duration-medium) linear infinite;
+  /* This is tricky because background needs to be on the element itself usually. 
+     Let's stick to standard background-position for stripes as it's less critical than LCP skeletons, 
+     but actually we can just leave it if it's not main thread blocking. 
+     However, user asked to fix triggers. 
+     Let's use the transform approach. */
+  background-image: linear-gradient(45deg,
+      rgba(255, 255, 255, 0.15) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.15) 50%,
+      rgba(255, 255, 255, 0.15) 75%,
+      transparent 75%,
+      transparent);
+  background-size: 40px 40px;
+}
+
+/* Redefining class to remove background from parent and put on pseudo */
+.progress-bar-striped {
+  background: transparent;
+  position: relative;
+  overflow: hidden;
+}
+.progress-bar-striped::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: -40px; /* Extra width for seamless loop */
+  background-image: linear-gradient(45deg,
+        rgba(255, 255, 255, 0.15) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.15) 50%,
+        rgba(255, 255, 255, 0.15) 75%,
+        transparent 75%,
+        transparent);
+  background-size: 40px 40px;
+  animation: progress-stripes-transform var(--motion-duration-medium) linear infinite;
+  transform: translateX(0);
+}
+
+@keyframes progress-stripes-transform {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-40px); }
+}
+
+/* ===== 卡片悬停增强 ===== */
+.card-hover-lift {
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+}
+
+.card-hover-glow {
+  transition: box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.card-hover-glow:hover {
+  box-shadow: 0 0 30px rgba(136, 173, 166, 0.3);
+}
+
+/* ===== 按钮涟漪效果 ===== */
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+}
+
+.btn-ripple:active::after {
+  animation: ripple var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+/* ===== 图标动效 ===== */
+.icon-hover-rotate {
+  transition: transform var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.icon-hover-rotate:hover {
+  transform: rotate(15deg);
+}
+
+.icon-hover-scale {
+  transition: transform 0.2s ease;
+}
+
+.icon-hover-scale:hover {
+  transform: scale(1.2);
+}
+
+.icon-spin {
+  animation: icon-spin var(--motion-duration-medium) linear infinite;
+}
+
+/* ===== 徽章样式增强 ===== */
+.badge-locked {
+  filter: grayscale(100%);
+  opacity: 0.5;
+  transition:
+    filter var(--motion-duration-medium) var(--motion-ease-standard),
+    opacity var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.badge-locked:hover {
+  filter: grayscale(50%);
+  opacity: 0.7;
+}
+
+.badge-near-unlock {
+  animation: pulse-soft var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+}
+
+.badge-unlocked {
+  animation: badge-unlock var(--motion-duration-slow) var(--motion-ease-standard) forwards;
+}
+
+/* 已解锁徽章发光效果 */
+.badge-unlocked-glow {
+  position: relative;
+  overflow: visible;
+}
+
+.badge-unlocked-glow::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(34, 197, 94, 0.3));
+  opacity: 0;
+  transition: opacity var(--motion-duration-medium) var(--motion-ease-standard);
+  z-index: -1;
+  filter: blur(8px);
+}
+
+.badge-unlocked-glow:hover::before {
+  opacity: 1;
+  animation: badge-glow-pulse var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+}
+
+/* 徽章图标发光效果 */
+.badge-icon-glow {
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+  transition: box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.badge-icon-glow:hover {
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.5);
+}
+
+/* 徽章发光脉冲动画 */
+@keyframes badge-glow-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    filter: blur(8px);
+  }
+  50% {
+    opacity: 1;
+    filter: blur(12px);
+  }
+}
+
+/* ===== 紧急提醒样式 ===== */
+.urgent-pulse {
+  animation: pulse-soft var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+}
+
+.urgent-shake {
+  animation: shake-gentle var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+}
+
+/* ===== 空状态动画 ===== */
+.empty-state-float {
+  animation: hover-float var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+}
+
+/* ===== 开关按钮增强 ===== */
+.switch-enhanced {
+  transition: transform var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.switch-enhanced:active {
+  transform: scale(0.95);
+}
+
+/* ===== 滑块增强 ===== */
+.slider-enhanced::-webkit-slider-thumb {
+  transition:
+    transform var(--motion-duration-base) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-base) var(--motion-ease-standard);
+}
+
+.slider-enhanced::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 10px rgba(136, 173, 166, 0.5);
+}
+
+.slider-enhanced::-webkit-slider-thumb:active {
+  transform: scale(1.1);
+}
+
+/* ===== 头像悬停效果 ===== */
+.avatar-hover {
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.avatar-hover:hover {
+  transform: scale(1.05) rotate(5deg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== 菜单项增强 ===== */
+.menu-item-enhanced {
+  position: relative;
+  overflow: hidden;
+}
+
+.menu-item-enhanced::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  /* 动效优化：使用 transform 替代 left，避免触发布局重排 */
+  transform: translateX(-100%);
+  transition: transform var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.menu-item-enhanced:hover::before {
+  transform: translateX(100%);
+}
+
+/* ===== 数字跳动效果 ===== */
+.number-pop {
+  display: inline-block;
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-standard),
+    color var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.number-pop.updated {
+  animation: count-up-flash var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+/* ===== 课程卡片封面效果 ===== */
+.cover-ken-burns {
+  transition: transform var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.cover-ken-burns:hover {
+  transform: scale(1.1);
+}
+
+/* ===== 播放按钮脉冲 ===== */
+.play-btn-pulse {
+  position: relative;
+}
+
+.play-btn-pulse::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.4;
+  animation: pulse-soft var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+}
+
+/* ===== 时间线动画 ===== */
+.timeline-animated::before {
+  animation: timeline-draw var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+}
+
+.timeline-dot {
+  animation: scale-in var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+}
+
+/* ===== 柱状图动画 ===== */
+.chart-bar {
+  transform-origin: bottom;
+  animation: bar-grow var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+}
+
+.chart-bar:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.chart-bar:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.chart-bar:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.chart-bar:nth-child(4) {
+  animation-delay: 0.4s;
+}
+
+.chart-bar:nth-child(5) {
+  animation-delay: 0.5s;
+}
+
+.chart-bar:nth-child(6) {
+  animation-delay: 0.6s;
+}
+
+.chart-bar:nth-child(7) {
+  animation-delay: 0.7s;
+}
+
+/* ===== 骨架屏动画 (GPU Accelerated) ===== */
+.skeleton {
+  background-color: #f0f0f0;
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  transform: translateX(-100%);
+  animation: shimmer-transform var(--motion-duration-medium) infinite;
+}
+
+@keyframes shimmer-transform {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ===== 页面切换增强 ===== */
+.page-transition-enter-active {
+  animation: slide-up var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+}
+
+.page-transition-leave-active {
+  animation: slide-up 0.2s ease-in reverse forwards;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(150%);
+  }
+}
+
+/* ===== 进度条入场动画 ===== */
+@keyframes progress-bar-enter {
+  from {
+    width: 0;
+  }
+
+  to {
+    width: var(--progress-width, 0%);
+  }
+}
+
+.animate-progress-bar {
+  animation: progress-bar-enter var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+  width: var(--progress-width, 0%);
+}
+

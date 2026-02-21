@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { AlertTriangle, Trash2, Info, HelpCircle, X } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -13,6 +13,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'confirm', 'cancel'])
+const dialogPanelRef = ref(null)
+const previousActiveElement = ref(null)
 
 const iconMap = {
   warning: AlertTriangle,
@@ -31,18 +33,128 @@ const colorMap = {
 const close = () => emit('update:modelValue', false)
 const handleConfirm = () => { emit('confirm'); if (!props.loading) close() }
 const handleCancel = () => { emit('cancel'); close() }
+
+const getFocusableElements = () => {
+  if (!dialogPanelRef.value) return []
+
+  const selectors = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])'
+  ]
+
+  return Array.from(dialogPanelRef.value.querySelectorAll(selectors.join(',')))
+    .filter((el) => !el.hasAttribute('aria-hidden'))
+}
+
+const focusPrimaryAction = () => {
+  const focusables = getFocusableElements()
+  if (focusables.length === 0) {
+    dialogPanelRef.value?.focus()
+    return
+  }
+
+  const confirmButton = focusables.find((el) => el.dataset.confirm === 'true')
+  if (confirmButton) {
+    confirmButton.focus()
+    return
+  }
+
+  focusables[0].focus()
+}
+
+const trapFocus = (event) => {
+  const focusables = getFocusableElements()
+  if (focusables.length === 0) {
+    event.preventDefault()
+    dialogPanelRef.value?.focus()
+    return
+  }
+
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  const active = document.activeElement
+
+  if (event.shiftKey && active === first) {
+    event.preventDefault()
+    last.focus()
+    return
+  }
+
+  if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
+const handleDialogKeydown = (event) => {
+  if (!props.modelValue) return
+
+  if (event.key === 'Escape') {
+    // 提供统一的 Esc 快捷关闭能力
+    event.preventDefault()
+    handleCancel()
+    return
+  }
+
+  if (event.key === 'Tab') {
+    // 键盘焦点应停留在确认框内部
+    trapFocus(event)
+  }
+}
+
+watch(
+  () => props.modelValue,
+  async (val, oldVal) => {
+    if (val && !oldVal) {
+      // 记录并恢复焦点，保证键盘流连续
+      previousActiveElement.value = document.activeElement
+      await nextTick()
+      focusPrimaryAction()
+      return
+    }
+
+    if (!val && oldVal) {
+      previousActiveElement.value?.focus?.()
+      previousActiveElement.value = null
+    }
+  }
+)
+
+onBeforeUnmount(() => {
+  previousActiveElement.value?.focus?.()
+  previousActiveElement.value = null
+})
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="modelValue" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <div
+        v-if="modelValue"
+        class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-title"
+        @keydown="handleDialogKeydown"
+      >
         <!-- 背景遮罩 -->
         <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-[2px]" @click="handleCancel"></div>
         <!-- 弹窗内容 -->
-        <div class="relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-scale-in border border-white/20">
+        <div
+          ref="dialogPanelRef"
+          tabindex="-1"
+          class="relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-scale-in border border-white/20"
+        >
           <!-- 关闭按钮 -->
-          <button @click="handleCancel" class="absolute top-4 right-4 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+          <button
+            @click="handleCancel"
+            aria-label="关闭确认弹窗"
+            class="absolute top-4 right-4 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+          >
             <X class="w-5 h-5" />
           </button>
           <!-- 图标区域 -->
@@ -53,7 +165,7 @@ const handleCancel = () => { emit('cancel'); close() }
           </div>
           <!-- 内容区域 -->
           <div class="px-6 pb-6 text-center">
-            <h3 class="text-lg font-bold text-shuimo mb-2">{{ title }}</h3>
+            <h3 id="confirm-dialog-title" class="text-lg font-bold text-shuimo mb-2">{{ title }}</h3>
             <p class="text-shuimo/70 text-sm leading-relaxed">{{ message }}</p>
           </div>
           <!-- 按钮区域 -->
@@ -63,6 +175,7 @@ const handleCancel = () => { emit('cancel'); close() }
               {{ cancelText }}
             </button>
             <button @click="handleConfirm" :disabled="loading"
+              data-confirm="true"
               :class="['flex-1 px-4 py-2.5 rounded-xl text-white font-medium transition-all bg-gradient-to-r shadow-lg hover:shadow-xl disabled:opacity-50', colorMap[type].btn]">
               <span v-if="loading" class="flex items-center justify-center gap-2">
                 <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>

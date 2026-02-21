@@ -3,8 +3,8 @@ import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   BookOpen, Clock, FileText, Flame,
-  Target, Play, Award, Lock,
-  MessageSquare, BarChart3, Star, Medal, Bell, CheckCircle, AlertCircle,
+  Target, Play, Award,
+  MessageSquare, CheckCircle,
   Sun, Sunrise, Moon, Rocket, Sparkles
 } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
@@ -18,7 +18,6 @@ import { useStudentStats } from '../../composables/useStudentStats'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const emit = defineEmits(['navigate', 'start-study'])
 
 // Composables
 const { enrolledCourses, recentCourses, loadEnrolledCourses, loading: coursesLoading } = useStudentCourses()

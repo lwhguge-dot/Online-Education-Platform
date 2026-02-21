@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { Search, X, Users, AlertTriangle, TrendingUp, Clock, ChevronLeft, ChevronRight, Eye, BookOpen, Download } from 'lucide-vue-next'
+import { Search, Users, AlertTriangle, Clock, ChevronLeft, ChevronRight, Eye, BookOpen, Download } from 'lucide-vue-next'
 import { useAuthStore } from '../../stores/auth'
 import { enrollmentAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
@@ -12,7 +12,7 @@ import StudentDetailModal from '../../components/teacher/StudentDetailModal.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import AnimatedNumber from '../../components/ui/AnimatedNumber.vue'
 
-const props = defineProps({
+defineProps({
   courses: {
     type: Array,
     default: () => []

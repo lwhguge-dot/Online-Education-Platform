@@ -1,6 +1,5 @@
 <script setup>
-import { ref } from 'vue'
-import { ArrowUpDown, Clock, Flame } from 'lucide-vue-next'
+import { Clock, Flame } from 'lucide-vue-next'
 
 const props = defineProps({
   currentSort: {

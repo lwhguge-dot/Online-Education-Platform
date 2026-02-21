@@ -7,7 +7,6 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { X, Users, Eye, Clock, CheckCircle, User, TrendingUp } from 'lucide-vue-next'
 import { announcementAPI } from '../../services/api'
 import { formatDateCN } from '../../utils/datetime'
-import GlassCard from '../ui/GlassCard.vue'
 import AnimatedNumber from '../ui/AnimatedNumber.vue'
 
 const props = defineProps({

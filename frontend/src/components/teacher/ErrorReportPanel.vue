@@ -6,7 +6,6 @@
 import { ref, onMounted, watch } from 'vue'
 import { AlertTriangle, ChevronDown, ChevronUp, Lightbulb, BookOpen, Users, Target } from 'lucide-vue-next'
 import { homeworkAPI } from '../../services/api'
-import GlassCard from '../ui/GlassCard.vue'
 import AnimatedNumber from '../ui/AnimatedNumber.vue'
 
 const props = defineProps({
@@ -21,8 +20,6 @@ const props = defineProps({
     default: null
   }
 })
-
-const emit = defineEmits(['close'])
 
 // 状态管理
 const loading = ref(false)

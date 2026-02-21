@@ -1,7 +1,10 @@
 package com.eduplatform.user.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.user.dto.BatchNotificationRequest;
+import com.eduplatform.user.dto.SendNotificationRequest;
 import com.eduplatform.user.websocket.NotificationWebSocketHandler;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,7 +36,7 @@ public class NotificationController {
      */
     @PostMapping("/send")
     public Result<Void> sendNotification(
-            @RequestBody Map<String, Object> request,
+            @Valid @RequestBody SendNotificationRequest request,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestHeader(value = HEADER_INTERNAL_TOKEN, required = false) String requestInternalToken) {
         // 发送通知属于教师/管理员操作；服务间调用可通过内部令牌放行
@@ -41,10 +44,10 @@ public class NotificationController {
             return Result.failure(403, "权限不足，仅教师或管理员可发送通知");
         }
 
-        Long userId = Long.valueOf(request.get("userId").toString());
-        String title = (String) request.get("title");
-        String content = (String) request.get("content");
-        String type = request.get("type") != null ? (String) request.get("type") : "NOTIFICATION";
+        Long userId = request.getUserId();
+        String title = request.getTitle();
+        String content = request.getContent();
+        String type = StringUtils.hasText(request.getType()) ? request.getType() : "NOTIFICATION";
 
         log.info("发送通知: userId={}, title={}, type={}", userId, title, type);
 
@@ -60,7 +63,7 @@ public class NotificationController {
      */
     @PostMapping("/send-batch")
     public Result<Map<String, Object>> sendBatchNotification(
-            @RequestBody Map<String, Object> request,
+            @Valid @RequestBody BatchNotificationRequest request,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestHeader(value = HEADER_INTERNAL_TOKEN, required = false) String requestInternalToken) {
         // 批量通知风险更高，仅允许教师/管理员或内部服务调用
@@ -68,10 +71,9 @@ public class NotificationController {
             return Result.failure(403, "权限不足，仅教师或管理员可批量发送通知");
         }
 
-        @SuppressWarnings("unchecked")
-        java.util.List<Long> userIds = (java.util.List<Long>) request.get("userIds");
-        String title = (String) request.get("title");
-        String content = (String) request.get("content");
+        java.util.List<Long> userIds = request.getUserIds();
+        String title = request.getTitle();
+        String content = request.getContent();
 
         int successCount = 0;
         int failCount = 0;

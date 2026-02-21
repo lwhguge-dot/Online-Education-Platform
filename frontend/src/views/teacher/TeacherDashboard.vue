@@ -136,7 +136,17 @@ const weeklyTrendDirection = computed(() => {
     <!-- 统计卡片网格 -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <!-- 我的课程 -->
-      <GlassCard hoverable class="stat-card relative overflow-hidden group cursor-pointer" @click="navigateTo('courses')">
+      <!-- 可访问性：统计卡片支持键盘激活 -->
+      <GlassCard
+        hoverable
+        class="stat-card relative overflow-hidden group cursor-pointer"
+        role="button"
+        tabindex="0"
+        aria-label="进入课程管理"
+        @click="navigateTo('courses')"
+        @keydown.enter.prevent="navigateTo('courses')"
+        @keydown.space.prevent="navigateTo('courses')"
+      >
         <div class="flex items-center justify-between mb-4 relative z-10">
           <span class="text-sm font-medium text-shuimo/60">我的课程</span>
           <div class="p-2.5 rounded-xl bg-gradient-to-br from-tianlv/15 to-tianlv/5 text-tianlv shadow-sm group-hover:shadow-md group-hover:scale-110 transition-all duration-300">
@@ -155,7 +165,17 @@ const weeklyTrendDirection = computed(() => {
       </GlassCard>
 
       <!-- 学生总数 -->
-      <GlassCard hoverable class="stat-card relative overflow-hidden group cursor-pointer" @click="navigateTo('students')">
+      <!-- 可访问性：统计卡片支持键盘激活 -->
+      <GlassCard
+        hoverable
+        class="stat-card relative overflow-hidden group cursor-pointer"
+        role="button"
+        tabindex="0"
+        aria-label="进入学生管理"
+        @click="navigateTo('students')"
+        @keydown.enter.prevent="navigateTo('students')"
+        @keydown.space.prevent="navigateTo('students')"
+      >
         <div class="flex items-center justify-between mb-4 relative z-10">
           <span class="text-sm font-medium text-shuimo/60">学生总数</span>
           <div class="p-2.5 rounded-xl bg-gradient-to-br from-qinghua/15 to-qinghua/5 text-qinghua shadow-sm group-hover:shadow-md group-hover:scale-110 transition-all duration-300">
@@ -172,7 +192,17 @@ const weeklyTrendDirection = computed(() => {
       </GlassCard>
 
       <!-- 待批改作业 -->
-      <GlassCard hoverable class="stat-card relative overflow-hidden group cursor-pointer" @click="navigateTo('homework', { tab: 'pending' })">
+      <!-- 可访问性：统计卡片支持键盘激活 -->
+      <GlassCard
+        hoverable
+        class="stat-card relative overflow-hidden group cursor-pointer"
+        role="button"
+        tabindex="0"
+        aria-label="进入待批改作业"
+        @click="navigateTo('homework', { tab: 'pending' })"
+        @keydown.enter.prevent="navigateTo('homework', { tab: 'pending' })"
+        @keydown.space.prevent="navigateTo('homework', { tab: 'pending' })"
+      >
         <div class="flex items-center justify-between mb-4 relative z-10">
           <span class="text-sm font-medium text-shuimo/60">待批改作业</span>
           <div class="p-2.5 rounded-xl bg-gradient-to-br from-zhizi/15 to-zhizi/5 text-zhizi shadow-sm group-hover:shadow-md group-hover:scale-110 transition-all duration-300">
@@ -190,7 +220,17 @@ const weeklyTrendDirection = computed(() => {
       </GlassCard>
 
       <!-- 本周互动 -->
-      <GlassCard hoverable class="stat-card relative overflow-hidden group cursor-pointer" @click="navigateTo('discussion')">
+      <!-- 可访问性：统计卡片支持键盘激活 -->
+      <GlassCard
+        hoverable
+        class="stat-card relative overflow-hidden group cursor-pointer"
+        role="button"
+        tabindex="0"
+        aria-label="进入课堂讨论"
+        @click="navigateTo('discussion')"
+        @keydown.enter.prevent="navigateTo('discussion')"
+        @keydown.space.prevent="navigateTo('discussion')"
+      >
         <div class="flex items-center justify-between mb-4 relative z-10">
           <span class="text-sm font-medium text-shuimo/60">本周互动</span>
           <div class="p-2.5 rounded-xl bg-gradient-to-br from-zijinghui/15 to-zijinghui/5 text-zijinghui shadow-sm group-hover:shadow-md group-hover:scale-110 transition-all duration-300">

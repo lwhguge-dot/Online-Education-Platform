@@ -1,0 +1,15 @@
+{
+  "code": 200,
+  "message": "登录成功",
+  "data": {
+    "token": "eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoidGVhY2hlciIsImlkIjoxMywianRpIjoiMzY1OTNjOGQyNDNkNDg5ZWI5NjViNTE2NzhmNzExZTYiLCJ1c2VybmFtZSI6ImF1ZGl0X3RlYWNoZXJfMjAyNjAyMjAyMjI0MzhAZXhhbXBsZS5jb20iLCJzdWIiOiJhdWRpdF90ZWFjaGVyXzIwMjYwMjIwMjIyNDM4QGV4YW1wbGUuY29tIiwiaWF0IjoxNzcxNTk3NDg0LCJleHAiOjE3NzIyMDIyODR9.Q23I42Q3Czs9_0vv5lCry0_j0rUZn7_nTxX7SBMs7JNzb308h955TLgy7TVOdOCGBxv3oyERt5R-jf0kqDnnLA",
+    "user": {
+      "id": 13,
+      "email": "audit_teacher_20260220222438@example.com",
+      "username": "audittea20260220222438",
+      "name": "审查教师",
+      "role": "teacher",
+      "avatar": null
+    }
+  }
+}
