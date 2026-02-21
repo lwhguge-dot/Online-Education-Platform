@@ -20,7 +20,6 @@ import {
   ChevronRight,
   ChevronLeft,
   Play,
-  Users,
   Star,
   BookOpen,
   Loader2

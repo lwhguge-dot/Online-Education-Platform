@@ -1,18 +1,18 @@
-<script setup>
-defineProps({
-  title: {
-    type: String,
-    required: true
-  },
-  icon: {
-    type: [Object, Function], // 兼容图标组件在不同构建环境下的对象/函数形态
-    default: null
-  },
-  iconColor: {
-    type: String,
-    default: 'text-zhizi'
-  }
+<script setup lang="ts">
+interface BaseSectionHeaderProps {
+  title: string
+  icon?: object | (() => unknown) | null
+  iconColor?: string
+}
+
+withDefaults(defineProps<BaseSectionHeaderProps>(), {
+  icon: null,
+  iconColor: 'text-zhizi'
 })
+
+defineSlots<{
+  actions?: () => unknown
+}>()
 </script>
 
 <template>

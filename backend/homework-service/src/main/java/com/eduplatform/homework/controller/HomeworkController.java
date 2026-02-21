@@ -8,6 +8,7 @@ import com.eduplatform.homework.service.HomeworkService;
 import com.eduplatform.homework.vo.HomeworkQuestionDiscussionVO;
 import com.eduplatform.homework.vo.HomeworkStudentQuestionVO;
 import com.eduplatform.homework.vo.HomeworkVO;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,7 +44,7 @@ public class HomeworkController {
      */
     @PostMapping
     public Result<HomeworkVO> createHomework(
-            @RequestBody HomeworkCreateDTO dto,
+            @Valid @RequestBody HomeworkCreateDTO dto,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 创建作业属于教师端管理能力，仅教师或管理员可执行
         if (!hasTeacherManageRole(currentUserRole)) {
@@ -54,7 +55,7 @@ public class HomeworkController {
             Homework homework = homeworkService.createHomework(dto);
             return Result.success("作业创建成功", homeworkService.convertToVO(homework));
         } catch (Exception e) {
-            return Result.error("创建失败: " + e.getMessage());
+            return Result.error("创建失败，请稍后重试");
         }
     }
 
@@ -72,7 +73,7 @@ public class HomeworkController {
             return Result.error("作业不存在");
         } catch (Exception e) {
             log.error("获取作业详情失败", e);
-            return Result.error("获取作业详情失败: " + e.getMessage());
+            return Result.error("获取作业详情失败，请稍后重试");
         }
     }
 
@@ -94,7 +95,7 @@ public class HomeworkController {
             return Result.success(homeworks);
         } catch (Exception e) {
             log.error("获取作业详情失败", e);
-            return Result.error("获取作业失败: " + e.getMessage());
+            return Result.error("获取作业失败，请稍后重试");
         }
     }
 
@@ -119,7 +120,7 @@ public class HomeworkController {
             return Result.success(homeworks);
         } catch (Exception e) {
             log.error("获取作业详情失败", e);
-            return Result.error("获取学生作业失败: " + e.getMessage());
+            return Result.error("获取学生作业失败，请稍后重试");
         }
     }
 
@@ -141,7 +142,7 @@ public class HomeworkController {
             homeworkService.unlockHomeworkByChapter(studentId, chapterId);
             return Result.success("作业已解锁", null);
         } catch (Exception e) {
-            return Result.error("解锁失败: " + e.getMessage());
+            return Result.error("解锁失败，请稍后重试");
         }
     }
 
@@ -151,7 +152,7 @@ public class HomeworkController {
      */
     @PostMapping("/submit")
     public Result<Map<String, Object>> submitHomework(
-            @RequestBody HomeworkSubmitDTO dto,
+            @Valid @RequestBody HomeworkSubmitDTO dto,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 提交作业时默认以网关注入身份为准，避免伪造 studentId
@@ -168,7 +169,7 @@ public class HomeworkController {
             Map<String, Object> result = homeworkService.submitHomework(dto);
             return Result.success("作业提交成功", result);
         } catch (Exception e) {
-            return Result.error("提交失败: " + e.getMessage());
+            return Result.error("提交失败，请稍后重试");
         }
     }
 
@@ -196,7 +197,7 @@ public class HomeworkController {
             return Result.error("未找到提交记录");
         } catch (Exception e) {
             log.error("获取作业详情失败", e);
-            return Result.error("获取提交详情失败: " + e.getMessage());
+            return Result.error("获取提交详情失败，请稍后重试");
         }
     }
 
@@ -243,7 +244,7 @@ public class HomeworkController {
             homeworkService.gradeSubjective(submissionId, questionId, score, feedback);
             return Result.success("批改成功", null);
         } catch (Exception e) {
-            return Result.error("批改失败: " + e.getMessage());
+            return Result.error("批改失败，请稍后重试");
         }
     }
 
@@ -264,7 +265,7 @@ public class HomeworkController {
             return Result.success(submissions);
         } catch (Exception e) {
             log.error("获取作业详情失败", e);
-            return Result.error("获取提交记录失败: " + e.getMessage());
+            return Result.error("获取提交记录失败，请稍后重试");
         }
     }
 
@@ -287,7 +288,7 @@ public class HomeworkController {
             return Result.success(todos);
         } catch (Exception e) {
             log.error("获取作业详情失败", e);
-            return Result.error("获取待办事项失败: " + e.getMessage());
+            return Result.error("获取待办事项失败，请稍后重试");
         }
     }
 
@@ -310,7 +311,7 @@ public class HomeworkController {
             return Result.success(activities);
         } catch (Exception e) {
             log.error("获取作业详情失败", e);
-            return Result.error("获取活动记录失败: " + e.getMessage());
+            return Result.error("获取活动记录失败，请稍后重试");
         }
     }
 
@@ -334,7 +335,7 @@ public class HomeworkController {
             return Result.success(urgentHomeworks);
         } catch (Exception e) {
             log.error("获取作业详情失败", e);
-            return Result.error("获取紧急作业失败: " + e.getMessage());
+            return Result.error("获取紧急作业失败，请稍后重试");
         }
     }
 
@@ -356,7 +357,7 @@ public class HomeworkController {
             int count = homeworkService.getStudentPendingHomeworkCount(studentId);
             return Result.success(count);
         } catch (Exception e) {
-            return Result.error("获取待完成作业数量失败: " + e.getMessage());
+            return Result.error("获取待完成作业数量失败，请稍后重试");
         }
     }
 
@@ -382,7 +383,7 @@ public class HomeworkController {
             return Result.error("作业不存在");
         } catch (Exception e) {
             log.error("获取作业详情失败", e);
-            return Result.error("获取待批改列表失败: " + e.getMessage());
+            return Result.error("获取待批改列表失败，请稍后重试");
         }
     }
 
@@ -406,7 +407,7 @@ public class HomeworkController {
             return Result.error("提交记录不存在");
         } catch (Exception e) {
             log.error("获取作业详情失败", e);
-            return Result.error("获取提交详情失败: " + e.getMessage());
+            return Result.error("获取提交详情失败，请稍后重试");
         }
     }
 
@@ -416,7 +417,7 @@ public class HomeworkController {
     @PostMapping("/submissions/{id}/grade")
     public Result<Void> gradeSubmission(
             @PathVariable("id") Long submissionId,
-            @RequestBody GradeSubmissionDTO dto,
+            @Valid @RequestBody GradeSubmissionDTO dto,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 批量批改仅允许教师或管理员执行
@@ -434,7 +435,7 @@ public class HomeworkController {
             return Result.success("批改成功", null);
         } catch (Exception e) {
             log.error("获取作业详情失败", e);
-            return Result.error("批改失败: " + e.getMessage());
+            return Result.error("批改失败，请稍后重试");
         }
     }
 
@@ -454,13 +455,13 @@ public class HomeworkController {
      * 复制作业（教师端接口）。
      *
      * @param id   原作业ID
-     * @param body 请求体，可选包含新标题 (title) 和目标章节ID (chapterId)
+     * @param request 请求体，可选包含新标题 (title) 和目标章节ID (chapterId)
      * @return 复制后新生成的作业视图对象
      */
     @PostMapping("/{id}/duplicate")
     public Result<HomeworkVO> duplicateHomework(
             @PathVariable("id") Long id,
-            @RequestBody(required = false) Map<String, Object> body,
+            @Valid @RequestBody(required = false) DuplicateHomeworkRequest request,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 复制作业仅允许教师或管理员执行
         if (!hasTeacherManageRole(currentUserRole)) {
@@ -468,15 +469,13 @@ public class HomeworkController {
         }
 
         try {
-            Long targetChapterId = body != null && body.get("chapterId") != null
-                    ? Long.parseLong(body.get("chapterId").toString())
-                    : null;
-            String newTitle = body != null ? (String) body.get("title") : null;
+            Long targetChapterId = request != null ? request.getChapterId() : null;
+            String newTitle = request != null ? request.getTitle() : null;
 
             Homework newHomework = homeworkService.duplicateHomework(id, targetChapterId, newTitle);
             return Result.success("作业复制成功", homeworkService.convertToVO(newHomework));
         } catch (Exception e) {
-            return Result.error("复制失败: " + e.getMessage());
+            return Result.error("复制失败，请稍后重试");
         }
     }
 
@@ -487,7 +486,7 @@ public class HomeworkController {
     @PostMapping("/{id}/import-questions")
     public Result<Map<String, Object>> importQuestions(
             @PathVariable("id") Long id,
-            @RequestBody HomeworkCreateDTO dto,
+            @Valid @RequestBody ImportHomeworkQuestionsRequest dto,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 题目导入仅允许教师或管理员执行
         if (!hasTeacherManageRole(currentUserRole)) {
@@ -502,7 +501,7 @@ public class HomeworkController {
             Map<String, Object> result = homeworkService.importQuestions(id, dto.getQuestions());
             return Result.success("题目导入完成", result);
         } catch (Exception e) {
-            return Result.error("导入失败: " + e.getMessage());
+            return Result.error("导入失败，请稍后重试");
         }
     }
 
@@ -521,7 +520,7 @@ public class HomeworkController {
             homeworkCascadeDeleteService.deleteCourseRelatedData(courseId);
             return Result.success("课程相关作业数据已删除", null);
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            return Result.error("操作失败，请稍后重试");
         }
     }
 
@@ -540,7 +539,7 @@ public class HomeworkController {
             homeworkCascadeDeleteService.deleteUserRelatedData(userId);
             return Result.success("用户相关作业数据已删除", null);
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            return Result.error("操作失败，请稍后重试");
         }
     }
 
@@ -567,7 +566,7 @@ public class HomeworkController {
             homeworkService.askQuestion(homeworkId, studentId, questionId, content);
             return Result.success("提问成功", null);
         } catch (Exception e) {
-            return Result.error("提问失败: " + e.getMessage());
+            return Result.error("提问失败，请稍后重试");
         }
     }
 
@@ -591,7 +590,7 @@ public class HomeworkController {
             homeworkService.replyQuestion(discussionId, teacherId, reply);
             return Result.success("回复成功", null);
         } catch (Exception e) {
-            return Result.error("回复失败: " + e.getMessage());
+            return Result.error("回复失败，请稍后重试");
         }
     }
 
@@ -606,7 +605,7 @@ public class HomeworkController {
             return Result.success(questions);
         } catch (Exception e) {
             log.error("获取作业详情失败", e);
-            return Result.error("获取问答失败: " + e.getMessage());
+            return Result.error("获取问答失败，请稍后重试");
         }
     }
 
@@ -629,7 +628,7 @@ public class HomeworkController {
             return Result.success(questions);
         } catch (Exception e) {
             log.error("获取作业详情失败", e);
-            return Result.error("获取提问失败: " + e.getMessage());
+            return Result.error("获取提问失败，请稍后重试");
         }
     }
 
@@ -651,7 +650,7 @@ public class HomeworkController {
             int count = homeworkService.getTeacherPendingQuestionsCount(teacherId);
             return Result.success(count);
         } catch (Exception e) {
-            return Result.error("获取待回复问题数量失败: " + e.getMessage());
+            return Result.error("获取待回复问题数量失败，请稍后重试");
         }
     }
 
@@ -714,3 +713,4 @@ public class HomeworkController {
                 && currentUserId.equals(targetTeacherId);
     }
 }
+

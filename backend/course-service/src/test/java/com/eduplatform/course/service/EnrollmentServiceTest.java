@@ -1,6 +1,7 @@
 package com.eduplatform.course.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.eduplatform.common.event.RedisStreamPublisher;
 import com.eduplatform.course.entity.Course;
 import com.eduplatform.course.entity.Enrollment;
 import com.eduplatform.course.mapper.ChapterMapper;
@@ -51,6 +52,10 @@ class EnrollmentServiceTest {
 
     @Mock
     private LearningStatusConfig learningStatusConfig;
+
+    // 使用 Mock 避免事件发布器为空导致测试日志噪音
+    @Mock
+    private RedisStreamPublisher redisStreamPublisher;
 
     private Course publishedCourse;
 

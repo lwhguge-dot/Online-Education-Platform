@@ -14,6 +14,11 @@ public class Result<T> implements Serializable {
     private Integer code; // 状态码: 200成功, 其他失败
     private String message; // 提示信息, 原为 msg, 现对齐旧系统 message
     private T data; // 返回数据
+    /**
+     * 链路追踪标识。
+     * 说明：用于故障排查与跨服务日志关联；成功响应可为空。
+     */
+    private String traceId;
 
     public static <T> Result<T> success() {
         Result<T> result = new Result<>();

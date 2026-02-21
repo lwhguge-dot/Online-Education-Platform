@@ -1,0 +1,310 @@
+/* 动画核心层：保留关键帧与兼容别名，供其余样式文件复用 */
+/* ========================================
+   学生中心 UI/UX 增强动画样式
+   注意: 基础动画 (fade-in, scale-in, slide-up) 已移至 main.css 统一管理
+   此文件保留特定复杂效果
+   ======================================== */
+
+/* ===== 基础动画别名 (兼容旧代码 & Inline Styles) ===== */
+.animate-fade-in-up {
+  animation: slide-up var(--motion-duration-slow) var(--motion-ease-standard) forwards;
+}
+
+.animate-fade-in-scale {
+  animation: scale-in var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+}
+
+/* 兼容 inline style animation: fade-in-up ... */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 兼容 inline style animation: fade-in-scale ... */
+@keyframes fade-in-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+
+/* 弹性入场 - 优雅版 */
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+
+  85% {
+    transform: scale(0.98);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 脉冲效果 - 极柔版 */
+@keyframes pulse-soft {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.9;
+    transform: scale(1.01);
+    /* 极其微小的呼吸 */
+  }
+}
+
+/* 呼吸灯效果 */
+@keyframes breathe {
+
+  0%,
+  100% {
+    opacity: 0.4;
+    box-shadow: 0 0 0 0 currentColor;
+  }
+
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 20px 5px currentColor;
+  }
+}
+
+/* 闪烁提醒 */
+@keyframes blink-attention {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* 轻微抖动 */
+@keyframes shake-gentle {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-3px);
+  }
+
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+/* 数字递增动画辅助 */
+@keyframes count-up-flash {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 进度条流光效果 */
+@keyframes progress-shine {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* 进度条条纹动画 */
+@keyframes progress-stripes {
+  0% {
+    background-position: 0 0;
+  }
+
+  100% {
+    background-position: 40px 0;
+  }
+}
+
+/* 柱状图生长动画 */
+@keyframes bar-grow {
+  from {
+    transform: scaleY(0);
+    transform-origin: bottom;
+  }
+
+  to {
+    transform: scaleY(1);
+    transform-origin: bottom;
+  }
+}
+
+/* 监控专用状态球波纹动效 */
+@keyframes ripple-status {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+.animate-ripple {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 9999px;
+  /* P0 动效时长收敛：高风险动画统一压到 400ms */
+  animation: ripple-status var(--motion-duration-slow) var(--motion-ease-standard) infinite;
+}
+
+.ripple-1 { animation-delay: 0s; }
+.ripple-2 { animation-delay: 0.8s; }
+.ripple-3 { animation-delay: 1.6s; }
+
+/* 涟漪效果 (通用) */
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* 悬浮效果 (标准浮动) */
+@keyframes hover-float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* 卡片发光效果 */
+@keyframes card-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  50% {
+    box-shadow: 0 8px 30px rgba(136, 173, 166, 0.3);
+  }
+}
+
+/* 图标旋转 */
+@keyframes icon-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 滑入动画 - 从左 */
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 滑入动画 - 从右 */
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 时间线绘制 */
+@keyframes timeline-draw {
+  from {
+    height: 0;
+  }
+
+  to {
+    height: 100%;
+  }
+}
+
+/* 徽章解锁动画 */
+@keyframes badge-unlock {
+  0% {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+
+  50% {
+    transform: scale(1.2) rotate(10deg);
+  }
+
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+

@@ -1,0 +1,274 @@
+/* 动画工具层：通用动画类、延迟类与交错动画 */
+/* ===== 动画工具类 ===== */
+
+.animate-bounce-in {
+  animation: bounce-in var(--motion-duration-slow) var(--motion-ease-standard) forwards;
+}
+
+.animate-pulse-soft {
+  /* P1 第二批：通用动画时长压缩到 200ms 档 */
+  animation: pulse-soft var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+}
+
+.animate-breathe {
+  animation: breathe var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+}
+
+.animate-blink {
+  animation: blink-attention var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+}
+
+.animate-shake {
+  animation: shake-gentle var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.animate-count-up {
+  animation: count-up-flash var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+.animate-bar-grow {
+  animation: bar-grow var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+}
+
+.animate-hover-float {
+  animation: hover-float var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+}
+
+.animate-badge-unlock {
+  animation: badge-unlock var(--motion-duration-slow) var(--motion-ease-standard) forwards;
+}
+
+/* ===== 延迟动画类 ===== */
+.delay-100 {
+  animation-delay: 0.1s;
+}
+
+.delay-200 {
+  animation-delay: 0.2s;
+}
+
+.delay-300 {
+  animation-delay: 0.3s;
+}
+
+.delay-400 {
+  animation-delay: 0.4s;
+}
+
+.delay-500 {
+  animation-delay: 0.5s;
+}
+
+/* ===== 交错动画 (Stagger) ===== */
+
+/* 基础交错入场动画 - 从下向上滑入 */
+@keyframes stagger-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 基础交错入场动画 - 从左向右滑入 */
+@keyframes stagger-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 基础交错入场动画 - 缩放入场 */
+@keyframes stagger-in-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Stagger 列表项 - 自动延迟 */
+.stagger-item {
+  opacity: 0;
+  animation: stagger-in var(--motion-duration-slow) var(--motion-ease-standard) forwards;
+}
+
+.stagger-item-left {
+  opacity: 0;
+  animation: stagger-in-left var(--motion-duration-slow) var(--motion-ease-standard) forwards;
+}
+
+.stagger-item-scale {
+  opacity: 0;
+  animation: stagger-in-scale var(--motion-duration-slow) var(--motion-ease-standard) forwards;
+}
+
+/* 延迟序列 - 支持最多20个子元素 */
+.stagger-item:nth-child(1),
+.stagger-item-left:nth-child(1),
+.stagger-item-scale:nth-child(1) {
+  animation-delay: 0.05s;
+}
+
+.stagger-item:nth-child(2),
+.stagger-item-left:nth-child(2),
+.stagger-item-scale:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.stagger-item:nth-child(3),
+.stagger-item-left:nth-child(3),
+.stagger-item-scale:nth-child(3) {
+  animation-delay: 0.15s;
+}
+
+.stagger-item:nth-child(4),
+.stagger-item-left:nth-child(4),
+.stagger-item-scale:nth-child(4) {
+  animation-delay: 0.2s;
+}
+
+.stagger-item:nth-child(5),
+.stagger-item-left:nth-child(5),
+.stagger-item-scale:nth-child(5) {
+  animation-delay: 0.25s;
+}
+
+.stagger-item:nth-child(6),
+.stagger-item-left:nth-child(6),
+.stagger-item-scale:nth-child(6) {
+  animation-delay: 0.3s;
+}
+
+.stagger-item:nth-child(7),
+.stagger-item-left:nth-child(7),
+.stagger-item-scale:nth-child(7) {
+  animation-delay: 0.35s;
+}
+
+.stagger-item:nth-child(8),
+.stagger-item-left:nth-child(8),
+.stagger-item-scale:nth-child(8) {
+  animation-delay: 0.4s;
+}
+
+.stagger-item:nth-child(9),
+.stagger-item-left:nth-child(9),
+.stagger-item-scale:nth-child(9) {
+  animation-delay: 0.45s;
+}
+
+.stagger-item:nth-child(10),
+.stagger-item-left:nth-child(10),
+.stagger-item-scale:nth-child(10) {
+  animation-delay: 0.5s;
+}
+
+.stagger-item:nth-child(11),
+.stagger-item-left:nth-child(11),
+.stagger-item-scale:nth-child(11) {
+  animation-delay: 0.55s;
+}
+
+.stagger-item:nth-child(12),
+.stagger-item-left:nth-child(12),
+.stagger-item-scale:nth-child(12) {
+  animation-delay: 0.6s;
+}
+
+.stagger-item:nth-child(13),
+.stagger-item-left:nth-child(13),
+.stagger-item-scale:nth-child(13) {
+  animation-delay: 0.65s;
+}
+
+.stagger-item:nth-child(14),
+.stagger-item-left:nth-child(14),
+.stagger-item-scale:nth-child(14) {
+  animation-delay: 0.7s;
+}
+
+.stagger-item:nth-child(15),
+.stagger-item-left:nth-child(15),
+.stagger-item-scale:nth-child(15) {
+  animation-delay: 0.75s;
+}
+
+.stagger-item:nth-child(16),
+.stagger-item-left:nth-child(16),
+.stagger-item-scale:nth-child(16) {
+  animation-delay: 0.8s;
+}
+
+.stagger-item:nth-child(17),
+.stagger-item-left:nth-child(17),
+.stagger-item-scale:nth-child(17) {
+  animation-delay: 0.85s;
+}
+
+.stagger-item:nth-child(18),
+.stagger-item-left:nth-child(18),
+.stagger-item-scale:nth-child(18) {
+  animation-delay: 0.9s;
+}
+
+.stagger-item:nth-child(19),
+.stagger-item-left:nth-child(19),
+.stagger-item-scale:nth-child(19) {
+  animation-delay: 0.95s;
+}
+
+.stagger-item:nth-child(20),
+.stagger-item-left:nth-child(20),
+.stagger-item-scale:nth-child(20) {
+  animation-delay: 1s;
+}
+
+/* 快速版本 - 更短的延迟间隔 */
+.stagger-fast .stagger-item:nth-child(1) { animation-delay: 0.03s; }
+.stagger-fast .stagger-item:nth-child(2) { animation-delay: 0.06s; }
+.stagger-fast .stagger-item:nth-child(3) { animation-delay: 0.09s; }
+.stagger-fast .stagger-item:nth-child(4) { animation-delay: 0.12s; }
+.stagger-fast .stagger-item:nth-child(5) { animation-delay: 0.15s; }
+.stagger-fast .stagger-item:nth-child(6) { animation-delay: 0.18s; }
+.stagger-fast .stagger-item:nth-child(7) { animation-delay: 0.21s; }
+.stagger-fast .stagger-item:nth-child(8) { animation-delay: 0.24s; }
+.stagger-fast .stagger-item:nth-child(9) { animation-delay: 0.27s; }
+.stagger-fast .stagger-item:nth-child(10) { animation-delay: 0.3s; }
+
+/* 容器标记类 - 用于触发子元素的 stagger 动画 */
+.stagger-list > * {
+  opacity: 0;
+  animation: stagger-in var(--motion-duration-slow) var(--motion-ease-standard) forwards;
+}
+
+.stagger-list > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-list > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger-list > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-list > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger-list > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-list > *:nth-child(6) { animation-delay: 0.3s; }
+.stagger-list > *:nth-child(7) { animation-delay: 0.35s; }
+.stagger-list > *:nth-child(8) { animation-delay: 0.4s; }
+.stagger-list > *:nth-child(9) { animation-delay: 0.45s; }
+.stagger-list > *:nth-child(10) { animation-delay: 0.5s; }
+.stagger-list > *:nth-child(n+11) { animation-delay: 0.55s; }
+

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { CheckCircle, Send, MessageSquare, Clock, AlertTriangle, Pin, Filter, ChevronDown, ChevronUp } from 'lucide-vue-next'
+import { Send, Clock, AlertTriangle, Pin, Filter, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
 import BaseButton from '../../components/ui/BaseButton.vue'
 import BaseSelect from '../../components/ui/BaseSelect.vue'
@@ -18,7 +18,6 @@ const props = defineProps({
 
 const toast = useToastStore()
 const loading = ref(false)
-const activeTab = ref('all')
 const groups = ref([])
 const stats = ref({
   totalQuestions: 0,
@@ -419,7 +418,16 @@ onMounted(() => {
     </div>
 
     <!-- 回复弹窗 -->
-    <div v-if="showReplyModal" class="fixed inset-0 bg-shuimo/20 backdrop-blur-[2px] flex items-center justify-center z-50 p-4" @click.self="showReplyModal = false">
+    <div
+      v-if="showReplyModal"
+      class="fixed inset-0 bg-shuimo/20 backdrop-blur-[2px] flex items-center justify-center z-50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="回复学生问题弹窗"
+      tabindex="-1"
+      @click.self="showReplyModal = false"
+      @keydown.esc="showReplyModal = false"
+    >
       <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl border border-slate-100 animate-scale-in">
         <h3 class="text-lg font-bold text-shuimo mb-4">回复: {{ selectedQuestion?.userName || '学生' }}</h3>
         <div class="bg-slate-50 rounded-xl p-4 mb-4">

@@ -1,13 +1,20 @@
 package com.eduplatform.course.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.course.dto.CourseAuditRequest;
+import com.eduplatform.course.dto.CourseBatchStatusRequest;
 import com.eduplatform.course.dto.CourseDTO;
+import com.eduplatform.course.dto.CourseStatusUpdateRequest;
+import com.eduplatform.course.dto.CourseUpdateRequest;
+import com.eduplatform.course.dto.DuplicateCourseRequest;
 import com.eduplatform.course.entity.Course;
 import com.eduplatform.course.service.CourseCascadeDeleteService;
 import com.eduplatform.course.service.CourseService;
 import com.eduplatform.course.vo.CourseVO;
+import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,6 +34,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/courses")
 @RequiredArgsConstructor
+@Slf4j
 public class CourseController {
 
     @Value("${security.internal-token}")
@@ -126,7 +134,7 @@ public class CourseController {
      */
     @PostMapping
     public Result<String> createCourse(
-            @RequestBody CourseDTO courseDTO,
+            @Valid @RequestBody CourseDTO courseDTO,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 创建课程仅允许教师或管理员，且教师只能以本人身份创建
@@ -147,7 +155,8 @@ public class CourseController {
             courseService.createCourse(courseDTO);
             return Result.success("课程创建成功", null);
         } catch (Exception e) {
-            return Result.error("创建失败: " + e.getMessage());
+            log.error("创建课程失败: teacherId={}", courseDTO != null ? courseDTO.getTeacherId() : null, e);
+            return Result.error("创建失败，请稍后重试");
         }
     }
 
@@ -156,13 +165,13 @@ public class CourseController {
      * 业务原因：课程信息涉及多处展示，统一在服务层完成校验与更新。
      *
      * @param id        课程ID
-     * @param courseDTO 课程数据
+     * @param updateRequest 课程更新数据
      * @return 成功消息
      */
     @PutMapping("/{id}")
     public Result<String> updateCourse(
             @PathVariable("id") Long id,
-            @RequestBody CourseDTO courseDTO,
+            @Valid @RequestBody CourseUpdateRequest updateRequest,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 更新课程仅允许教师或管理员，教师仅可操作本人课程
@@ -170,6 +179,7 @@ public class CourseController {
             return Result.failure(403, "权限不足，仅教师或管理员可更新课程");
         }
 
+        CourseDTO courseDTO = toCourseDTO(updateRequest);
         Long currentUserId = parseUserId(currentUserIdHeader);
         if (!isAdminRole(currentUserRole)) {
             if (!canManageCourse(id, currentUserId, currentUserRole)) {
@@ -183,7 +193,8 @@ public class CourseController {
             courseService.updateCourse(id, courseDTO);
             return Result.success("课程更新成功", null);
         } catch (Exception e) {
-            return Result.error("更新失败: " + e.getMessage());
+            log.error("更新课程失败: courseId={}", id, e);
+            return Result.error("更新失败，请稍后重试");
         }
     }
 
@@ -194,7 +205,7 @@ public class CourseController {
     @PutMapping("/{id}/status")
     public Result<String> updateStatus(
             @PathVariable("id") Long id,
-            @RequestBody Map<String, Object> body,
+            @Valid @RequestBody CourseStatusUpdateRequest body,
             @RequestHeader(value = "X-User-Id", required = false) String operatorIdStr,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestHeader(value = "X-User-Name", required = false) String operatorName,
@@ -205,7 +216,7 @@ public class CourseController {
         }
 
         try {
-            String status = body.get("status").toString();
+            String status = body.getStatus();
             Long operatorId = operatorIdStr != null ? Long.parseLong(operatorIdStr) : null;
             if (operatorId != null && operatorName != null) {
                 courseService.updateStatusWithAudit(id, status, operatorId, operatorName, ipAddress);
@@ -214,7 +225,8 @@ public class CourseController {
             }
             return Result.success("状态更新成功", null);
         } catch (Exception e) {
-            return Result.error("更新失败: " + e.getMessage());
+            log.error("更新课程状态失败: courseId={}", id, e);
+            return Result.error("状态更新失败，请稍后重试");
         }
     }
 
@@ -241,7 +253,8 @@ public class CourseController {
             courseService.submitReview(id);
             return Result.success("已提交审核", null);
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            log.error("提交课程审核失败: courseId={}", id, e);
+            return Result.error("提交审核失败，请稍后重试");
         }
     }
 
@@ -268,7 +281,8 @@ public class CourseController {
             courseService.withdrawReview(id);
             return Result.success("已撤回审核", null);
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            log.error("撤回课程审核失败: courseId={}", id, e);
+            return Result.error("撤回审核失败，请稍后重试");
         }
     }
 
@@ -279,7 +293,7 @@ public class CourseController {
     @PostMapping("/{id}/audit")
     public Result<String> auditCourse(
             @PathVariable("id") Long id,
-            @RequestBody Map<String, Object> body,
+            @Valid @RequestBody CourseAuditRequest body,
             @RequestHeader(value = "X-User-Id", required = false) String operatorIdStr,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestHeader(value = "X-User-Name", required = false) String operatorName,
@@ -291,9 +305,9 @@ public class CourseController {
         }
 
         try {
-            String action = body.get("action").toString();
-            String remark = body.get("remark") != null ? body.get("remark").toString() : "";
-            Long auditByFromBody = body.get("auditBy") != null ? Long.parseLong(body.get("auditBy").toString()) : null;
+            String action = body.getAction();
+            String remark = body.getRemark() != null ? body.getRemark() : "";
+            Long auditByFromBody = body.getAuditBy();
 
             // 优先使用网关注入身份，避免信任请求体中的 auditBy
             Long operatorId = parseUserId(operatorIdStr);
@@ -307,7 +321,8 @@ public class CourseController {
             }
             return Result.success("审核完成", null);
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            log.error("审核课程失败: courseId={}", id, e);
+            return Result.error("审核失败，请稍后重试");
         }
     }
 
@@ -332,7 +347,8 @@ public class CourseController {
             courseService.offlineCourse(id, operatorId, operatorName, ipAddress);
             return Result.success("课程已下线", null);
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            log.error("强制下线课程失败: courseId={}", id, e);
+            return Result.error("下线失败，请稍后重试");
         }
     }
 
@@ -400,7 +416,8 @@ public class CourseController {
             courseCascadeDeleteService.cascadeDeleteCourse(id);
             return Result.success("课程及相关数据已删除", null);
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            log.error("删除课程失败: courseId={}", id, e);
+            return Result.error("删除失败，请稍后重试");
         }
     }
 
@@ -420,7 +437,8 @@ public class CourseController {
             courseCascadeDeleteService.deleteUserRelatedData(userId, role);
             return Result.success("用户相关课程数据已删除", null);
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            log.error("删除用户相关课程数据失败: userId={}, role={}", userId, role, e);
+            return Result.error("删除失败，请稍后重试");
         }
     }
 
@@ -497,7 +515,7 @@ public class CourseController {
      */
     @PostMapping("/batch-status")
     public Result<Map<String, Object>> batchUpdateStatus(
-            @RequestBody Map<String, Object> body,
+            @Valid @RequestBody CourseBatchStatusRequest body,
             @RequestHeader(value = "X-User-Id", required = false) String operatorIdStr,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
             @RequestHeader(value = "X-User-Name", required = false) String operatorName,
@@ -508,19 +526,8 @@ public class CourseController {
         }
 
         try {
-            @SuppressWarnings("unchecked")
-            List<Number> courseIdNumbers = (List<Number>) body.get("courseIds");
-            List<Long> courseIds = courseIdNumbers.stream()
-                    .map(Number::longValue)
-                    .toList();
-            String status = (String) body.get("status");
-
-            if (courseIds == null || courseIds.isEmpty()) {
-                return Result.error("课程ID列表不能为空");
-            }
-            if (status == null || status.isEmpty()) {
-                return Result.error("目标状态不能为空");
-            }
+            List<Long> courseIds = body.getCourseIds();
+            String status = body.getStatus();
 
             Long operatorId = operatorIdStr != null ? Long.parseLong(operatorIdStr) : null;
 
@@ -529,7 +536,8 @@ public class CourseController {
 
             return Result.success("批量更新完成", result);
         } catch (Exception e) {
-            return Result.error("批量更新失败: " + e.getMessage());
+            log.error("批量更新课程状态失败: courseCount={}", body.getCourseIds() != null ? body.getCourseIds().size() : 0, e);
+            return Result.error("批量更新失败，请稍后重试");
         }
     }
 
@@ -543,7 +551,7 @@ public class CourseController {
     @PostMapping("/{id}/duplicate")
     public Result<CourseVO> duplicateCourse(
             @PathVariable("id") Long id,
-            @RequestBody(required = false) Map<String, Object> body,
+            @Valid @RequestBody(required = false) DuplicateCourseRequest body,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 复制课程仅允许教师或管理员，教师仅可复制本人课程
@@ -557,12 +565,10 @@ public class CourseController {
         }
 
         try {
-            String newTitle = body != null ? (String) body.get("title") : null;
+            String newTitle = body != null ? body.getTitle() : null;
             Long teacherId = null;
             if (isAdminRole(currentUserRole)) {
-                teacherId = body != null && body.get("teacherId") != null
-                        ? Long.parseLong(body.get("teacherId").toString())
-                        : null;
+                teacherId = body != null ? body.getTeacherId() : null;
             } else {
                 // 非管理员强制复制到当前教师名下，避免伪造 teacherId
                 teacherId = currentUserId;
@@ -571,7 +577,8 @@ public class CourseController {
             Course newCourse = courseService.duplicateCourse(id, newTitle, teacherId);
             return Result.success("课程复制成功", courseService.convertToVO(newCourse));
         } catch (Exception e) {
-            return Result.error("复制失败: " + e.getMessage());
+            log.error("复制课程失败: courseId={}", id, e);
+            return Result.error("复制失败，请稍后重试");
         }
     }
 
@@ -637,5 +644,21 @@ public class CourseController {
                 && "teacher".equalsIgnoreCase(currentUserRole)
                 && currentUserId != null
                 && currentUserId.equals(targetTeacherId);
+    }
+
+    /**
+     * 将更新请求转换为服务层沿用的 CourseDTO。
+     */
+    private CourseDTO toCourseDTO(CourseUpdateRequest updateRequest) {
+        CourseDTO courseDTO = new CourseDTO();
+        if (updateRequest == null) {
+            return courseDTO;
+        }
+        courseDTO.setTitle(updateRequest.getTitle());
+        courseDTO.setDescription(updateRequest.getDescription());
+        courseDTO.setSubject(updateRequest.getSubject());
+        courseDTO.setCoverImage(updateRequest.getCoverImage());
+        courseDTO.setTeacherId(updateRequest.getTeacherId());
+        return courseDTO;
     }
 }

@@ -1,0 +1,28 @@
+
+> frontend@1.0.0 test
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90mC:/Users/XuShuang/Desktop/demo/frontend[39m
+
+ [32m✓[39m src/utils/datetime.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+[90mstdout[2m | src/services/websocket.test.ts[2m > [22m[2mwebsocket service[2m > [22m[2m握手 URL 不应携带 token，连接后应发送 AUTH 消息
+[22m[39mWebSocket 连接成功
+
+[90mstdout[2m | src/services/websocket.test.ts[2m > [22m[2mwebsocket service[2m > [22m[2m主动断开后不应触发自动重连
+[22m[39mWebSocket 连接关闭
+
+[90mstdout[2m | src/services/websocket.test.ts[2m > [22m[2mwebsocket service[2m > [22m[2m异常断开时在会话仍有效的情况下应自动重连
+[22m[39mWebSocket 连接关闭
+
+[90mstdout[2m | src/services/websocket.test.ts[2m > [22m[2mwebsocket service[2m > [22m[2m异常断开后若会话失效则不应重连
+[22m[39mWebSocket 连接关闭
+
+ [32m✓[39m src/services/websocket.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m src/utils/concurrency.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 47[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m11 passed[39m[22m[90m (11)[39m
+[2m   Start at [22m 22:14:32
+[2m   Duration [22m 861ms[2m (transform 205ms, setup 0ms, import 262ms, tests 128ms, environment 2ms)[22m
+

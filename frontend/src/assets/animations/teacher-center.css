@@ -1,0 +1,277 @@
+/* 教师中心动效层：教师端页面专用动画与交互效果 */
+/* ===== 教师中心增强动效 ===== */
+
+/* 统计卡片数字脉冲高亮 */
+@keyframes number-pulse {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: none;
+  }
+  50% {
+    opacity: 0.9;
+    text-shadow: 0 0 20px currentColor;
+  }
+}
+
+.animate-number-pulse {
+  animation: number-pulse var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+}
+
+/* 统计卡片悬停时数字高亮 */
+@keyframes stat-number-glow {
+  0% {
+    filter: brightness(1);
+  }
+  100% {
+    filter: brightness(1.1);
+  }
+}
+
+/* 侧边栏滑动指示器 */
+@keyframes slide-indicator {
+  from {
+    transform: translateY(var(--from-y, 0));
+  }
+  to {
+    transform: translateY(var(--to-y, 0));
+  }
+}
+
+.slide-indicator {
+  transition: transform var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+/* 页面切换 - 向上滑动 */
+@keyframes page-slide-up-enter {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes page-slide-up-leave {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+/* 页面切换 - 向下滑动 */
+@keyframes page-slide-down-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes page-slide-down-leave {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+/* 日历今日脉冲 */
+@keyframes today-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(136, 173, 166, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(136, 173, 166, 0);
+  }
+}
+
+.animate-today-pulse {
+  animation: today-pulse var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+}
+
+/* 月份切换滑动 */
+@keyframes calendar-slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes calendar-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-calendar-slide-left {
+  animation: calendar-slide-left var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+}
+
+.animate-calendar-slide-right {
+  animation: calendar-slide-right var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+}
+
+/* Tab 滑动下划线指示器 */
+@keyframes tab-underline-slide {
+  from {
+    transform: translateX(var(--tab-from-x, 0));
+    width: var(--tab-from-width, 0);
+  }
+  to {
+    transform: translateX(var(--tab-to-x, 0));
+    width: var(--tab-to-width, 0);
+  }
+}
+
+.tab-indicator {
+  /* 动效优化：仅过渡合成层属性，降低主线程布局压力 */
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-standard),
+    opacity var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+/* 快捷按钮悬停弹跳 */
+@keyframes icon-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.group:hover .icon-bounce {
+  animation: icon-bounce var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+/* 通知铃铛摇晃 */
+@keyframes bell-shake {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: rotate(-8deg);
+  }
+  20%, 40%, 60%, 80% {
+    transform: rotate(8deg);
+  }
+}
+
+.animate-bell-shake {
+  animation: bell-shake var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+/* 点击涟漪效果增强 */
+@keyframes ripple-expand {
+  0% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.ripple-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-effect::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  transform: translate(-50%, -50%) scale(0);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ripple-effect:active::before {
+  animation: ripple-expand var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+/* 骨架屏流光效果增强 (GPU Accelerated) */
+.skeleton-shimmer {
+  background-color: #f0f0f0;
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: translateX(-100%);
+  animation: shimmer-transform var(--motion-duration-medium) linear infinite;
+}
+
+/* 卡片悬停装饰图标效果 */
+.stat-card-icon {
+  transition:
+    transform var(--motion-duration-slow) var(--motion-ease-standard),
+    opacity var(--motion-duration-slow) var(--motion-ease-standard);
+}
+
+.group:hover .stat-card-icon {
+  transform: scale(1.15) rotate(5deg);
+  opacity: 0.2;
+}
+
+/* 菜单项悬停光效 */
+@keyframes menu-glow {
+  0% {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.menu-item-glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.menu-item-glow:hover::after {
+  animation: menu-glow var(--motion-duration-medium) var(--motion-ease-standard);
+}

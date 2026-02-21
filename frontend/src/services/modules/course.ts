@@ -1,4 +1,4 @@
-import { request, clearCache, API_BASE } from '../request'
+import { request, requestBlob, clearCache } from '../request'
 
 export const courseAPI = {
     getAll: (params: any = {}) => {
@@ -6,7 +6,7 @@ export const courseAPI = {
         return request(`/courses?${query}`)
     },
 
-    getPublished: (subject: string) => {
+    getPublished: (subject?: string) => {
         const query = subject ? `?subject=${subject}` : ''
         return request(`/courses/published${query}`)
     },
@@ -64,20 +64,12 @@ export const courseAPI = {
         }),
 
     exportCSV: async () => {
-        const token = sessionStorage.getItem('token')
-        const response = await fetch(`${API_BASE}/courses/export?format=csv`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-        if (!response.ok) throw new Error('导出失败')
-        const blob = await response.blob()
+        // 统一走请求层，复用鉴权、错误处理和埋点逻辑
+        const { blob, filename } = await requestBlob('/courses/export?format=csv')
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        const disposition = response.headers.get('Content-Disposition')
-        const filename = disposition?.match(/filename="?(.+)"?/)?.[1] || `courses_${Date.now()}.csv`
-        a.download = filename
+        a.download = filename || `courses_${Date.now()}.csv`
         document.body.appendChild(a)
         a.click()
         window.URL.revokeObjectURL(url)

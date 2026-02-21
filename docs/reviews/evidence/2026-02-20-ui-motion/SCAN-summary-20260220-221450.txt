@@ -1,0 +1,10 @@
+timestamp=2026-02-20 22:14:50
+transition-all=182
+infinite=36
+linear-infinite=6
+inline-animation-style=56
+@keyframes=114
+will-change=8
+backdrop-blur=74
+unknown-color-token=12
+low-contrast-text=124

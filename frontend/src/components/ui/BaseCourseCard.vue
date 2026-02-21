@@ -1,16 +1,13 @@
 <script setup>
-import { computed } from 'vue'
 import { getImageUrl } from '../../services/api'
 import { BookOpen, Play, Star, Users } from 'lucide-vue-next'
 
-const props = defineProps({
+defineProps({
   course: {
     type: Object,
     required: true
   }
 })
-
-const emit = defineEmits(['click'])
 </script>
 
 <template>

@@ -3,11 +3,17 @@ package com.eduplatform.user.controller;
 import com.eduplatform.common.result.Result;
 import com.eduplatform.user.dto.LoginRequest;
 import com.eduplatform.user.dto.LoginResponse;
+import com.eduplatform.user.dto.PasswordResetConfirmRequest;
+import com.eduplatform.user.dto.PasswordResetIssueRequest;
+import com.eduplatform.user.dto.PasswordResetTokenResponse;
 import com.eduplatform.user.dto.RegisterRequest;
 import com.eduplatform.user.dto.ResetPasswordRequest;
+import com.eduplatform.user.service.PasswordResetService;
 import com.eduplatform.user.service.UserService;
 import com.eduplatform.user.service.UserSessionService;
 import com.eduplatform.user.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -27,6 +33,7 @@ public class AuthController {
 
     private final UserService userService;
     private final UserSessionService sessionService;
+    private final PasswordResetService passwordResetService;
     private final JwtUtil jwtUtil;
 
     /**
@@ -37,7 +44,7 @@ public class AuthController {
      * @return 包含用户信息及 Token 的响应对象
      */
     @PostMapping("/login")
-    public Result<LoginResponse> login(@RequestBody LoginRequest request) {
+    public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = userService.login(request);
         return Result.success("登录成功", response);
     }
@@ -50,7 +57,7 @@ public class AuthController {
      * @return 登录成功的响应对象
      */
     @PostMapping("/register")
-    public Result<LoginResponse> register(@RequestBody RegisterRequest request) {
+    public Result<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
         LoginResponse response = userService.register(request);
         return Result.success("注册成功", response);
     }
@@ -100,8 +107,10 @@ public class AuthController {
             userService.countTotal();
             health.put("database", "UP");
         } catch (Exception e) {
+            log.warn("健康检查数据库探测失败", e);
             health.put("database", "DOWN");
-            health.put("db_error", e.getMessage());
+            // 对外仅给出通用状态，避免泄露数据库连接与SQL细节
+            health.put("db_error", "database unavailable");
         }
 
         // 计算运行时长
@@ -211,13 +220,54 @@ public class AuthController {
     }
 
     /**
-     * 账户密码重置
-     * 校验验证逻辑（如手机/邮件）正确后执行数据库密码加密覆盖。
+     * 兼容重置密码接口（仅管理员）。
+     * 说明：普通用户必须使用公开的两步重置流程。
      */
     @PostMapping("/reset-password")
-    public Result<Boolean> resetPassword(@RequestBody ResetPasswordRequest request) {
+    public Result<Boolean> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可重置密码");
+        }
         userService.resetPassword(request);
         return Result.success("管理员已重置您的登录密码", true);
+    }
+
+    /**
+     * 公开接口：申请一次性重置令牌。
+     */
+    @PostMapping("/password-reset/request")
+    public Result<PasswordResetTokenResponse> issuePasswordResetToken(
+            @Valid @RequestBody PasswordResetIssueRequest request,
+            HttpServletRequest httpServletRequest) {
+        PasswordResetService.PasswordResetIssueResult issueResult = passwordResetService.issueResetToken(
+                request.getEmail(),
+                request.getRealName(),
+                resolveClientIp(httpServletRequest));
+        if (issueResult.getStatus() == PasswordResetService.PasswordResetStatus.RATE_LIMITED) {
+            return Result.failure(429, "请求过于频繁，请稍后再试");
+        }
+        return Result.success(
+                "如信息匹配，重置令牌已生成",
+                new PasswordResetTokenResponse(issueResult.getToken()));
+    }
+
+    /**
+     * 公开接口：使用一次性令牌确认重置。
+     */
+    @PostMapping("/password-reset/confirm")
+    public Result<Boolean> confirmPasswordReset(
+            @Valid @RequestBody PasswordResetConfirmRequest request,
+            HttpServletRequest httpServletRequest) {
+        PasswordResetService.PasswordResetStatus status = passwordResetService.confirmResetByToken(
+                request.getResetToken(),
+                request.getNewPassword(),
+                resolveClientIp(httpServletRequest));
+        if (status == PasswordResetService.PasswordResetStatus.RATE_LIMITED) {
+            return Result.failure(429, "请求过于频繁，请稍后再试");
+        }
+        return Result.success("如令牌有效，密码重置已受理", true);
     }
 
     /**
@@ -249,5 +299,27 @@ public class AuthController {
             return true;
         }
         return currentUserId != null && currentUserId.equals(targetUserId);
+    }
+
+    /**
+     * 解析来源 IP，用于限流键构建。
+     */
+    private String resolveClientIp(HttpServletRequest request) {
+        if (request == null) {
+            return "unknown";
+        }
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isBlank()) {
+            return xRealIp.trim();
+        }
+        String remoteAddr = request.getRemoteAddr();
+        if (remoteAddr == null || remoteAddr.isBlank()) {
+            return "unknown";
+        }
+        return remoteAddr;
     }
 }
