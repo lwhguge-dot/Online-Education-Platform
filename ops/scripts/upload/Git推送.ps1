@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$Mode,
   [string]$CommitMessage,
   [string]$Confirm
@@ -25,7 +25,86 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
   exit 1
 }
 
-Write-Host (Z '[1/7] \u68c0\u67e5\u6587\u4ef6\u53d8\u52a8...')
+# 将当前 HEAD 直接推送到远端 test 分支；远端不存在时会自动创建。
+function Push-ToTestBranch([string]$targetBranch) {
+  Write-Host ((Z '[\u63d0\u793a] \u5c06\u5f53\u524d\u63d0\u4ea4\u63a8\u9001\u5230\u8fdc\u7aef\u5206\u652f\uff1a') + "origin/$targetBranch")
+  # 使用 HEAD:refs/heads/<branch>，避免切换本地分支即可完成推送。
+  git push origin "HEAD:refs/heads/$targetBranch"
+}
+
+# 自动创建或复用 PR：固定从 test 分支合并到 main，便于先看 CI 再决定是否合并。
+function Ensure-PullRequest([string]$headBranch, [string]$sourceBranch, [string]$prTitle) {
+  if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+    Write-Host (Z '[\u8b66\u544a] \u672a\u68c0\u6d4b\u5230 gh CLI\uff0c\u5df2\u8df3\u8fc7 PR \u81ea\u52a8\u521b\u5efa\u3002')
+    return $null
+  }
+
+  gh auth status *> $null
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host (Z '[\u8b66\u544a] gh \u672a\u767b\u5f55\uff0c\u5df2\u8df3\u8fc7 PR \u81ea\u52a8\u521b\u5efa\u3002')
+    return $null
+  }
+
+  # 先查是否已存在同分支到 main 的打开 PR，避免重复创建。
+  $existingPrUrl = $null
+  $existingJson = gh pr list --head $headBranch --base main --state open --json number,url,title --limit 1 2>$null
+  if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($existingJson)) {
+    try {
+      $existing = $existingJson | ConvertFrom-Json
+      if ($existing -is [System.Array]) {
+        if ($existing.Count -gt 0) {
+          $existingPrUrl = $existing[0].url
+        }
+      } elseif ($null -ne $existing) {
+        $existingPrUrl = $existing.url
+      }
+    } catch {
+      $existingPrUrl = $null
+    }
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($existingPrUrl)) {
+    Write-Host ((Z '[\u63d0\u793a] \u5df2\u5b58\u5728\u6253\u5f00\u7684 PR\uff1a') + $existingPrUrl)
+    return $existingPrUrl
+  }
+
+  $finalPrTitle = if ([string]::IsNullOrWhiteSpace($prTitle)) { "chore: test branch update" } else { $prTitle }
+  $prBody = "自动由 Git推送脚本创建。`n`n- 本地来源分支: $sourceBranch`n- PR 来源分支: $headBranch`n- 目标分支: main`n`n请在 GitHub 检查 CI 通过后再手动合并到 main。"
+
+  $createdOutput = gh pr create --base main --head $headBranch --title "$finalPrTitle" --body "$prBody" 2>$null
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host (Z '[\u8b66\u544a] PR \u81ea\u52a8\u521b\u5efa\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u624b\u52a8\u5728 GitHub \u4e0a\u521b\u5efa\u3002')
+    return $null
+  }
+
+  $createdPrUrl = (($createdOutput -join "`n").Trim())
+  if ([string]::IsNullOrWhiteSpace($createdPrUrl)) {
+    Write-Host (Z '[\u63d0\u793a] PR \u521b\u5efa\u6210\u529f\u3002')
+    return $null
+  }
+  Write-Host ((Z '[\u63d0\u793a] PR \u521b\u5efa\u6210\u529f\uff1a') + $createdPrUrl)
+  return $createdPrUrl
+}
+
+# 获取当前本地分支名，用于展示与 PR 说明。
+function Get-CurrentBranch {
+  $branch = (git branch --show-current 2>$null).Trim()
+  if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($branch)) {
+    Write-Host (Z '[\u9519\u8bef] \u65e0\u6cd5\u8bc6\u522b\u5f53\u524d Git \u5206\u652f\uff0c\u8bf7\u5148\u68c0\u67e5\u4ed3\u5e93\u72b6\u6001\u3002')
+    Read-Host (Z '\u6309\u56de\u8f66\u9000\u51fa')
+    exit 1
+  }
+  return $branch
+}
+
+$sourceBranch = Get-CurrentBranch
+$targetBranch = 'test'
+
+Write-Host ((Z '[\u63d0\u793a] \u5f53\u524d\u672c\u5730\u5206\u652f\uff1a') + $sourceBranch)
+Write-Host ((Z '[\u63d0\u793a] \u672c\u6b21\u76ee\u6807\u63a8\u9001\u5206\u652f\uff1a') + $targetBranch)
+Write-Host ""
+
+Write-Host (Z '[1/8] \u68c0\u67e5\u6587\u4ef6\u53d8\u52a8...')
 Write-Host ""
 $status = @(git status --short)
 $status | ForEach-Object { Write-Host $_ }
@@ -48,10 +127,21 @@ if ($unstaged -eq 0 -and $staged -eq 0 -and $untracked -eq 0) {
     $retryPushText = if ($null -eq $retryPush) { '' } else { $retryPush.ToString() }
     if ($retryPushText.Trim().ToUpperInvariant() -eq "Y") {
         Write-Host ""
-        Write-Host (Z '[6/7] \u6b63\u5728\u91cd\u8bd5\u63a8\u9001...')
-        git push
+        Write-Host (Z '[6/8] \u6b63\u5728\u91cd\u8bd5\u63a8\u9001...')
+        Push-ToTestBranch -targetBranch $targetBranch
         if ($LASTEXITCODE -eq 0) {
-            Write-Host (Z '[\u5b8c\u6210] \u63a8\u9001\u6210\u529f\u3002')
+            Write-Host (Z '[7/8] \u81ea\u52a8\u521b\u5efa/\u590d\u7528 PR...')
+            $retryPrTitle = "chore: sync $targetBranch"
+            $retryPrUrl = Ensure-PullRequest -headBranch $targetBranch -sourceBranch $sourceBranch -prTitle $retryPrTitle
+            Write-Host ""
+            Write-Host (Z '[8/8] \u5b8c\u6210\u3002')
+            Write-Host "=============================="
+            Write-Host (Z '  \u63a8\u9001\u6210\u529f')
+            Write-Host "=============================="
+            Write-Host (Z '\u4ed3\u5e93\u5730\u5740') ": https://github.com/lwhguge-dot/Online-Education-Platform"
+            if (-not [string]::IsNullOrWhiteSpace($retryPrUrl)) {
+              Write-Host (Z 'PR \u5730\u5740') ": $retryPrUrl"
+            }
             Read-Host (Z '\u6309\u56de\u8f66\u9000\u51fa')
             exit 0
         }
@@ -62,7 +152,7 @@ if ($unstaged -eq 0 -and $staged -eq 0 -and $untracked -eq 0) {
   exit 0
 }
 
-Write-Host (Z '[2/7] \u81ea\u52a8\u751f\u6210\u672c\u6b21\u66f4\u65b0\u8bf4\u660e...')
+Write-Host (Z '[2/8] \u81ea\u52a8\u751f\u6210\u672c\u6b21\u66f4\u65b0\u8bf4\u660e...')
 
 $summary = New-Object System.Collections.Generic.List[string]
 function Add-Summary([string]$text) {
@@ -90,7 +180,7 @@ Write-Host $autoSummary
 Write-Host "==============================="
 Write-Host ""
 
-Write-Host (Z '[3/7] \u8bf7\u9009\u62e9\u63d0\u4ea4\u4fe1\u606f\u6765\u6e90\uff1a')
+Write-Host (Z '[3/8] \u8bf7\u9009\u62e9\u63d0\u4ea4\u4fe1\u606f\u6765\u6e90\uff1a')
 Write-Host (Z '  1. \u4f7f\u7528\u81ea\u52a8\u66f4\u65b0\u8bf4\u660e\uff08\u63a8\u8350\uff09')
 Write-Host (Z '  2. \u7f16\u8f91\u81ea\u52a8\u66f4\u65b0\u8bf4\u660e')
 Write-Host (Z '  3. \u5b8c\u5168\u624b\u52a8\u8f93\u5165')
@@ -152,10 +242,10 @@ if ($confirmInput.ToUpperInvariant() -ne "Y") {
 }
 
 Write-Host ""
-Write-Host (Z '[4/7] \u6dfb\u52a0\u53d8\u52a8\u6587\u4ef6...')
+Write-Host (Z '[4/8] \u6dfb\u52a0\u53d8\u52a8\u6587\u4ef6...')
 git add .
 
-Write-Host (Z '[5/7] \u63d0\u4ea4\u4e2d...')
+Write-Host (Z '[5/8] \u63d0\u4ea4\u4e2d...')
 git commit -m "$commitMsg"
 if ($LASTEXITCODE -ne 0) {
   Write-Host (Z '\u63d0\u4ea4\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u9519\u8bef\u4fe1\u606f\u3002')
@@ -164,8 +254,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ""
-Write-Host (Z '[6/7] \u63a8\u9001\u5230 GitHub...')
-git push
+Write-Host (Z '[6/8] \u63a8\u9001\u5230 GitHub...')
+Push-ToTestBranch -targetBranch $targetBranch
 if ($LASTEXITCODE -ne 0) {
   Write-Host (Z '\u63a8\u9001\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u7f51\u7edc\u6216\u8fdc\u7aef\u5206\u652f\u51b2\u7a81\u3002')
   Read-Host (Z '\u6309\u56de\u8f66\u9000\u51fa')
@@ -173,10 +263,17 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ""
-Write-Host (Z '[7/7] \u5b8c\u6210\u3002')
+Write-Host (Z '[7/8] \u81ea\u52a8\u521b\u5efa/\u590d\u7528 PR...')
+$prUrl = Ensure-PullRequest -headBranch $targetBranch -sourceBranch $sourceBranch -prTitle $commitMsg
+
+Write-Host ""
+Write-Host (Z '[8/8] \u5b8c\u6210\u3002')
 Write-Host "=============================="
 Write-Host (Z '  \u63a8\u9001\u6210\u529f')
 Write-Host "=============================="
 Write-Host (Z '\u4ed3\u5e93\u5730\u5740') ": https://github.com/lwhguge-dot/Online-Education-Platform"
+if (-not [string]::IsNullOrWhiteSpace($prUrl)) {
+  Write-Host (Z 'PR \u5730\u5740') ": $prUrl"
+}
 Write-Host ""
 Read-Host (Z '\u6309\u56de\u8f66\u9000\u51fa')
