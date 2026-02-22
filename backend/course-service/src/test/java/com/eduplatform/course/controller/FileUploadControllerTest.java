@@ -48,7 +48,7 @@ class FileUploadControllerTest {
     @Test
     @DisplayName("上传视频-异常信息不应外泄")
     void uploadVideoShouldHideInternalExceptionMessage() throws Exception {
-        when(multipartFile.getOriginalFilename()).thenReturn("demo.mp4");
+        // 控制器日志已做脱敏，不再依赖原始文件名。
         when(fileUploadService.uploadVideo(multipartFile)).thenThrow(new RuntimeException("minio timeout"));
 
         Result<Map<String, String>> result = fileUploadController.uploadVideo(multipartFile, "teacher");

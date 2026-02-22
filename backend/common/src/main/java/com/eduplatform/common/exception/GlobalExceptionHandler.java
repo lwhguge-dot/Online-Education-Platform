@@ -54,7 +54,7 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .map(FieldError::getDefaultMessage)
                 .orElse("请求参数校验失败");
-        log.warn("参数校验失败, fieldErrorCount={}, traceId={}", e.getBindingResult().getFieldErrorCount(), traceId);
+        log.warn("参数校验失败", e);
         return failureWithTraceId(400, errorMessage, traceId);
     }
 
@@ -68,7 +68,7 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .map(FieldError::getDefaultMessage)
                 .orElse("请求参数校验失败");
-        log.warn("参数绑定失败, fieldErrorCount={}, traceId={}", e.getBindingResult().getFieldErrorCount(), traceId);
+        log.warn("参数绑定失败", e);
         return failureWithTraceId(400, errorMessage, traceId);
     }
 
@@ -85,7 +85,7 @@ public class GlobalExceptionHandler {
         if (errorMessage.isBlank()) {
             errorMessage = "请求参数校验失败";
         }
-        log.warn("约束校验失败, violationCount={}, traceId={}", e.getConstraintViolations().size(), traceId);
+        log.warn("约束校验失败", e);
         return failureWithTraceId(400, errorMessage, traceId);
     }
 
@@ -96,7 +96,7 @@ public class GlobalExceptionHandler {
     public Result<String> handleHttpMessageNotReadableException(HttpMessageNotReadableException e,
             HttpServletRequest request) {
         String traceId = resolveTraceId(request);
-        log.warn("请求体解析失败, traceId={}", traceId, e);
+        log.warn("请求体解析失败", e);
         return failureWithTraceId(400, "请求体格式错误，请检查字段类型与结构", traceId);
     }
 
@@ -106,7 +106,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public Result<String> handleRuntimeException(RuntimeException e, HttpServletRequest request) {
         String traceId = resolveTraceId(request);
-        log.error("发生业务异常, traceId={}", traceId, e);
+        log.error("发生业务异常", e);
         return failureWithTraceId(500, "请求处理失败，请稍后重试", traceId);
     }
 
@@ -116,7 +116,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public Result<String> handleException(Exception e, HttpServletRequest request) {
         String traceId = resolveTraceId(request);
-        log.error("发生系统异常, traceId={}", traceId, e);
+        log.error("发生系统异常", e);
         return failureWithTraceId(500, "系统繁忙，请稍后重试", traceId);
     }
 
