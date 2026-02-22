@@ -3,7 +3,7 @@
 ## 1. 作用范围
 - 仅使用当前项目本地目录：`.codex/skills`
 - 不修改全局目录：`$HOME/.codex/skills`
-- `.codex/` 默认保持在 `.gitignore` 中，不上传远端仓库
+- `.codex/skills` 纳入仓库版本管理，作为项目级 skill 的唯一事实来源
 
 ## 2. 已安装 Skill 清单
 
