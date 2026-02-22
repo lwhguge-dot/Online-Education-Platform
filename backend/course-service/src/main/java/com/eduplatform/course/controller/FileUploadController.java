@@ -40,7 +40,8 @@ public class FileUploadController {
             result.put("originalName", file.getOriginalFilename());
             return Result.success("视频上传成功", result);
         } catch (Exception e) {
-            log.error("上传课程视频失败: file={}", file != null ? file.getOriginalFilename() : null, e);
+            // 安全要求：避免把用户可控文件名写入日志，防止日志注入。
+            log.error("上传课程视频失败", e);
             return Result.error("上传失败，请稍后重试");
         }
     }
@@ -62,7 +63,7 @@ public class FileUploadController {
             result.put("originalName", file.getOriginalFilename());
             return Result.success("图片上传成功", result);
         } catch (Exception e) {
-            log.error("上传课程图片失败: file={}", file != null ? file.getOriginalFilename() : null, e);
+            log.error("上传课程图片失败", e);
             return Result.error("上传失败，请稍后重试");
         }
     }
@@ -84,7 +85,7 @@ public class FileUploadController {
             result.put("originalName", file.getOriginalFilename());
             return Result.success("文档上传成功", result);
         } catch (Exception e) {
-            log.error("上传课程文档失败: file={}", file != null ? file.getOriginalFilename() : null, e);
+            log.error("上传课程文档失败", e);
             return Result.error("上传失败，请稍后重试");
         }
     }
@@ -106,7 +107,7 @@ public class FileUploadController {
             }
             return Result.error("文件删除失败");
         } catch (Exception e) {
-            log.error("删除课程资源失败: path={}", path, e);
+            log.error("删除课程资源失败", e);
             return Result.error("删除失败，请稍后重试");
         }
     }

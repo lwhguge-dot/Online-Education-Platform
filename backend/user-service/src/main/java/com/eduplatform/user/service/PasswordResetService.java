@@ -163,7 +163,8 @@ public class PasswordResetService {
             try {
                 redisTemplate.delete(tokenKey);
             } catch (Exception e) {
-                log.debug("删除重置令牌失败，tokenKey={}", tokenKey, e);
+                // 安全要求：不记录令牌键值，避免敏感信息泄露。
+                log.debug("删除重置令牌失败", e);
             }
         }
     }
@@ -213,7 +214,7 @@ public class PasswordResetService {
             return count > maxAllowed;
         } catch (Exception e) {
             // Redis 异常时采取安全失败策略，避免被无限重试绕过。
-            log.warn("密码重置限流检查失败，按限流处理: key={}", key, e);
+            log.warn("密码重置限流检查失败，按限流处理", e);
             return true;
         }
     }
@@ -265,4 +266,3 @@ public class PasswordResetService {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 }
-

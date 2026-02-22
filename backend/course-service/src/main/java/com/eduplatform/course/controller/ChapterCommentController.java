@@ -312,14 +312,15 @@ public class ChapterCommentController {
             return Result.failure(401, "身份认证失败");
         }
 
-        log.info("添加屏蔽词, word={}, scope={}, courseId={}", word, scope, courseId);
+        // 安全要求：避免在日志里输出原始敏感词内容，防止日志注入。
+        log.info("添加屏蔽词请求已接收");
 
         try {
             BlockedWordVO blockedWord = blockedWordService.convertToVO(
                     blockedWordService.addWord(word, scope, courseId, createdBy));
             return Result.success("添加成功", blockedWord);
         } catch (Exception e) {
-            log.warn("添加屏蔽词失败: word={}, scope={}, courseId={}", word, scope, courseId, e);
+            log.warn("添加屏蔽词失败", e);
             return Result.failure(400, "添加失败，请检查请求后重试");
         }
     }

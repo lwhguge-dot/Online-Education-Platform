@@ -49,7 +49,8 @@ public class NotificationController {
         String content = request.getContent();
         String type = StringUtils.hasText(request.getType()) ? request.getType() : "NOTIFICATION";
 
-        log.info("发送通知: userId={}, title={}, type={}", userId, title, type);
+        // 安全要求：日志避免输出用户输入正文，防止日志注入。
+        log.info("发送通知请求已接收");
 
         // 通过 WebSocket 发送实时通知
         notificationHandler.sendNotification(userId, title, content);

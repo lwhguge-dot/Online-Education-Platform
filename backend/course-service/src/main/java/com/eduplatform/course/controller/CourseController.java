@@ -437,7 +437,8 @@ public class CourseController {
             courseCascadeDeleteService.deleteUserRelatedData(userId, role);
             return Result.success("用户相关课程数据已删除", null);
         } catch (Exception e) {
-            log.error("删除用户相关课程数据失败: userId={}, role={}", userId, role, e);
+            // 安全要求：避免直接记录请求参数，减少日志注入风险。
+            log.error("删除用户相关课程数据失败", e);
             return Result.error("删除失败，请稍后重试");
         }
     }

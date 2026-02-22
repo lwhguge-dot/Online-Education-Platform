@@ -157,7 +157,8 @@ public class FileUploadService {
                     .build());
             return true;
         } catch (Exception e) {
-            log.error("对象存储回收失败 path={}", filePath, e);
+            // 安全要求：避免直接记录用户可控路径，防止日志注入。
+            log.error("对象存储回收失败", e);
             return false;
         }
     }

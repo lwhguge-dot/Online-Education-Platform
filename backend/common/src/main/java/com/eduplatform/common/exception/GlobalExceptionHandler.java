@@ -37,7 +37,8 @@ public class GlobalExceptionHandler {
         if (uri.startsWith("/actuator")) {
             throw e;
         }
-        log.error("请求地址 '{}', 资源未找到.", uri, e);
+        // 安全要求：日志中不直接记录请求原始输入，避免日志注入和敏感信息泄露。
+        log.error("请求资源未找到", e);
         // 对于非 Actuator 路径，也重新抛出让 Spring 默认处理
         throw e;
     }
@@ -48,13 +49,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<String> handleMethodArgumentNotValidException(MethodArgumentNotValidException e,
             HttpServletRequest request) {
-        String uri = request.getRequestURI();
         String traceId = resolveTraceId(request);
         String errorMessage = e.getBindingResult().getFieldErrors().stream()
                 .findFirst()
                 .map(FieldError::getDefaultMessage)
                 .orElse("请求参数校验失败");
-        log.warn("请求地址 '{}', 参数校验失败: {}, traceId={}", uri, errorMessage, traceId);
+        log.warn("参数校验失败, fieldErrorCount={}, traceId={}", e.getBindingResult().getFieldErrorCount(), traceId);
         return failureWithTraceId(400, errorMessage, traceId);
     }
 
@@ -63,13 +63,12 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BindException.class)
     public Result<String> handleBindException(BindException e, HttpServletRequest request) {
-        String uri = request.getRequestURI();
         String traceId = resolveTraceId(request);
         String errorMessage = e.getBindingResult().getFieldErrors().stream()
                 .findFirst()
                 .map(FieldError::getDefaultMessage)
                 .orElse("请求参数校验失败");
-        log.warn("请求地址 '{}', 参数绑定失败: {}, traceId={}", uri, errorMessage, traceId);
+        log.warn("参数绑定失败, fieldErrorCount={}, traceId={}", e.getBindingResult().getFieldErrorCount(), traceId);
         return failureWithTraceId(400, errorMessage, traceId);
     }
 
@@ -79,7 +78,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConstraintViolationException.class)
     public Result<String> handleConstraintViolationException(ConstraintViolationException e,
             HttpServletRequest request) {
-        String uri = request.getRequestURI();
         String traceId = resolveTraceId(request);
         String errorMessage = e.getConstraintViolations().stream()
                 .map(ConstraintViolation::getMessage)
@@ -87,7 +85,7 @@ public class GlobalExceptionHandler {
         if (errorMessage.isBlank()) {
             errorMessage = "请求参数校验失败";
         }
-        log.warn("请求地址 '{}', 约束校验失败: {}, traceId={}", uri, errorMessage, traceId);
+        log.warn("约束校验失败, violationCount={}, traceId={}", e.getConstraintViolations().size(), traceId);
         return failureWithTraceId(400, errorMessage, traceId);
     }
 
@@ -97,9 +95,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public Result<String> handleHttpMessageNotReadableException(HttpMessageNotReadableException e,
             HttpServletRequest request) {
-        String uri = request.getRequestURI();
         String traceId = resolveTraceId(request);
-        log.warn("请求地址 '{}', 请求体解析失败, traceId={}", uri, traceId, e);
+        log.warn("请求体解析失败, traceId={}", traceId, e);
         return failureWithTraceId(400, "请求体格式错误，请检查字段类型与结构", traceId);
     }
 
@@ -108,9 +105,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(RuntimeException.class)
     public Result<String> handleRuntimeException(RuntimeException e, HttpServletRequest request) {
-        String uri = request.getRequestURI();
         String traceId = resolveTraceId(request);
-        log.error("请求地址 '{}', 发生业务异常, traceId={}", uri, traceId, e);
+        log.error("发生业务异常, traceId={}", traceId, e);
         return failureWithTraceId(500, "请求处理失败，请稍后重试", traceId);
     }
 
@@ -119,9 +115,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public Result<String> handleException(Exception e, HttpServletRequest request) {
-        String uri = request.getRequestURI();
         String traceId = resolveTraceId(request);
-        log.error("请求地址 '{}', 发生系统异常, traceId={}", uri, traceId, e);
+        log.error("发生系统异常, traceId={}", traceId, e);
         return failureWithTraceId(500, "系统繁忙，请稍后重试", traceId);
     }
 
