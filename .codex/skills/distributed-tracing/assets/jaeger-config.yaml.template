@@ -1,0 +1,29 @@
+# Jaeger all-in-one 示例配置（UTF-8）
+# 使用方式：复制为 jaeger-config.yaml 并按环境修改。
+
+collector:
+  # 中文注释：启用 Zipkin 兼容端口，便于历史客户端接入。
+  zipkin:
+    host-port: ":9411"
+
+query:
+  # 中文注释：UI 查询服务监听端口。
+  http-server:
+    host-port: ":16686"
+
+agent:
+  # 中文注释：本地 agent 通过 UDP 接收 trace 数据。
+  protocols:
+    jaeger-compact:
+      server-host-port: ":6831"
+    jaeger-binary:
+      server-host-port: ":6832"
+
+reporter:
+  # 中文注释：日志级别可按需调高用于排障。
+  log-spans: false
+
+sampling:
+  # 中文注释：默认概率采样参数，生产环境建议结合流量调整。
+  type: probabilistic
+  param: 0.1

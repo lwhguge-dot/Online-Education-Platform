@@ -1,0 +1,202 @@
+[
+  {
+    "scenarioId": "route-01-new-feature",
+    "input": "做一个新功能：课程收藏并同步到个人中心。",
+    "expectedSkills": ["using-superpowers", "brainstorming", "writing-plans"],
+    "requiredOrder": ["using-superpowers", "brainstorming", "writing-plans"],
+    "forbiddenSkills": ["systematic-debugging"],
+    "notes": "基础新功能场景。"
+  },
+  {
+    "scenarioId": "route-02-complex-planning",
+    "input": "这个需求很复杂，先帮我拆成多阶段任务并给出里程碑。",
+    "expectedSkills": ["using-superpowers", "planning-with-files", "writing-plans"],
+    "requiredOrder": ["using-superpowers", "planning-with-files", "writing-plans"],
+    "forbiddenSkills": [],
+    "notes": "复杂规划场景。"
+  },
+  {
+    "scenarioId": "route-03-implement-plan",
+    "input": "按这个计划实现并分检查点推进。",
+    "expectedSkills": ["using-superpowers", "executing-plans"],
+    "requiredOrder": ["using-superpowers", "executing-plans"],
+    "forbiddenSkills": [],
+    "notes": "计划执行场景。"
+  },
+  {
+    "scenarioId": "route-04-subagent",
+    "input": "这个计划有多个子任务，适合并行，请用 subagent 推进。",
+    "expectedSkills": ["using-superpowers", "subagent-driven-development"],
+    "requiredOrder": ["using-superpowers", "subagent-driven-development"],
+    "forbiddenSkills": [],
+    "notes": "并行子任务场景。"
+  },
+  {
+    "scenarioId": "route-05-bug-fix",
+    "input": "这个 bug 修一下，先定位根因再修复。",
+    "expectedSkills": ["using-superpowers", "systematic-debugging", "test-driven-development"],
+    "requiredOrder": ["using-superpowers", "systematic-debugging", "test-driven-development"],
+    "forbiddenSkills": [],
+    "notes": "Bug 修复顺序约束。"
+  },
+  {
+    "scenarioId": "route-06-sql-optimize",
+    "input": "优化 SQL 查询和索引策略。",
+    "expectedSkills": ["using-superpowers", "postgres-best-practices"],
+    "requiredOrder": ["using-superpowers", "postgres-best-practices"],
+    "forbiddenSkills": [],
+    "notes": "SQL 优化。"
+  },
+  {
+    "scenarioId": "route-07-tracing",
+    "input": "服务延迟升高，帮我补监控指标和分布式链路追踪。",
+    "expectedSkills": ["using-superpowers", "observability-engineer", "distributed-tracing"],
+    "requiredOrder": ["using-superpowers", "observability-engineer", "distributed-tracing"],
+    "forbiddenSkills": [],
+    "notes": "可观测性 + tracing。"
+  },
+  {
+    "scenarioId": "route-08-docker-release",
+    "input": "准备发布 Docker 镜像并制定回滚流程。",
+    "expectedSkills": ["using-superpowers", "docker-expert", "deployment-procedures"],
+    "requiredOrder": ["using-superpowers", "docker-expert", "deployment-procedures"],
+    "forbiddenSkills": [],
+    "notes": "容器发布场景。"
+  },
+  {
+    "scenarioId": "route-09-gh-actions",
+    "input": "修复当前 PR 的 GitHub Actions failing checks。",
+    "expectedSkills": ["using-superpowers", "gh-fix-ci"],
+    "requiredOrder": ["using-superpowers", "gh-fix-ci"],
+    "forbiddenSkills": [],
+    "notes": "CI 失败处理。"
+  },
+  {
+    "scenarioId": "route-10-review-comments",
+    "input": "处理这个 PR 的 review comments，并闭环说明。",
+    "expectedSkills": ["using-superpowers", "address-github-comments"],
+    "requiredOrder": ["using-superpowers", "address-github-comments"],
+    "forbiddenSkills": [],
+    "notes": "评论处理。"
+  },
+  {
+    "scenarioId": "route-11-playwright",
+    "input": "用 playwright 跑一遍登录流程并截图。",
+    "expectedSkills": ["using-superpowers", "playwright-skill"],
+    "requiredOrder": ["using-superpowers", "playwright-skill"],
+    "forbiddenSkills": [],
+    "notes": "Playwright 回归。"
+  },
+  {
+    "scenarioId": "route-12-sentry",
+    "input": "列出生产环境最近 24 小时 unresolved Sentry issues。",
+    "expectedSkills": ["using-superpowers", "sentry"],
+    "requiredOrder": ["using-superpowers", "sentry"],
+    "forbiddenSkills": [],
+    "notes": "Sentry 查询。"
+  },
+  {
+    "scenarioId": "route-13-threat-model",
+    "input": "对 backend 做 threat model，列出资产和攻击路径。",
+    "expectedSkills": ["using-superpowers", "security-threat-model"],
+    "requiredOrder": ["using-superpowers", "security-threat-model"],
+    "forbiddenSkills": [],
+    "notes": "威胁建模。"
+  },
+  {
+    "scenarioId": "route-14-create-skill",
+    "input": "帮我创建一个新 skill，并验证可用性。",
+    "expectedSkills": ["using-superpowers", "writing-skills"],
+    "requiredOrder": ["using-superpowers", "writing-skills"],
+    "forbiddenSkills": [],
+    "notes": "创建 skill。"
+  },
+  {
+    "scenarioId": "route-15-worktree",
+    "input": "开始这项功能前先建隔离 worktree。",
+    "expectedSkills": ["using-superpowers", "using-git-worktrees"],
+    "requiredOrder": ["using-superpowers", "using-git-worktrees"],
+    "forbiddenSkills": [],
+    "notes": "worktree 隔离。"
+  },
+  {
+    "scenarioId": "route-16-ui-redesign",
+    "input": "重做这个页面的 UI/UX，输出可实现设计。",
+    "expectedSkills": ["using-superpowers", "ui-ux-pro-max"],
+    "requiredOrder": ["using-superpowers", "ui-ux-pro-max"],
+    "forbiddenSkills": [],
+    "notes": "UI/UX 设计。"
+  },
+  {
+    "scenarioId": "route-17-api-security",
+    "input": "审查后端 API security，补鉴权与 RBAC 方案。",
+    "expectedSkills": ["using-superpowers", "api-security-best-practices", "auth-implementation-patterns"],
+    "requiredOrder": ["using-superpowers", "api-security-best-practices", "auth-implementation-patterns"],
+    "forbiddenSkills": [],
+    "notes": "API 安全+鉴权。"
+  },
+  {
+    "scenarioId": "route-18-microservice",
+    "input": "把这个单体模块拆成 microservice，明确服务边界。",
+    "expectedSkills": ["using-superpowers", "microservices-patterns"],
+    "requiredOrder": ["using-superpowers", "microservices-patterns"],
+    "forbiddenSkills": [],
+    "notes": "微服务拆分。"
+  },
+  {
+    "scenarioId": "route-19-parallel-failures",
+    "input": "现在有两个独立测试失败，帮我并行排查。",
+    "expectedSkills": ["using-superpowers", "dispatching-parallel-agents"],
+    "requiredOrder": ["using-superpowers", "dispatching-parallel-agents"],
+    "forbiddenSkills": [],
+    "notes": "并行排查。"
+  },
+  {
+    "scenarioId": "route-20-request-review",
+    "input": "请 request review，并重点检查回归风险。",
+    "expectedSkills": ["using-superpowers", "requesting-code-review"],
+    "requiredOrder": ["using-superpowers", "requesting-code-review"],
+    "forbiddenSkills": [],
+    "notes": "发起代码评审。"
+  },
+  {
+    "scenarioId": "route-21-before-complete",
+    "input": "我准备声明完成，请先做验证并进行代码审查。",
+    "expectedSkills": ["using-superpowers", "verification-before-completion", "receiving-code-review"],
+    "requiredOrder": ["using-superpowers", "verification-before-completion", "receiving-code-review"],
+    "forbiddenSkills": [],
+    "notes": "完成前验证守卫。"
+  },
+  {
+    "scenarioId": "route-22-branch-finish",
+    "input": "这条开发分支准备收尾，给我 merge strategy 和 cleanup。",
+    "expectedSkills": ["using-superpowers", "finishing-a-development-branch"],
+    "requiredOrder": ["using-superpowers", "finishing-a-development-branch"],
+    "forbiddenSkills": [],
+    "notes": "分支收尾。"
+  },
+  {
+    "scenarioId": "route-23-negative-general-chat",
+    "input": "今天天气不错，聊聊你的建议。",
+    "expectedSkills": ["using-superpowers"],
+    "requiredOrder": ["using-superpowers"],
+    "forbiddenSkills": ["systematic-debugging", "playwright-skill", "gh-fix-ci"],
+    "notes": "负向场景。"
+  },
+  {
+    "scenarioId": "route-24-ambiguous-release",
+    "input": "准备发布新版本，但先确认 CI 状态和回滚。",
+    "expectedSkills": ["using-superpowers", "deployment-procedures", "gh-fix-ci"],
+    "requiredOrder": ["using-superpowers", "gh-fix-ci", "deployment-procedures"],
+    "forbiddenSkills": [],
+    "notes": "边界场景：发布前先看 CI。"
+  },
+  {
+    "scenarioId": "route-25-combined-bug-sql",
+    "input": "线上有 bug 且 SQL 很慢，先定位问题再补查询优化方案。",
+    "expectedSkills": ["using-superpowers", "systematic-debugging", "test-driven-development", "postgres-best-practices"],
+    "requiredOrder": ["using-superpowers", "systematic-debugging", "test-driven-development"],
+    "forbiddenSkills": [],
+    "notes": "复合场景：调试与数据库优化。"
+  }
+]

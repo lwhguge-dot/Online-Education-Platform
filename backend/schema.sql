@@ -45,8 +45,8 @@ COMMENT ON COLUMN users.last_login_at IS '最后登录时间';
 COMMENT ON COLUMN users.created_at IS '创建时间';
 COMMENT ON COLUMN users.updated_at IS '更新时间';
 
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 -- 用户会话表
 CREATE TABLE IF NOT EXISTS user_session (
     id BIGSERIAL PRIMARY KEY,
@@ -68,8 +68,8 @@ COMMENT ON COLUMN user_session.login_time IS '登录时间';
 COMMENT ON COLUMN user_session.last_active_time IS '最后活跃时间';
 COMMENT ON COLUMN user_session.logout_time IS '登出时间';
 
-CREATE INDEX idx_user_session_jti ON user_session(jti);
-CREATE INDEX idx_user_session_user_status ON user_session(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_user_session_jti ON user_session(jti);
+CREATE INDEX IF NOT EXISTS idx_user_session_user_status ON user_session(user_id, status);
 -- 学生扩展信息表
 CREATE TABLE IF NOT EXISTS student_profiles (
     id BIGSERIAL PRIMARY KEY,
@@ -92,7 +92,7 @@ COMMENT ON COLUMN student_profiles.total_study_time IS '累计学习时长（分
 COMMENT ON COLUMN student_profiles.notification_settings IS '通知设置';
 COMMENT ON COLUMN student_profiles.study_goal IS '学习目标';
 
-CREATE INDEX idx_student_profiles_user_id ON student_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_student_profiles_user_id ON student_profiles(user_id);
 -- 教师扩展信息表
 CREATE TABLE IF NOT EXISTS teacher_profiles (
     id BIGSERIAL PRIMARY KEY,
@@ -123,7 +123,7 @@ COMMENT ON COLUMN teacher_profiles.default_grading_criteria IS '默认评分标�
 COMMENT ON COLUMN teacher_profiles.dashboard_layout IS '仪表盘布局自定义';
 COMMENT ON COLUMN teacher_profiles.notification_settings IS '细粒度通知设置';
 
-CREATE INDEX idx_teacher_profiles_user_id ON teacher_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_teacher_profiles_user_id ON teacher_profiles(user_id);
 -- =====================================================
 -- 2. 课程相关表
 -- =====================================================
@@ -148,7 +148,7 @@ COMMENT ON COLUMN subjects.color IS '主题色';
 COMMENT ON COLUMN subjects.sort_order IS '排序';
 COMMENT ON COLUMN subjects.status IS '状态';
 
-CREATE INDEX idx_subjects_code ON subjects(code);
+CREATE INDEX IF NOT EXISTS idx_subjects_code ON subjects(code);
 -- 学科初始化数据
 INSERT INTO subjects (name, code, category, icon, color, sort_order)
 VALUES ('语文', 'chinese', 'main', 'book', '#e74c3c', 1),
@@ -196,9 +196,9 @@ COMMENT ON COLUMN courses.audit_by IS '审核人ID';
 COMMENT ON COLUMN courses.audit_time IS '审核时间';
 COMMENT ON COLUMN courses.audit_remark IS '审核备注';
 
-CREATE INDEX idx_courses_teacher ON courses(teacher_id);
-CREATE INDEX idx_courses_subject ON courses(subject);
-CREATE INDEX idx_courses_status ON courses(status);
+CREATE INDEX IF NOT EXISTS idx_courses_teacher ON courses(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_courses_subject ON courses(subject);
+CREATE INDEX IF NOT EXISTS idx_courses_status ON courses(status);
 -- 章节表
 CREATE TABLE IF NOT EXISTS chapters (
     id BIGSERIAL PRIMARY KEY,
@@ -226,7 +226,7 @@ COMMENT ON COLUMN chapters.unlock_video_rate IS '解锁下一章需观看视频�
 COMMENT ON COLUMN chapters.unlock_quiz_score IS '解锁下一章需测验分数';
 COMMENT ON COLUMN chapters.status IS '状态';
 
-CREATE INDEX idx_chapters_course ON chapters(course_id);
+CREATE INDEX IF NOT EXISTS idx_chapters_course ON chapters(course_id);
 -- 章节测验表
 CREATE TABLE IF NOT EXISTS chapter_quizzes (
     id BIGSERIAL PRIMARY KEY,
@@ -249,7 +249,7 @@ COMMENT ON COLUMN chapter_quizzes.correct_answer IS '正确答案';
 COMMENT ON COLUMN chapter_quizzes.score IS '分值';
 COMMENT ON COLUMN chapter_quizzes.sort_order IS '排序';
 
-CREATE INDEX idx_chapter_quizzes_chapter ON chapter_quizzes(chapter_id);
+CREATE INDEX IF NOT EXISTS idx_chapter_quizzes_chapter ON chapter_quizzes(chapter_id);
 -- 学生选课表
 CREATE TABLE IF NOT EXISTS enrollments (
     id BIGSERIAL PRIMARY KEY,
@@ -271,8 +271,8 @@ COMMENT ON COLUMN enrollments.last_study_at IS '最后学习时间';
 COMMENT ON COLUMN enrollments.progress IS '学习进度百分比';
 COMMENT ON COLUMN enrollments.status IS '状态：active/completed/dropped';
 
-CREATE INDEX idx_enrollments_student ON enrollments(student_id);
-CREATE INDEX idx_enrollments_course ON enrollments(course_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_student ON enrollments(student_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_course ON enrollments(course_id);
 -- =====================================================
 -- 3. 学习进度表
 -- =====================================================
@@ -308,10 +308,10 @@ COMMENT ON COLUMN chapter_progress.completed_at IS '完成时间';
 COMMENT ON COLUMN chapter_progress.last_position IS '上次播放位置（秒）';
 COMMENT ON COLUMN chapter_progress.last_update_time IS '最后更新时间';
 
-CREATE INDEX idx_chapter_progress_student ON chapter_progress(student_id);
-CREATE INDEX idx_chapter_progress_chapter ON chapter_progress(chapter_id);
-CREATE INDEX idx_chapter_progress_course ON chapter_progress(course_id);
-CREATE INDEX idx_chapter_progress_completed ON chapter_progress(is_completed);
+CREATE INDEX IF NOT EXISTS idx_chapter_progress_student ON chapter_progress(student_id);
+CREATE INDEX IF NOT EXISTS idx_chapter_progress_chapter ON chapter_progress(chapter_id);
+CREATE INDEX IF NOT EXISTS idx_chapter_progress_course ON chapter_progress(course_id);
+CREATE INDEX IF NOT EXISTS idx_chapter_progress_completed ON chapter_progress(is_completed);
 -- =====================================================
 -- 4. 作业相关表
 -- =====================================================
@@ -341,9 +341,9 @@ COMMENT ON COLUMN homeworks.total_score IS '总分';
 COMMENT ON COLUMN homeworks.deadline IS '截止时间';
 COMMENT ON COLUMN homeworks.test_type IS '测试类型：chapter/final';
 
-CREATE INDEX idx_homeworks_course ON homeworks(course_id);
-CREATE INDEX idx_homeworks_chapter ON homeworks(chapter_id);
-CREATE INDEX idx_homeworks_teacher ON homeworks(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_homeworks_course ON homeworks(course_id);
+CREATE INDEX IF NOT EXISTS idx_homeworks_chapter ON homeworks(chapter_id);
+CREATE INDEX IF NOT EXISTS idx_homeworks_teacher ON homeworks(teacher_id);
 
 ALTER TABLE IF EXISTS homeworks
     ADD COLUMN IF NOT EXISTS teacher_id BIGINT DEFAULT NULL;
@@ -372,7 +372,7 @@ COMMENT ON COLUMN homework_questions.answer_analysis IS '答案解析';
 COMMENT ON COLUMN homework_questions.score IS '分值';
 COMMENT ON COLUMN homework_questions.sort_order IS '排序';
 
-CREATE INDEX idx_homework_questions_homework ON homework_questions(homework_id);
+CREATE INDEX IF NOT EXISTS idx_homework_questions_homework ON homework_questions(homework_id);
 -- 作业提交表
 CREATE TABLE IF NOT EXISTS homework_submissions (
     id BIGSERIAL PRIMARY KEY,
@@ -402,8 +402,8 @@ COMMENT ON COLUMN homework_submissions.graded_at IS '批改时间';
 COMMENT ON COLUMN homework_submissions.graded_by IS '批改人ID';
 COMMENT ON COLUMN homework_submissions.feedback IS '总体反馈';
 
-CREATE INDEX idx_homework_submissions_student ON homework_submissions(student_id);
-CREATE INDEX idx_homework_submissions_homework ON homework_submissions(homework_id);
+CREATE INDEX IF NOT EXISTS idx_homework_submissions_student ON homework_submissions(student_id);
+CREATE INDEX IF NOT EXISTS idx_homework_submissions_homework ON homework_submissions(homework_id);
 -- 作业答案表
 CREATE TABLE IF NOT EXISTS homework_answers (
     id BIGSERIAL PRIMARY KEY,
@@ -426,8 +426,8 @@ COMMENT ON COLUMN homework_answers.score IS '得分';
 COMMENT ON COLUMN homework_answers.ai_feedback IS 'AI反馈';
 COMMENT ON COLUMN homework_answers.teacher_feedback IS '教师反馈';
 
-CREATE INDEX idx_homework_answers_submission ON homework_answers(submission_id);
-CREATE INDEX idx_homework_answers_question ON homework_answers(question_id);
+CREATE INDEX IF NOT EXISTS idx_homework_answers_submission ON homework_answers(submission_id);
+CREATE INDEX IF NOT EXISTS idx_homework_answers_question ON homework_answers(question_id);
 -- 作业解锁表
 CREATE TABLE IF NOT EXISTS homework_unlocks (
     id BIGSERIAL PRIMARY KEY,
@@ -444,8 +444,8 @@ COMMENT ON COLUMN homework_unlocks.homework_id IS '作业ID';
 COMMENT ON COLUMN homework_unlocks.unlock_status IS '解锁状态：0未解锁 1已解锁';
 COMMENT ON COLUMN homework_unlocks.unlocked_at IS '解锁时间';
 
-CREATE INDEX idx_homework_unlocks_student ON homework_unlocks(student_id);
-CREATE INDEX idx_homework_unlocks_homework ON homework_unlocks(homework_id);
+CREATE INDEX IF NOT EXISTS idx_homework_unlocks_student ON homework_unlocks(student_id);
+CREATE INDEX IF NOT EXISTS idx_homework_unlocks_homework ON homework_unlocks(homework_id);
 -- =====================================================
 -- 5. 评论与互动表
 -- =====================================================
@@ -472,8 +472,8 @@ COMMENT ON COLUMN subjective_answer_permission.answer_status IS '作答状态：
 COMMENT ON COLUMN subjective_answer_permission.comment_visible IS '评论可见性：0仅见问题 1全可见';
 COMMENT ON COLUMN subjective_answer_permission.answered_at IS '答案发布时间';
 
-CREATE INDEX idx_sap_student ON subjective_answer_permission(student_id);
-CREATE INDEX idx_sap_question ON subjective_answer_permission(question_id);
+CREATE INDEX IF NOT EXISTS idx_sap_student ON subjective_answer_permission(student_id);
+CREATE INDEX IF NOT EXISTS idx_sap_question ON subjective_answer_permission(question_id);
 -- 作业问答表（学生针对作业题目提问，教师回复）
 CREATE TABLE IF NOT EXISTS homework_questions_discussion (
     id BIGSERIAL PRIMARY KEY,
@@ -498,9 +498,9 @@ COMMENT ON COLUMN homework_questions_discussion.replied_by IS '回复教师ID';
 COMMENT ON COLUMN homework_questions_discussion.replied_at IS '回复时间';
 COMMENT ON COLUMN homework_questions_discussion.status IS '状态：pending/answered';
 
-CREATE INDEX idx_hqd_homework ON homework_questions_discussion(homework_id);
-CREATE INDEX idx_hqd_student ON homework_questions_discussion(student_id);
-CREATE INDEX idx_hqd_status ON homework_questions_discussion(status);
+CREATE INDEX IF NOT EXISTS idx_hqd_homework ON homework_questions_discussion(homework_id);
+CREATE INDEX IF NOT EXISTS idx_hqd_student ON homework_questions_discussion(student_id);
+CREATE INDEX IF NOT EXISTS idx_hqd_status ON homework_questions_discussion(status);
 -- 主观题评论表
 CREATE TABLE IF NOT EXISTS subjective_comments (
     id BIGSERIAL PRIMARY KEY,
@@ -535,12 +535,12 @@ COMMENT ON COLUMN subjective_comments.answered_by IS '回答人ID';
 COMMENT ON COLUMN subjective_comments.course_id IS '关联课程ID';
 COMMENT ON COLUMN subjective_comments.chapter_id IS '关联章节ID';
 
-CREATE INDEX idx_sc_question_id ON subjective_comments(question_id);
-CREATE INDEX idx_sc_user_id ON subjective_comments(user_id);
-CREATE INDEX idx_sc_parent_id ON subjective_comments(parent_id);
-CREATE INDEX idx_sc_answer_status ON subjective_comments(answer_status);
-CREATE INDEX idx_sc_course_id ON subjective_comments(course_id);
-CREATE INDEX idx_sc_chapter_id ON subjective_comments(chapter_id);
+CREATE INDEX IF NOT EXISTS idx_sc_question_id ON subjective_comments(question_id);
+CREATE INDEX IF NOT EXISTS idx_sc_user_id ON subjective_comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_sc_parent_id ON subjective_comments(parent_id);
+CREATE INDEX IF NOT EXISTS idx_sc_answer_status ON subjective_comments(answer_status);
+CREATE INDEX IF NOT EXISTS idx_sc_course_id ON subjective_comments(course_id);
+CREATE INDEX IF NOT EXISTS idx_sc_chapter_id ON subjective_comments(chapter_id);
 -- =====================================================
 -- 6. 徽章与成就表
 -- =====================================================
@@ -560,14 +560,21 @@ COMMENT ON COLUMN badges.description IS '徽章描述';
 COMMENT ON COLUMN badges.icon IS '图标';
 COMMENT ON COLUMN badges.condition_type IS '获取条件类型';
 COMMENT ON COLUMN badges.condition_value IS '条件值';
--- 徽章初始化数据
+-- 徽章初始化数据（幂等：按 name 存在性去重）
 INSERT INTO badges (name, description, icon, condition_type, condition_value)
-VALUES ('学习新手', '完成第一个章节学习', 'star', 'chapter_complete', 1),
-    ('勤奋学员', '累计学习7天', 'fire', 'study_days', 7),
-    ('知识达人', '完成10个章节学习', 'trophy', 'chapter_complete', 10),
-    ('满分王者', '获得一次满分', 'crown', 'perfect_score', 1),
-    ('坚持不懈', '连续学习30天', 'medal', 'study_days', 30)
-ON CONFLICT DO NOTHING;
+SELECT v.name, v.description, v.icon, v.condition_type, v.condition_value
+FROM (
+    VALUES ('学习新手', '完成第一个章节学习', 'star', 'chapter_complete', 1),
+        ('勤奋学员', '累计学习7天', 'fire', 'study_days', 7),
+        ('知识达人', '完成10个章节学习', 'trophy', 'chapter_complete', 10),
+        ('满分王者', '获得一次满分', 'crown', 'perfect_score', 1),
+        ('坚持不懈', '连续学习30天', 'medal', 'study_days', 30)
+) AS v(name, description, icon, condition_type, condition_value)
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM badges b
+        WHERE b.name = v.name
+    );
 -- 学生徽章获得表
 CREATE TABLE IF NOT EXISTS student_badges (
     id BIGSERIAL PRIMARY KEY,
@@ -583,8 +590,8 @@ COMMENT ON COLUMN student_badges.student_id IS '学生ID';
 COMMENT ON COLUMN student_badges.badge_id IS '徽章ID';
 COMMENT ON COLUMN student_badges.earned_at IS '获得时间';
 
-CREATE INDEX idx_student_badges_student ON student_badges(student_id);
-CREATE INDEX idx_student_badges_badge ON student_badges(badge_id);
+CREATE INDEX IF NOT EXISTS idx_student_badges_student ON student_badges(student_id);
+CREATE INDEX IF NOT EXISTS idx_student_badges_badge ON student_badges(badge_id);
 -- =====================================================
 -- 7. 通知表
 -- =====================================================
@@ -608,8 +615,8 @@ COMMENT ON COLUMN notifications.type IS '通知类型';
 COMMENT ON COLUMN notifications.is_read IS '是否已读：0未读 1已读';
 COMMENT ON COLUMN notifications.related_id IS '关联ID';
 
-CREATE INDEX idx_notifications_user ON notifications(user_id);
-CREATE INDEX idx_notifications_read ON notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
 -- =====================================================
 -- 8. 管理员功能表
 -- =====================================================
@@ -638,10 +645,10 @@ COMMENT ON COLUMN audit_logs.details IS '操作详情';
 COMMENT ON COLUMN audit_logs.ip_address IS 'IP地址';
 COMMENT ON COLUMN audit_logs.created_at IS '创建时间';
 
-CREATE INDEX idx_audit_logs_action_type ON audit_logs(action_type);
-CREATE INDEX idx_audit_logs_operator_id ON audit_logs(operator_id);
-CREATE INDEX idx_audit_logs_target_type ON audit_logs(target_type);
-CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action_type ON audit_logs(action_type);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_operator_id ON audit_logs(operator_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_target_type ON audit_logs(target_type);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 -- 系统公告表
 CREATE TABLE IF NOT EXISTS announcements (
     id BIGSERIAL PRIMARY KEY,
@@ -673,11 +680,11 @@ COMMENT ON COLUMN announcements.created_by IS '创建人ID';
 COMMENT ON COLUMN announcements.created_at IS '创建时间';
 COMMENT ON COLUMN announcements.updated_at IS '更新时间';
 
-CREATE INDEX idx_announcements_status ON announcements(status);
-CREATE INDEX idx_announcements_publish_time ON announcements(publish_time);
-CREATE INDEX idx_announcements_target_audience ON announcements(target_audience);
-CREATE INDEX idx_announcements_created_by ON announcements(created_by);
-CREATE INDEX idx_announcements_course_id ON announcements(course_id);
+CREATE INDEX IF NOT EXISTS idx_announcements_status ON announcements(status);
+CREATE INDEX IF NOT EXISTS idx_announcements_publish_time ON announcements(publish_time);
+CREATE INDEX IF NOT EXISTS idx_announcements_target_audience ON announcements(target_audience);
+CREATE INDEX IF NOT EXISTS idx_announcements_created_by ON announcements(created_by);
+CREATE INDEX IF NOT EXISTS idx_announcements_course_id ON announcements(course_id);
 -- 公告阅读记录表
 CREATE TABLE IF NOT EXISTS announcement_reads (
     id BIGSERIAL PRIMARY KEY,
@@ -692,8 +699,8 @@ COMMENT ON COLUMN announcement_reads.announcement_id IS '公告ID';
 COMMENT ON COLUMN announcement_reads.user_id IS '用户ID';
 COMMENT ON COLUMN announcement_reads.read_at IS '阅读时间';
 
-CREATE INDEX idx_announcement_reads_announcement ON announcement_reads(announcement_id);
-CREATE INDEX idx_announcement_reads_user ON announcement_reads(user_id);
+CREATE INDEX IF NOT EXISTS idx_announcement_reads_announcement ON announcement_reads(announcement_id);
+CREATE INDEX IF NOT EXISTS idx_announcement_reads_user ON announcement_reads(user_id);
 -- =====================================================
 -- 9. 教学日历表
 -- =====================================================
@@ -734,9 +741,9 @@ COMMENT ON COLUMN teaching_events.is_recurring IS '是否重复事件';
 COMMENT ON COLUMN teaching_events.recurrence_rule IS '重复规则（iCal格式）';
 COMMENT ON COLUMN teaching_events.status IS '状态：active/cancelled/completed';
 
-CREATE INDEX idx_teaching_events_teacher ON teaching_events(teacher_id);
-CREATE INDEX idx_teaching_events_start_time ON teaching_events(start_time);
-CREATE INDEX idx_teaching_events_course ON teaching_events(course_id);
+CREATE INDEX IF NOT EXISTS idx_teaching_events_teacher ON teaching_events(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_teaching_events_start_time ON teaching_events(start_time);
+CREATE INDEX IF NOT EXISTS idx_teaching_events_course ON teaching_events(course_id);
 -- =====================================================
 -- 10. 评论系统表
 -- =====================================================
@@ -769,11 +776,11 @@ COMMENT ON COLUMN chapter_comments.status IS '状态：1正常 0删除';
 COMMENT ON COLUMN chapter_comments.created_at IS '创建时间';
 COMMENT ON COLUMN chapter_comments.updated_at IS '更新时间';
 
-CREATE INDEX idx_chapter_comments_chapter ON chapter_comments(chapter_id);
-CREATE INDEX idx_chapter_comments_course ON chapter_comments(course_id);
-CREATE INDEX idx_chapter_comments_user ON chapter_comments(user_id);
-CREATE INDEX idx_chapter_comments_parent ON chapter_comments(parent_id);
-CREATE INDEX idx_chapter_comments_created ON chapter_comments(created_at);
+CREATE INDEX IF NOT EXISTS idx_chapter_comments_chapter ON chapter_comments(chapter_id);
+CREATE INDEX IF NOT EXISTS idx_chapter_comments_course ON chapter_comments(course_id);
+CREATE INDEX IF NOT EXISTS idx_chapter_comments_user ON chapter_comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_chapter_comments_parent ON chapter_comments(parent_id);
+CREATE INDEX IF NOT EXISTS idx_chapter_comments_created ON chapter_comments(created_at);
 -- 评论点赞表
 CREATE TABLE IF NOT EXISTS comment_likes (
     id BIGSERIAL PRIMARY KEY,
@@ -788,8 +795,8 @@ COMMENT ON COLUMN comment_likes.comment_id IS '评论ID';
 COMMENT ON COLUMN comment_likes.user_id IS '用户ID';
 COMMENT ON COLUMN comment_likes.created_at IS '创建时间';
 
-CREATE INDEX idx_comment_likes_comment ON comment_likes(comment_id);
-CREATE INDEX idx_comment_likes_user ON comment_likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_comment_likes_comment ON comment_likes(comment_id);
+CREATE INDEX IF NOT EXISTS idx_comment_likes_user ON comment_likes(user_id);
 -- 禁言用户表
 CREATE TABLE IF NOT EXISTS muted_users (
     id BIGSERIAL PRIMARY KEY,
@@ -819,9 +826,9 @@ COMMENT ON COLUMN muted_users.status IS '状态：1生效 0已解除';
 COMMENT ON COLUMN muted_users.created_at IS '创建时间';
 COMMENT ON COLUMN muted_users.updated_at IS '更新时间';
 
-CREATE INDEX idx_muted_users_user ON muted_users(user_id);
-CREATE INDEX idx_muted_users_course ON muted_users(course_id);
-CREATE INDEX idx_muted_users_status ON muted_users(status);
+CREATE INDEX IF NOT EXISTS idx_muted_users_user ON muted_users(user_id);
+CREATE INDEX IF NOT EXISTS idx_muted_users_course ON muted_users(course_id);
+CREATE INDEX IF NOT EXISTS idx_muted_users_status ON muted_users(status);
 
 -- muted_users 历史兼容迁移（幂等）
 -- 迁移说明：适配旧版仅包含 operator_id/mute_until 的表结构
@@ -830,8 +837,21 @@ ALTER TABLE IF EXISTS muted_users
     ADD COLUMN IF NOT EXISTS muted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ADD COLUMN IF NOT EXISTS unmuted_at TIMESTAMP DEFAULT NULL;
 
-ALTER TABLE IF EXISTS muted_users
-    ALTER COLUMN operator_id DROP NOT NULL;
+-- 简体中文注释：仅当历史字段 operator_id 存在时才执行约束放宽，避免旧库结构差异导致报错
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+            AND table_name = 'muted_users'
+            AND column_name = 'operator_id'
+    ) THEN
+        ALTER TABLE muted_users
+            ALTER COLUMN operator_id DROP NOT NULL;
+    END IF;
+END
+$$;
 
 -- 历史数据回填（仅在旧版数据存在时生效）
 UPDATE muted_users
@@ -861,19 +881,29 @@ COMMENT ON COLUMN blocked_words.course_id IS '课程ID（scope=course时有效�
 COMMENT ON COLUMN blocked_words.created_by IS '创建人ID';
 COMMENT ON COLUMN blocked_words.created_at IS '创建时间';
 
-CREATE INDEX idx_blocked_words_scope ON blocked_words(scope);
-CREATE INDEX idx_blocked_words_course ON blocked_words(course_id);
--- 屏蔽词初始化数据
+CREATE INDEX IF NOT EXISTS idx_blocked_words_scope ON blocked_words(scope);
+CREATE INDEX IF NOT EXISTS idx_blocked_words_course ON blocked_words(course_id);
+-- 屏蔽词初始化数据（幂等：global 场景 course_id 为 NULL，使用 NOT EXISTS 避免重复插入）
 INSERT INTO blocked_words (word, scope)
-VALUES ('广告', 'global'),
-    ('代写', 'global'),
-    ('作弊', 'global'),
-    ('答案', 'global'),
-    ('枪手', 'global'),
-    ('代考', 'global'),
-    ('刷题', 'global'),
-    ('买卖', 'global'),
-    ('联系方式', 'global'),
-    ('微信', 'global'),
-    ('QQ', 'global')
-ON CONFLICT (word, scope, course_id) DO NOTHING;
+SELECT v.word, v.scope
+FROM (
+    VALUES ('广告', 'global'),
+        ('代写', 'global'),
+        ('作弊', 'global'),
+        ('答案', 'global'),
+        ('枪手', 'global'),
+        ('代考', 'global'),
+        ('刷题', 'global'),
+        ('买卖', 'global'),
+        ('联系方式', 'global'),
+        ('微信', 'global'),
+        ('QQ', 'global')
+) AS v(word, scope)
+WHERE NOT EXISTS (
+        SELECT 1
+        FROM blocked_words bw
+        WHERE bw.word = v.word
+            AND bw.scope = v.scope
+            AND bw.course_id IS NULL
+    );
+

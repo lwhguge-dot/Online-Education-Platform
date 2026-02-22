@@ -1,0 +1,125 @@
+name: Skills Quality Gate
+
+on:
+  pull_request:
+    paths:
+      - ".codex/skills/**"
+      - "AGENTS.md"
+      - "docs/ai-session-start-template.md"
+      - "docs/ai-skills-maintenance.md"
+      - "ops/scripts/skills/**"
+      - "ops/skills/**"
+      - ".gitignore"
+  push:
+    branches: [main, develop]
+    paths:
+      - ".codex/skills/**"
+      - "AGENTS.md"
+      - "docs/ai-session-start-template.md"
+      - "docs/ai-skills-maintenance.md"
+      - "ops/scripts/skills/**"
+      - "ops/skills/**"
+      - ".gitignore"
+
+jobs:
+  skill-health-check:
+    name: skill-health-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run health check
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path ./.reports/skills -Force | Out-Null
+          ./ops/scripts/skills/skill-health-check.ps1 -Strict -OutputJson ./.reports/skills/health.json
+
+      - name: Upload health report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skills-health-report
+          path: ./.reports/skills/health.json
+          retention-days: 7
+
+  skill-lint:
+    name: skill-lint
+    runs-on: ubuntu-latest
+    needs: [skill-health-check]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run skill lint
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path ./.reports/skills -Force | Out-Null
+          ./ops/scripts/skills/skill-lint.ps1 -OutputJson ./.reports/skills/lint.json
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skills-lint-report
+          path: ./.reports/skills/lint.json
+          retention-days: 7
+
+  skill-smoke:
+    name: skill-smoke
+    runs-on: ubuntu-latest
+    needs: [skill-lint]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Playwright dependency
+        shell: pwsh
+        run: |
+          Push-Location ./.codex/skills/playwright-skill
+          try {
+            npm install --no-audit --progress=false
+          } finally {
+            Pop-Location
+          }
+
+      - name: Run smoke checks
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path ./.reports/skills -Force | Out-Null
+          ./ops/scripts/skills/skill-smoke.ps1 -OutputJson ./.reports/skills/smoke.json
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skills-smoke-report
+          path: ./.reports/skills/smoke.json
+          retention-days: 7
+
+  skill-regression:
+    name: skill-regression
+    runs-on: ubuntu-latest
+    needs: [skill-smoke]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run regression replay
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path ./.reports/skills -Force | Out-Null
+          ./ops/scripts/skills/skill-regression.ps1 -FailOnWarning -OutputJson ./.reports/skills/regression.json
+
+      - name: Upload regression report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skills-regression-report
+          path: ./.reports/skills/regression.json
+          retention-days: 7
