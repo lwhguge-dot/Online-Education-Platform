@@ -6,7 +6,6 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { X, Users, Wifi, WifiOff, Clock, Monitor, RefreshCw, Search } from 'lucide-vue-next'
 import { userAPI } from '../../services/api'
-import { useWebSocket } from '../../composables/useWebSocket'
 import AnimatedNumber from '../ui/AnimatedNumber.vue'
 import { formatTimeCN } from '../../utils/datetime'
 

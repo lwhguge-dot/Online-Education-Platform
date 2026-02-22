@@ -98,8 +98,8 @@ public class MuteService {
         mutedUser.setStatus(1); // 激活记录
 
         mutedUserMapper.muteUser(mutedUser);
-        log.info("审计：社交环境治理 | 用户 {} 在课程 {} 被禁言, 操作人: {}, 原因: {}",
-                userId, courseId, mutedBy, reason);
+        // 安全要求：避免把用户可控文本（如原因）写入日志。
+        log.info("审计：社交环境治理 | 禁言操作已执行");
     }
 
     /**

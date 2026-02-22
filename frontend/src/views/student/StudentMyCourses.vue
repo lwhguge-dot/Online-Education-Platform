@@ -106,7 +106,8 @@ const handleDrop = async (course) => {
      const studentId = authStore.user?.id
      await dropCourse(course.id, studentId)
      toast.success('已退出课程')
-   } catch(e) {
+   } catch(error) {
+     console.error('退课失败:', error)
      toast.error('退出失败')
    }
 }

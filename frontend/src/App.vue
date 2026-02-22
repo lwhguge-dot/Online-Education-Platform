@@ -1,6 +1,6 @@
 <script setup>
 import { RouterView } from 'vue-router'
-import { onMounted, onUnmounted } from 'vue'
+import { onUnmounted, watch } from 'vue'
 import OfflineNotice from './components/OfflineNotice.vue'
 import BaseToast from './components/ui/BaseToast.vue'
 import ConfirmDialog from './components/ui/ConfirmDialog.vue'
@@ -21,14 +21,27 @@ const toastStore = useToastStore()
 let offForceLogout = null
 let offNotification = null
 
-// 建立全局 WebSocket 连接（当前登录用户）
+// 清理 WebSocket 监听器，避免重复注册导致事件重复触发
+const cleanupWebSocketListeners = () => {
+  if (offForceLogout) {
+    offForceLogout()
+    offForceLogout = null
+  }
+  if (offNotification) {
+    offNotification()
+    offNotification = null
+  }
+}
+
+// 建立全局 WebSocket 连接（与登录态联动）
 const setupWebSocket = () => {
-  const userId = authStore.user?.id
-  if (!userId) {
+  if (!authStore.token) {
     return
   }
 
-  connectWebSocket(userId)
+  // 先清理旧监听器，避免重复绑定
+  cleanupWebSocketListeners()
+  connectWebSocket()
 
   offForceLogout = onForceLogout((reason) => {
     toastStore.error(reason || '账号已在其他设备登录')
@@ -43,20 +56,27 @@ const setupWebSocket = () => {
   })
 }
 
-onMounted(() => {
-  setupWebSocket()
-})
+// 统一断开并清理，确保登出后不会残留连接或监听器
+const teardownWebSocket = () => {
+  cleanupWebSocketListeners()
+  disconnectWebSocket()
+}
+
+// 监听 token：登录后自动连接，登出后自动断开
+watch(
+  () => authStore.token,
+  (token) => {
+    if (token) {
+      setupWebSocket()
+      return
+    }
+    teardownWebSocket()
+  },
+  { immediate: true },
+)
 
 onUnmounted(() => {
-  if (offForceLogout) {
-    offForceLogout()
-    offForceLogout = null
-  }
-  if (offNotification) {
-    offNotification()
-    offNotification = null
-  }
-  disconnectWebSocket()
+  teardownWebSocket()
 })
 </script>
 

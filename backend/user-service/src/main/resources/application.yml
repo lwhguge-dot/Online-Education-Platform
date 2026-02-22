@@ -93,7 +93,7 @@ websocket:
 
 bootstrap:
   admin:
-    enabled: true
+    enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}
 
 # Actuator 监控配置
 management:
@@ -133,3 +133,14 @@ otel:
 security:
   # 服务间内部调用令牌（用于调用级联删除接口）
   internal-token: "${INTERNAL_API_TOKEN}"
+  password-reset:
+    # 限流窗口（秒）
+    window-seconds: ${PASSWORD_RESET_WINDOW_SECONDS:600}
+    # 同一来源 IP 在窗口期内最多申请次数
+    request-limit-per-ip: ${PASSWORD_RESET_REQUEST_LIMIT_PER_IP:10}
+    # 同一身份（邮箱+姓名）在窗口期内最多申请次数
+    request-limit-per-identity: ${PASSWORD_RESET_REQUEST_LIMIT_PER_IDENTITY:5}
+    # 同一来源 IP 在窗口期内最多确认次数
+    confirm-limit-per-ip: ${PASSWORD_RESET_CONFIRM_LIMIT_PER_IP:10}
+    # 重置令牌有效期（秒）
+    token-ttl-seconds: ${PASSWORD_RESET_TOKEN_TTL_SECONDS:900}

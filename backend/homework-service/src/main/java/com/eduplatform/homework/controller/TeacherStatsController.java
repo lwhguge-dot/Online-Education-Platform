@@ -1,14 +1,15 @@
 package com.eduplatform.homework.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.homework.dto.TeacherCourseSummaryDTO;
 import com.eduplatform.homework.dto.TeacherDashboardDTO;
 import com.eduplatform.homework.service.TeacherStatsService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 教师统计控制器。
@@ -32,7 +33,7 @@ public class TeacherStatsController {
     @PostMapping("/dashboard")
     public Result<TeacherDashboardDTO> getTeacherDashboard(
             @RequestParam("teacherId") Long teacherId,
-            @RequestBody List<Map<String, Object>> courses,
+            @Valid @RequestBody List<@Valid TeacherCourseSummaryDTO> courses,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         try {
@@ -42,12 +43,13 @@ public class TeacherStatsController {
                 return Result.failure(403, "权限不足，仅教师本人或管理员可访问教师仪表盘");
             }
 
-            log.info("获取教师仪表盘数据, teacherId={}, coursesCount={}", teacherId, courses.size());
+            int coursesCount = courses != null ? courses.size() : 0;
+            log.info("获取教师仪表盘数据, teacherId={}, coursesCount={}", teacherId, coursesCount);
             TeacherDashboardDTO dashboard = teacherStatsService.getTeacherDashboard(teacherId, courses);
             return Result.success(dashboard);
         } catch (Exception e) {
             log.error("获取教师仪表盘数据失败", e);
-            return Result.error("获取仪表盘数据失败: " + e.getMessage());
+            return Result.error("获取仪表盘数据失败，请稍后重试");
         }
     }
 
@@ -73,7 +75,7 @@ public class TeacherStatsController {
             return Result.success(dashboard);
         } catch (Exception e) {
             log.error("获取教师仪表盘数据失败", e);
-            return Result.error("获取仪表盘数据失败: " + e.getMessage());
+            return Result.error("获取仪表盘数据失败，请稍后重试");
         }
     }
 
@@ -104,3 +106,4 @@ public class TeacherStatsController {
                 && currentUserId.equals(targetTeacherId);
     }
 }
+

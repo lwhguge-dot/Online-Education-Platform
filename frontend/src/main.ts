@@ -56,10 +56,12 @@ if (sentryEnabled) {
 }
 
 app.use(pinia)
-app.use(router)
 
 // 初始化认证状态
 const authStore = useAuthStore()
 authStore.init()
+
+// 先恢复认证状态，再启用路由守卫，避免首屏路由竞态
+app.use(router)
 
 app.mount('#app')

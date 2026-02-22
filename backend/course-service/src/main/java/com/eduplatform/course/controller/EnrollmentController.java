@@ -46,7 +46,7 @@ public class EnrollmentController {
             Enrollment enrollment = enrollmentService.enroll(studentId, courseId);
             return Result.success("报名成功", enrollmentService.convertToVO(enrollment));
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            return Result.error("操作失败，请稍后重试");
         }
     }
 
@@ -70,7 +70,7 @@ public class EnrollmentController {
             enrollmentService.drop(studentId, courseId);
             return Result.success("退课成功", null);
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            return Result.error("操作失败，请稍后重试");
         }
     }
 
@@ -154,7 +154,7 @@ public class EnrollmentController {
             enrollmentService.updateProgress(studentId, courseId, progress);
             return Result.success("进度已更新", null);
         } catch (Exception e) {
-            return Result.error(e.getMessage());
+            return Result.error("操作失败，请稍后重试");
         }
     }
 
@@ -462,3 +462,4 @@ public class EnrollmentController {
                 && currentUserId.equals(targetTeacherId);
     }
 }
+

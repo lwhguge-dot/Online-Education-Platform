@@ -1,12 +1,18 @@
 package com.eduplatform.course.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.course.dto.AddBlockedWordRequest;
+import com.eduplatform.course.dto.ChapterCommentCreateRequest;
+import com.eduplatform.course.dto.CheckBlockedWordRequest;
 import com.eduplatform.course.dto.CommentDTO;
+import com.eduplatform.course.dto.MuteUserRequest;
+import com.eduplatform.course.dto.UnmuteUserRequest;
 import com.eduplatform.course.service.BlockedWordService;
 import com.eduplatform.course.service.ChapterCommentService;
 import com.eduplatform.course.service.EnrollmentService;
 import com.eduplatform.course.service.MuteService;
 import com.eduplatform.course.vo.BlockedWordVO;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -58,15 +64,15 @@ public class ChapterCommentController {
     public Result<CommentDTO> createComment(
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRoleHeader,
-            @RequestBody Map<String, Object> body) {
-        Long chapterId = Long.valueOf(body.get("chapterId").toString());
-        Long courseId = Long.valueOf(body.get("courseId").toString());
+            @Valid @RequestBody ChapterCommentCreateRequest body) {
+        Long chapterId = body.getChapterId();
+        Long courseId = body.getCourseId();
         Long userId = resolveUserId(currentUserIdHeader, null);
         if (userId == null) {
             return Result.failure(401, "身份认证失败");
         }
-        String content = (String) body.get("content");
-        Long parentId = body.get("parentId") != null ? Long.valueOf(body.get("parentId").toString()) : null;
+        String content = body.getContent();
+        Long parentId = body.getParentId();
 
         log.info("发表评论, chapterId={}, userId={}, parentId={}", chapterId, userId, parentId);
 
@@ -192,17 +198,17 @@ public class ChapterCommentController {
     public Result<Void> muteUser(
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRoleHeader,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody MuteUserRequest body) {
         if (!isTeacherOrAdmin(currentUserRoleHeader)) {
             return Result.failure(403, "权限不足，仅教师或管理员可禁言");
         }
-        Long userId = Long.valueOf(body.get("userId").toString());
-        Long courseId = Long.valueOf(body.get("courseId").toString());
+        Long userId = body.getUserId();
+        Long courseId = body.getCourseId();
         Long mutedBy = resolveUserId(currentUserIdHeader, null);
         if (mutedBy == null) {
             return Result.failure(401, "身份认证失败");
         }
-        String reason = (String) body.get("reason");
+        String reason = body.getReason();
 
         log.info("禁言用户, userId={}, courseId={}, mutedBy={}", userId, courseId, mutedBy);
 
@@ -210,7 +216,8 @@ public class ChapterCommentController {
             muteService.muteUser(userId, courseId, mutedBy, reason);
             return Result.success("禁言成功", null);
         } catch (Exception e) {
-            return Result.failure(400, e.getMessage());
+            log.warn("禁言失败: userId={}, courseId={}", userId, courseId, e);
+            return Result.failure(400, "禁言失败，请检查请求后重试");
         }
     }
 
@@ -220,12 +227,12 @@ public class ChapterCommentController {
     @PostMapping("/unmute")
     public Result<Void> unmuteUser(
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRoleHeader,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody UnmuteUserRequest body) {
         if (!isTeacherOrAdmin(currentUserRoleHeader)) {
             return Result.failure(403, "权限不足，仅教师或管理员可解除禁言");
         }
-        Long userId = Long.valueOf(body.get("userId").toString());
-        Long courseId = Long.valueOf(body.get("courseId").toString());
+        Long userId = body.getUserId();
+        Long courseId = body.getCourseId();
 
         log.info("解除禁言, userId={}, courseId={}", userId, courseId);
 
@@ -233,7 +240,8 @@ public class ChapterCommentController {
             muteService.unmuteUser(userId, courseId);
             return Result.success("解除禁言成功", null);
         } catch (Exception e) {
-            return Result.failure(400, e.getMessage());
+            log.warn("解除禁言失败: userId={}, courseId={}", userId, courseId, e);
+            return Result.failure(400, "解除禁言失败，请检查请求后重试");
         }
     }
 
@@ -292,26 +300,28 @@ public class ChapterCommentController {
     public Result<BlockedWordVO> addBlockedWord(
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRoleHeader,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody AddBlockedWordRequest body) {
         if (!isTeacherOrAdmin(currentUserRoleHeader)) {
             return Result.failure(403, "权限不足，仅教师或管理员可添加屏蔽词");
         }
-        String word = (String) body.get("word");
-        String scope = (String) body.getOrDefault("scope", "global");
-        Long courseId = body.get("courseId") != null ? Long.valueOf(body.get("courseId").toString()) : null;
+        String word = body.getWord();
+        String scope = body.getScope() != null ? body.getScope() : "global";
+        Long courseId = body.getCourseId();
         Long createdBy = resolveUserId(currentUserIdHeader, null);
         if (createdBy == null) {
             return Result.failure(401, "身份认证失败");
         }
 
-        log.info("添加屏蔽词, word={}, scope={}, courseId={}", word, scope, courseId);
+        // 安全要求：避免在日志里输出原始敏感词内容，防止日志注入。
+        log.info("添加屏蔽词请求已接收");
 
         try {
             BlockedWordVO blockedWord = blockedWordService.convertToVO(
                     blockedWordService.addWord(word, scope, courseId, createdBy));
             return Result.success("添加成功", blockedWord);
         } catch (Exception e) {
-            return Result.failure(400, e.getMessage());
+            log.warn("添加屏蔽词失败", e);
+            return Result.failure(400, "添加失败，请检查请求后重试");
         }
     }
 
@@ -331,7 +341,8 @@ public class ChapterCommentController {
             blockedWordService.deleteWord(id);
             return Result.success("删除成功", null);
         } catch (Exception e) {
-            return Result.failure(400, e.getMessage());
+            log.warn("删除屏蔽词失败: id={}", id, e);
+            return Result.failure(400, "删除失败，请检查请求后重试");
         }
     }
 
@@ -339,9 +350,9 @@ public class ChapterCommentController {
      * 检查内容是否包含屏蔽词。
      */
     @PostMapping("/blocked-words/check")
-    public Result<Map<String, Object>> checkBlockedWords(@RequestBody Map<String, Object> body) {
-        String content = (String) body.get("content");
-        Long courseId = body.get("courseId") != null ? Long.valueOf(body.get("courseId").toString()) : null;
+    public Result<Map<String, Object>> checkBlockedWords(@Valid @RequestBody CheckBlockedWordRequest body) {
+        String content = body.getContent();
+        Long courseId = body.getCourseId();
 
         log.info("检查屏蔽词, content长度={}, courseId={}", content.length(), courseId);
         Map<String, Object> checkResult = blockedWordService.checkContent(content, courseId);

@@ -1,11 +1,8 @@
 package com.eduplatform.course.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.eduplatform.course.dto.CourseDTO;
 import com.eduplatform.course.entity.Course;
 import com.eduplatform.course.feign.AuditLogClient;
-import com.eduplatform.course.feign.UserServiceClient;
-import com.eduplatform.course.mapper.ChapterMapper;
 import com.eduplatform.course.mapper.CourseMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -21,7 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,13 +43,13 @@ class CourseServiceTest {
     private CourseMapper courseMapper;
 
     @Mock
-    private ChapterMapper chapterMapper;
-
-    @Mock
     private AuditLogClient auditLogClient;
 
     @Mock
-    private UserServiceClient userServiceClient;
+    private CourseReadService courseReadService;
+
+    @Mock
+    private CourseWorkflowService courseWorkflowService;
 
     @Nested
     @DisplayName("课程编辑保存流转")
@@ -109,45 +107,28 @@ class CourseServiceTest {
     class AuditFlowTests {
 
         @Test
-        @DisplayName("审核通过后课程变为已发布")
-        void auditApproveShouldBecomePublished() {
-            Course reviewing = new Course();
-            reviewing.setId(200L);
-            reviewing.setTitle("审核课程");
-            reviewing.setStatus(Course.STATUS_REVIEWING);
-
-            when(courseMapper.selectById(200L)).thenReturn(reviewing);
-
+        @DisplayName("审核接口应委托工作流服务")
+        void auditCourseShouldDelegateToWorkflowService() {
             courseService.auditCourse(200L, "APPROVE", "通过", 10L, "管理员", "127.0.0.1");
 
-            verify(courseMapper).updateById(argThat(updated -> {
-                assertEquals(Course.STATUS_PUBLISHED, updated.getStatus());
-                assertEquals(10L, updated.getAuditBy());
-                assertNotNull(updated.getAuditTime());
-                assertEquals("通过", updated.getAuditRemark());
-                return true;
-            }));
+            verify(courseWorkflowService).auditCourse(200L, "APPROVE", "通过", 10L, "管理员", "127.0.0.1");
         }
 
         @Test
-        @DisplayName("审核驳回后课程变为已驳回")
-        void auditRejectShouldBecomeRejected() {
-            Course reviewing = new Course();
-            reviewing.setId(201L);
-            reviewing.setTitle("驳回课程");
-            reviewing.setStatus(Course.STATUS_REVIEWING);
+        @DisplayName("批量状态更新应委托工作流服务")
+        void batchUpdateStatusShouldDelegateToWorkflowService() {
+            courseService.batchUpdateStatus(java.util.List.of(1L, 2L), Course.STATUS_PUBLISHED, 10L, "管理员", "127.0.0.1");
 
-            when(courseMapper.selectById(201L)).thenReturn(reviewing);
+            verify(courseWorkflowService).batchUpdateStatus(eq(java.util.List.of(1L, 2L)),
+                    eq(Course.STATUS_PUBLISHED), eq(10L), eq("管理员"), eq("127.0.0.1"));
+        }
 
-            courseService.auditCourse(201L, "REJECT", "内容待完善", 11L, "管理员", "127.0.0.1");
+        @Test
+        @DisplayName("上下架状态更新应委托工作流服务")
+        void updateStatusWithAuditShouldDelegateToWorkflowService() {
+            courseService.updateStatusWithAudit(99L, Course.STATUS_OFFLINE, 20L, "运营", "10.0.0.1");
 
-            verify(courseMapper).updateById(argThat(updated -> {
-                assertEquals(Course.STATUS_REJECTED, updated.getStatus());
-                assertEquals(11L, updated.getAuditBy());
-                assertNotNull(updated.getAuditTime());
-                assertEquals("内容待完善", updated.getAuditRemark());
-                return true;
-            }));
+            verify(courseWorkflowService).updateStatusWithAudit(99L, Course.STATUS_OFFLINE, 20L, "运营", "10.0.0.1");
         }
     }
 
@@ -158,18 +139,21 @@ class CourseServiceTest {
         @Test
         @DisplayName("管理员请求草稿状态时返回空列表")
         void adminDraftQueryShouldReturnEmpty() {
+            when(courseReadService.getAdminVisibleCourses(null, Course.STATUS_DRAFT))
+                    .thenReturn(java.util.Collections.emptyList());
+
             assertEquals(0, courseService.getAdminVisibleCourses(null, Course.STATUS_DRAFT).size());
+            verify(courseReadService).getAdminVisibleCourses(null, Course.STATUS_DRAFT);
         }
 
         @Test
-        @DisplayName("管理员默认查询会执行排除草稿条件")
-        @SuppressWarnings("unchecked")
-        void adminDefaultQueryShouldExcludeDraft() {
-            when(courseMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(java.util.Collections.emptyList());
+        @DisplayName("管理员默认查询应委托读模型服务")
+        void adminDefaultQueryShouldDelegateToReadService() {
+            when(courseReadService.getAdminVisibleCourses(null, null)).thenReturn(java.util.Collections.emptyList());
 
             courseService.getAdminVisibleCourses(null, null);
 
-            verify(courseMapper).selectList(any(LambdaQueryWrapper.class));
+            verify(courseReadService).getAdminVisibleCourses(null, null);
         }
     }
 }

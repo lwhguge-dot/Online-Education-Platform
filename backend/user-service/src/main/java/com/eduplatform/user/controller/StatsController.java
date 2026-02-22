@@ -29,7 +29,11 @@ public class StatsController {
      * 说明：用户与在线数据来自本服务，课程统计通过 Feign 聚合。
      */
     @GetMapping("/admin/dashboard")
-    public Result<Map<String, Object>> getAdminDashboard() {
+    public Result<Map<String, Object>> getAdminDashboard(
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可访问管理统计");
+        }
         Map<String, Object> stats = new HashMap<>();
 
         // 用户统计 - 从数据库实时查询
@@ -76,7 +80,11 @@ public class StatsController {
      */
     @GetMapping("/admin/user-trends")
     public Result<Map<String, Object>> getUserTrends(
-            @RequestParam(value = "days", defaultValue = "7") int days) {
+            @RequestParam(value = "days", defaultValue = "7") int days,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可查看用户趋势");
+        }
         // 限制最大查询天数为30天
         days = Math.min(days, 30);
 
@@ -124,7 +132,14 @@ public class StatsController {
      * 说明：当前返回示例数据，后续应由进度/作业服务汇总。
      */
     @GetMapping("/student/dashboard")
-    public Result<Map<String, Object>> getStudentDashboard(@RequestParam("studentId") Long studentId) {
+    public Result<Map<String, Object>> getStudentDashboard(
+            @RequestParam("studentId") Long studentId,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        Long currentUserId = parseUserId(currentUserIdHeader);
+        if (!hasSelfOrAdminAccess(studentId, currentUserId, currentUserRole)) {
+            return Result.failure(403, "权限不足，仅本人或管理员可查看学生仪表盘");
+        }
         Map<String, Object> stats = new HashMap<>();
 
         stats.put("enrolledCourses", 0);
@@ -135,5 +150,36 @@ public class StatsController {
         stats.put("streakDays", 0);
 
         return Result.success(stats);
+    }
+
+    /**
+     * 判断是否管理员角色。
+     */
+    private boolean isAdminRole(String currentUserRole) {
+        return currentUserRole != null && "admin".equalsIgnoreCase(currentUserRole);
+    }
+
+    /**
+     * 解析网关注入的用户ID。
+     */
+    private Long parseUserId(String userIdHeader) {
+        if (userIdHeader == null || userIdHeader.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(userIdHeader);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * 判断是否具备本人或管理员访问权限。
+     */
+    private boolean hasSelfOrAdminAccess(Long targetUserId, Long currentUserId, String currentUserRole) {
+        if (isAdminRole(currentUserRole)) {
+            return true;
+        }
+        return currentUserId != null && currentUserId.equals(targetUserId);
     }
 }

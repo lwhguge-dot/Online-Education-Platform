@@ -30,7 +30,7 @@ const listeners = {
   onDisconnected: [],
 };
 
-export const connectWebSocket = (userId) => {
+export const connectWebSocket = () => {
   if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
     return;
   }
@@ -49,9 +49,8 @@ export const connectWebSocket = (userId) => {
     }
 
     manualDisconnect = false;
-    // 握手阶段携带 token，便于网关与后端在握手时直接鉴权
-    const wsUrl = `${WS_BASE}?token=${encodeURIComponent(token)}`;
-    ws = new WebSocket(wsUrl);
+    // 握手 URL 不再拼接 token，避免 token 出现在 URL 日志中
+    ws = new WebSocket(WS_BASE);
 
     ws.onopen = () => {
       console.log('WebSocket 连接成功');
@@ -82,8 +81,9 @@ export const connectWebSocket = (userId) => {
       // 主动断开（如退出登录/页面卸载）时不重连
       if (!manualDisconnect) {
         reconnectTimer = setTimeout(() => {
-          if (userId) {
-            connectWebSocket(userId);
+          // 仅在会话仍有效时重连，避免登出后无意义重连
+          if (sessionStorage.getItem('token')) {
+            connectWebSocket();
           }
         }, 5000);
       }

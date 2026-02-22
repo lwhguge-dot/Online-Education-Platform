@@ -8,7 +8,9 @@ import com.eduplatform.course.entity.ChapterQuiz;
 import com.eduplatform.course.service.ChapterService;
 import com.eduplatform.course.vo.ChapterQuizVO;
 import com.eduplatform.course.vo.ChapterVO;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +25,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/chapters")
 @RequiredArgsConstructor
+@Slf4j
 public class ChapterController {
 
     private final ChapterService chapterService;
@@ -32,14 +35,20 @@ public class ChapterController {
      * 业务原因：新章节创建需要统一填充默认排序与课程关联。
      */
     @PostMapping
-    public Result<ChapterVO> createChapter(@RequestBody ChapterDTO dto) {
+    public Result<ChapterVO> createChapter(
+            @Valid @RequestBody ChapterDTO dto,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!hasTeacherManageRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可创建章节");
+        }
         try {
             Chapter chapter = new Chapter();
             BeanUtils.copyProperties(dto, chapter);
             Chapter created = chapterService.createChapter(chapter);
             return Result.success("章节创建成功", chapterService.convertToVO(created));
         } catch (Exception e) {
-            return Result.error("创建失败: " + e.getMessage());
+            log.error("创建章节失败: courseId={}", dto != null ? dto.getCourseId() : null, e);
+            return Result.error("创建失败，请稍后重试");
         }
     }
 
@@ -48,7 +57,13 @@ public class ChapterController {
      * 说明：仅允许更新章节基础信息，明细由服务层校验。
      */
     @PutMapping("/{id}")
-    public Result<ChapterVO> updateChapter(@PathVariable("id") Long id, @RequestBody ChapterDTO dto) {
+    public Result<ChapterVO> updateChapter(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody ChapterDTO dto,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!hasTeacherManageRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可更新章节");
+        }
         try {
             Chapter chapter = new Chapter();
             BeanUtils.copyProperties(dto, chapter);
@@ -56,7 +71,8 @@ public class ChapterController {
             Chapter updated = chapterService.updateChapter(chapter);
             return Result.success("更新成功", chapterService.convertToVO(updated));
         } catch (Exception e) {
-            return Result.error("更新失败: " + e.getMessage());
+            log.error("更新章节失败: chapterId={}", id, e);
+            return Result.error("更新失败，请稍后重试");
         }
     }
 
@@ -65,12 +81,18 @@ public class ChapterController {
      * 业务原因：章节下线需要清理其测验与关联资源。
      */
     @DeleteMapping("/{id}")
-    public Result<Void> deleteChapter(@PathVariable("id") Long id) {
+    public Result<Void> deleteChapter(
+            @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!hasTeacherManageRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可删除章节");
+        }
         try {
             chapterService.deleteChapter(id);
             return Result.success("删除成功", null);
         } catch (Exception e) {
-            return Result.error("删除失败: " + e.getMessage());
+            log.error("删除章节失败: chapterId={}", id, e);
+            return Result.error("删除失败，请稍后重试");
         }
     }
 
@@ -109,7 +131,13 @@ public class ChapterController {
      * 业务原因：课程测验与章节强关联，需统一由章节入口创建。
      */
     @PostMapping("/{chapterId}/quizzes")
-    public Result<ChapterQuizVO> addQuiz(@PathVariable("chapterId") Long chapterId, @RequestBody ChapterQuizDTO dto) {
+    public Result<ChapterQuizVO> addQuiz(
+            @PathVariable("chapterId") Long chapterId,
+            @Valid @RequestBody ChapterQuizDTO dto,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!hasTeacherManageRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可添加测验");
+        }
         try {
             ChapterQuiz quiz = new ChapterQuiz();
             BeanUtils.copyProperties(dto, quiz);
@@ -117,7 +145,8 @@ public class ChapterController {
             ChapterQuiz created = chapterService.addQuiz(quiz);
             return Result.success("题目添加成功", chapterService.convertQuizToVO(created));
         } catch (Exception e) {
-            return Result.error("添加失败: " + e.getMessage());
+            log.error("添加章节测验失败: chapterId={}", chapterId, e);
+            return Result.error("添加失败，请稍后重试");
         }
     }
 
@@ -127,7 +156,11 @@ public class ChapterController {
      */
     @PostMapping("/{chapterId}/quizzes/batch")
     public Result<Void> addQuizzesBatch(@PathVariable("chapterId") Long chapterId,
-            @RequestBody List<ChapterQuizDTO> dtos) {
+            @Valid @RequestBody List<ChapterQuizDTO> dtos,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!hasTeacherManageRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可批量添加测验");
+        }
         try {
             List<ChapterQuiz> quizzes = dtos.stream().map(dto -> {
                 ChapterQuiz quiz = new ChapterQuiz();
@@ -137,7 +170,8 @@ public class ChapterController {
             chapterService.addQuizzes(chapterId, quizzes);
             return Result.success("批量添加成功", null);
         } catch (Exception e) {
-            return Result.error("添加失败: " + e.getMessage());
+            log.error("批量添加章节测验失败: chapterId={}", chapterId, e);
+            return Result.error("添加失败，请稍后重试");
         }
     }
 
@@ -156,12 +190,26 @@ public class ChapterController {
      * 说明：仅删除指定题目，不影响章节其他内容。
      */
     @DeleteMapping("/quizzes/{quizId}")
-    public Result<Void> deleteQuiz(@PathVariable("quizId") Long quizId) {
+    public Result<Void> deleteQuiz(
+            @PathVariable("quizId") Long quizId,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!hasTeacherManageRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可删除测验");
+        }
         try {
             chapterService.deleteQuiz(quizId);
             return Result.success("删除成功", null);
         } catch (Exception e) {
-            return Result.error("删除失败: " + e.getMessage());
+            log.error("删除章节测验失败: quizId={}", quizId, e);
+            return Result.error("删除失败，请稍后重试");
         }
+    }
+
+    /**
+     * 判断是否具备教师管理权限（教师或管理员）。
+     */
+    private boolean hasTeacherManageRole(String currentUserRole) {
+        return currentUserRole != null
+                && ("teacher".equalsIgnoreCase(currentUserRole) || "admin".equalsIgnoreCase(currentUserRole));
     }
 }

@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
-import { MessageSquare, Plus, MessageCircle, X, Image, Upload, Loader2, Trash2, CheckCircle, Clock, ChevronDown, ChevronUp, BookOpen, FileText } from 'lucide-vue-next'
+import { ref, watch, onMounted, nextTick } from 'vue'
+import { MessageSquare, MessageCircle, X, Image, Upload, Loader2, Trash2, CheckCircle, Clock, ChevronDown, ChevronUp, BookOpen, FileText } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
 import BaseButton from '../../components/ui/BaseButton.vue'
 import { fileAPI, chapterAPI } from '../../services/api'
@@ -22,6 +22,8 @@ const imageFile = ref(null)
 const imagePreview = ref('')
 const uploading = ref(false)
 const fileInputRef = ref(null)
+const askModalRef = ref(null)
+const previousActiveElement = ref(null)
 
 // 展开的问题ID列表
 const expandedQuestions = ref(new Set())
@@ -29,6 +31,67 @@ const expandedQuestions = ref(new Set())
 // 选中课程的章节列表
 const courseChapters = ref([])
 const loadingChapters = ref(false)
+
+const getFocusableElements = () => {
+  if (!askModalRef.value) return []
+  const selectors = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])'
+  ]
+  return Array.from(askModalRef.value.querySelectorAll(selectors.join(',')))
+}
+
+const focusFirstElement = () => {
+  const focusables = getFocusableElements()
+  if (focusables.length > 0) {
+    focusables[0].focus()
+    return
+  }
+  askModalRef.value?.focus()
+}
+
+const trapFocus = (event) => {
+  const focusables = getFocusableElements()
+  if (focusables.length === 0) {
+    event.preventDefault()
+    askModalRef.value?.focus()
+    return
+  }
+
+  const first = focusables[0]
+  const last = focusables[focusables.length - 1]
+  const active = document.activeElement
+
+  if (event.shiftKey && active === first) {
+    event.preventDefault()
+    last.focus()
+    return
+  }
+
+  if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
+// 统一处理提问弹窗键盘行为，确保 Esc 可达且焦点不穿透
+const handleAskModalKeydown = (event) => {
+  if (!showAskModal.value) return
+
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    showAskModal.value = false
+    return
+  }
+
+  if (event.key === 'Tab') {
+    trapFocus(event)
+  }
+}
 
 // 监听课程选择变化，加载对应章节
 watch(() => newQuestion.value.courseId, async (courseId) => {
@@ -131,6 +194,21 @@ const openAskModal = () => {
   courseChapters.value = []
   showAskModal.value = true
 }
+
+watch(showAskModal, async (visible, oldVisible) => {
+  if (visible && !oldVisible) {
+    // 记录打开前焦点，关闭时恢复到触发位置
+    previousActiveElement.value = document.activeElement
+    await nextTick()
+    focusFirstElement()
+    return
+  }
+
+  if (!visible && oldVisible) {
+    previousActiveElement.value?.focus?.()
+    previousActiveElement.value = null
+  }
+})
 
 // 处理图片文件选择
 const handleImageSelect = (event) => {
@@ -341,7 +419,16 @@ onMounted(async () => {
 
     <!-- 提问弹窗 -->
     <Teleport to="body">
-      <div v-if="showAskModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <div
+        v-if="showAskModal"
+        ref="askModalRef"
+        class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-label="向老师提问弹窗"
+        tabindex="-1"
+        @keydown="handleAskModalKeydown"
+      >
         <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-[2px]" @click="showAskModal = false"></div>
         <div class="relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in border border-white/20">
           <div class="p-6 md:p-8 max-h-[90vh] overflow-y-auto">
@@ -500,3 +587,4 @@ onMounted(async () => {
   transform: translateY(0);
 }
 </style>
+

@@ -52,7 +52,10 @@ public class UserServiceApplication {
 
             String email = "admin_local@edu-platform.local";
             String usernameBase = "admin_local";
-            String rawPassword = "Admin123456";
+            String rawPassword = environment.getProperty("bootstrap.admin.initial-password");
+            if (rawPassword == null || rawPassword.isBlank()) {
+                throw new IllegalStateException("bootstrap.admin.enabled=true 时必须配置 bootstrap.admin.initial-password");
+            }
 
             User existByEmail = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getEmail, email));
             if (existByEmail != null) {

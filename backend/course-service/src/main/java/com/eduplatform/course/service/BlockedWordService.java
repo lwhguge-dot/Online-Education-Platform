@@ -96,7 +96,8 @@ public class BlockedWordService {
         blockedWord.setCreatedAt(LocalDateTime.now());
 
         blockedWordMapper.insertWord(blockedWord);
-        log.info("审计：敏感词库更新 | 词条: {}, 作用域: {}, 课程上下文: {}", word, scope, courseId);
+        // 安全要求：不在日志中输出原始词条内容，避免日志注入与敏感信息泄漏。
+        log.info("审计：敏感词库更新操作完成");
 
         return blockedWord;
     }

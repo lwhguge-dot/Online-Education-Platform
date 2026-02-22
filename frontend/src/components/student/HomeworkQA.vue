@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { MessageCircle, Send, CheckCircle, Clock } from 'lucide-vue-next'
+import { MessageCircle, CheckCircle, Clock } from 'lucide-vue-next'
 import { homeworkAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
 import GlassCard from '../ui/GlassCard.vue'

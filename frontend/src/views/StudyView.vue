@@ -6,7 +6,9 @@ import { courseAPI, chapterAPI, progressAPI } from '../services/api'
 import SkeletonLoader from '../components/SkeletonLoader.vue'
 import ChapterCommentSection from '../components/comments/ChapterCommentSection.vue'
 import AnimatedNumber from '../components/ui/AnimatedNumber.vue'
-import { ArrowLeft, Play, Pause, CheckCircle, Lock, Clock, Sparkles } from 'lucide-vue-next'
+import StudyChapterSidebar from '../components/student/StudyChapterSidebar.vue'
+import StudyChapterInfoCard from '../components/student/StudyChapterInfoCard.vue'
+import { ArrowLeft, Play, Clock, Sparkles } from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
@@ -191,51 +193,6 @@ watch(
   },
   { immediate: true }
 )
-
-const togglePlay = () => {
-  isPlaying.value = !isPlaying.value
-  if (isPlaying.value) {
-    simulateVideoProgress()
-  }
-}
-
-const simulateVideoProgress = () => {
-  if (!isPlaying.value) return
-  if (videoProgress.value < 100) {
-    videoProgress.value += 1
-    if (currentChapter.value) {
-      currentChapter.value.progress = videoProgress.value
-    }
-    setTimeout(simulateVideoProgress, 300)
-  } else {
-    completeChapter()
-  }
-}
-
-const completeChapter = async () => {
-  if (!currentChapter.value) return
-  currentChapter.value.completed = true
-  isPlaying.value = false
-  
-  // 解锁下一章
-  const idx = chapters.value.findIndex(c => c.id === currentChapter.value.id)
-  if (idx < chapters.value.length - 1) {
-    chapters.value[idx + 1].unlocked = true
-  }
-  
-  // 保存进度到后端
-  try {
-    await progressAPI.updateProgress({
-      courseId: courseId.value,
-      chapterId: currentChapter.value.id,
-      studentId: authStore.user?.id,
-      videoRate: 1,
-      isCompleted: 1
-    })
-  } catch (e) {
-    console.error('保存进度失败:', e)
-  }
-}
 
 const getVideoUrl = (chapter) => {
   if (!chapter?.videoUrl) return null
@@ -453,35 +410,7 @@ onUnmounted(() => {
           </div>
           
           <!-- 章节信息 -->
-          <Transition name="chapter-info" mode="out-in">
-          <div :key="currentChapter?.id" class="glass-card rounded-2xl p-6">
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <h2 class="text-xl font-bold text-shuimo mb-2 font-song">{{ currentChapter?.title }}</h2>
-                <p class="text-shuimo/60 text-sm leading-relaxed">{{ currentChapter?.description || '暂无章节描述' }}</p>
-              </div>
-              <Transition name="badge-pop">
-              <div v-if="currentChapter?.completed" class="flex-shrink-0 px-3 py-1 bg-qingsong/10 text-qingsong rounded-lg text-sm font-medium flex items-center gap-1.5 completed-badge">
-                <CheckCircle class="w-4 h-4" />
-                已学完
-              </div>
-              </Transition>
-            </div>
-            
-            <div class="mt-6 flex items-center gap-6 text-sm text-shuimo/50 pt-4 border-t border-slate-100/50">
-              <span class="flex items-center gap-2">
-                <Clock class="w-4 h-4" />
-                时长：{{ formatDuration(videoDuration || currentChapter?.videoDuration || 0) }}
-              </span>
-              <span class="flex items-center gap-2">
-                <div class="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div class="h-full bg-gradient-to-r from-qinghua to-halanzi transition-all duration-500" :style="{ width: clampPercent(currentChapter?.progress || 0) + '%' }"></div>
-                </div>
-                <AnimatedNumber :value="clampPercent(currentChapter?.progress || 0)" :duration="300" />%
-              </span>
-            </div>
-          </div>
-          </Transition>
+          <StudyChapterInfoCard :chapter="currentChapter" :video-duration="videoDuration" />
           
           <!-- 评论区 -->
           <ChapterCommentSection
@@ -495,237 +424,17 @@ onUnmounted(() => {
         </div>
         
         <!-- 章节列表 -->
-        <div class="lg:col-span-1 flex flex-col h-full animate-slide-up" style="animation-delay: 0.1s;">
-          <div class="glass-card rounded-2xl overflow-hidden flex flex-col h-[calc(100vh-140px)] sticky top-24">
-            <div class="p-5 border-b border-white/50 bg-white/30 backdrop-blur-md">
-              <h3 class="font-bold text-shuimo flex items-center gap-2">
-                <div class="w-1 h-4 bg-qinghua rounded-full"></div>
-                课程目录
-              </h3>
-              <p class="text-xs text-shuimo/50 mt-1 pl-3">共 {{ chapters.length }} 章节 · 已完成 {{ chapters.filter(c => c.completed).length }} 章</p>
-            </div>
-            
-            <div class="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-              <TransitionGroup name="chapter-list">
-              <div 
-                v-for="(chapter, idx) in chapters" 
-                :key="chapter.id"
-                @click="selectChapter(chapter)"
-                class="chapter-item group p-4 rounded-xl transition-all duration-300 cursor-pointer border border-transparent relative overflow-hidden"
-                :class="{ 
-                  'bg-qinghua/5 border-qinghua/20 shadow-sm active-chapter': currentChapter?.id === chapter.id,
-                  'hover:bg-white/60 hover:shadow-sm': currentChapter?.id !== chapter.id && chapter.unlocked,
-                  'opacity-60 cursor-not-allowed bg-slate-50/50': !chapter.unlocked 
-                }"
-              >
-                <!-- 激活状态指示条 -->
-                <Transition name="indicator-slide">
-                <div v-if="currentChapter?.id === chapter.id" class="absolute left-0 top-0 bottom-0 w-1 bg-qinghua"></div>
-                </Transition>
-                
-                <div class="flex items-start gap-3 relative z-10">
-                  <div class="chapter-icon w-6 h-6 flex-shrink-0 mt-0.5 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300"
-                       :class="chapter.completed ? 'bg-qingsong/10 text-qingsong' : (currentChapter?.id === chapter.id ? 'bg-qinghua text-white scale-110' : 'bg-slate-200 text-slate-500')">
-                    <CheckCircle v-if="chapter.completed" class="w-4 h-4 check-icon" />
-                    <Lock v-else-if="!chapter.unlocked" class="w-3 h-3" />
-                    <span v-else>{{ idx + 1 }}</span>
-                  </div>
-                  
-                  <div class="flex-1 min-w-0">
-                    <h4 class="text-sm font-medium truncate transition-colors"
-                        :class="currentChapter?.id === chapter.id ? 'text-qinghua' : 'text-shuimo'">
-                      {{ chapter.title }}
-                    </h4>
-                    
-                    <div class="flex items-center gap-2 mt-2" v-if="chapter.unlocked">
-                      <div class="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
-                        <div class="h-full bg-gradient-to-r from-qinghua to-halanzi rounded-full transition-all duration-500" 
-                             :style="{ width: chapter.progress + '%' }"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              </TransitionGroup>
-            </div>
-          </div>
-        </div>
+        <StudyChapterSidebar
+          :chapters="chapters"
+          :current-chapter-id="currentChapter?.id ?? null"
+          @select="selectChapter"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* 章节信息切换动画 */
-.chapter-info-enter-active {
-  /* P1 第二批：章节动效统一压缩到 200ms 档 */
-  animation: chapter-info-in var(--motion-duration-medium) var(--motion-ease-standard);
-}
-
-.chapter-info-leave-active {
-  animation: chapter-info-out var(--motion-duration-medium) var(--motion-ease-standard);
-}
-
-@keyframes chapter-info-in {
-  from {
-    opacity: 0;
-    transform: translateY(15px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes chapter-info-out {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-}
-
-/* 完成徽章弹出动画 */
-.badge-pop-enter-active {
-  animation: badge-pop-in var(--motion-duration-medium) var(--motion-ease-standard);
-}
-
-.badge-pop-leave-active {
-  animation: badge-pop-out 0.2s ease-in;
-}
-
-@keyframes badge-pop-in {
-  0% {
-    opacity: 0;
-    transform: scale(0.5);
-  }
-  70% {
-    transform: scale(1.1);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes badge-pop-out {
-  from {
-    opacity: 1;
-    transform: scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-}
-
-/* 完成徽章样式 */
-.completed-badge {
-  animation: badge-glow var(--motion-duration-medium) var(--motion-ease-standard) infinite;
-}
-
-@keyframes badge-glow {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(var(--color-qingsong), 0);
-  }
-  50% {
-    box-shadow: 0 0 10px 2px rgba(var(--color-qingsong), 0.2);
-  }
-}
-
-/* 章节列表动画 */
-.chapter-list-move {
-  transition: transform var(--motion-duration-medium) var(--motion-ease-standard);
-}
-
-/* 指示条滑入动画 */
-.indicator-slide-enter-active {
-  animation: indicator-in var(--motion-duration-medium) var(--motion-ease-standard);
-}
-
-.indicator-slide-leave-active {
-  animation: indicator-out 0.2s ease-in;
-}
-
-@keyframes indicator-in {
-  from {
-    transform: scaleY(0);
-    opacity: 0;
-  }
-  to {
-    transform: scaleY(1);
-    opacity: 1;
-  }
-}
-
-@keyframes indicator-out {
-  from {
-    transform: scaleY(1);
-    opacity: 1;
-  }
-  to {
-    transform: scaleY(0);
-    opacity: 0;
-  }
-}
-
-/* 章节项激活状态 */
-.active-chapter {
-  animation: chapter-active var(--motion-duration-medium) var(--motion-ease-standard);
-}
-
-@keyframes chapter-active {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(0.98);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-/* 完成打勾动画 */
-.check-icon {
-  animation: check-pop var(--motion-duration-medium) var(--motion-ease-standard);
-}
-
-@keyframes check-pop {
-  0% {
-    transform: scale(0) rotate(-45deg);
-    opacity: 0;
-  }
-  60% {
-    transform: scale(1.2) rotate(0deg);
-  }
-  100% {
-    transform: scale(1) rotate(0deg);
-    opacity: 1;
-  }
-}
-
-/* 自定义滚动条 */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 2px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
-}
-
 /* 上滑动画 */
 .slide-up-enter-active {
   animation: slide-up-in var(--motion-duration-medium) var(--motion-ease-standard);

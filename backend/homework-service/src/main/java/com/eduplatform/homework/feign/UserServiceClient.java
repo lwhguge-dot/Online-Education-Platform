@@ -2,6 +2,7 @@ package com.eduplatform.homework.feign;
 
 import com.eduplatform.common.result.Result;
 import com.eduplatform.homework.dto.UserBriefDTO;
+import com.eduplatform.homework.dto.NotificationRequest;
 import com.eduplatform.homework.config.InternalApiFeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,7 +11,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 用户服务Feign客户端
@@ -31,5 +31,5 @@ public interface UserServiceClient {
      * 发送通知给指定用户
      */
     @PostMapping("/api/notifications/send")
-    Result<Void> sendNotification(@RequestBody Map<String, Object> request);
+    Result<Void> sendNotification(@RequestBody NotificationRequest request);
 }

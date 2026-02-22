@@ -27,6 +27,13 @@ type FriendlyErrorMessages = Record<string, string>
 
 interface RequestError extends Error {
     handledByToast?: boolean
+    skipSentry?: boolean
+}
+
+export interface BlobResponse {
+    blob: Blob
+    filename: string | null
+    response: Response
 }
 
 // ========== Simple Memory Cache ==========
@@ -115,6 +122,98 @@ const getErrorMessage = (error: unknown): string => {
         return error.message
     }
     return String(error ?? '未知错误')
+}
+
+// 统一把不同形态的 headers 转成普通对象，方便后续判断和合并
+const normalizeHeaders = (headers?: HeadersInit): Record<string, string> => {
+    if (!headers) {
+        return {}
+    }
+
+    if (headers instanceof Headers) {
+        const normalized: Record<string, string> = {}
+        headers.forEach((value, key) => {
+            normalized[key] = value
+        })
+        return normalized
+    }
+
+    if (Array.isArray(headers)) {
+        return headers.reduce((acc, [key, value]) => {
+            acc[key] = value
+            return acc
+        }, {} as Record<string, string>)
+    }
+
+    return { ...headers }
+}
+
+const hasHeaderIgnoreCase = (headers: Record<string, string>, headerName: string): boolean => {
+    const target = headerName.toLowerCase()
+    return Object.keys(headers).some((key) => key.toLowerCase() === target)
+}
+
+const shouldTrackPendingRequest = (method?: string): boolean => !!method && method !== 'GET'
+
+// 仅在存在请求体时才自动补 JSON Content-Type，避免 GET 等请求触发不必要预检
+const shouldAutoSetJsonContentType = (body: BodyInit | null | undefined): boolean => {
+    if (body === undefined || body === null) {
+        return false
+    }
+    return !(body instanceof FormData) && !(body instanceof URLSearchParams)
+}
+
+const createHandledError = (message: string, skipSentry = false): RequestError => {
+    const error: RequestError = new Error(message)
+    error.handledByToast = true
+    error.skipSentry = skipSentry
+    return error
+}
+
+const parseResultFromResponse = async <T = any>(response: Response): Promise<Result<T>> => {
+    const rawText = await response.text()
+    if (!rawText) {
+        const normalizedCode = response.status === 204 ? 200 : response.status
+        return { code: normalizedCode, message: response.statusText || '', data: null as any }
+    }
+
+    try {
+        return JSON.parse(rawText) as Result<T>
+    } catch {
+        return { code: response.status, message: '响应解析失败', data: null as any }
+    }
+}
+
+const extractResponseMessage = async (response: Response): Promise<string> => {
+    const rawText = await response.clone().text()
+    if (!rawText) {
+        return response.statusText || `请求失败（${response.status}）`
+    }
+
+    try {
+        const parsed = JSON.parse(rawText) as Partial<Result<unknown>>
+        return parsed.message || response.statusText || rawText
+    } catch {
+        return rawText
+    }
+}
+
+const extractFilenameFromDisposition = (disposition: string | null): string | null => {
+    if (!disposition) {
+        return null
+    }
+
+    const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i)
+    if (utf8Match?.[1]) {
+        try {
+            return decodeURIComponent(utf8Match[1])
+        } catch {
+            return utf8Match[1]
+        }
+    }
+
+    const basicMatch = disposition.match(/filename="?([^";]+)"?/i)
+    return basicMatch?.[1] || null
 }
 
 const shouldForceLogoutOnForbidden = (message?: string): boolean => {
@@ -221,43 +320,38 @@ const getRequestKey = (url: string, options: RequestOptions): string => {
 
 export const request = async <T = any>(url: string, options: RequestOptions = {}): Promise<Result<T>> => {
     const requestKey = getRequestKey(url, options)
+    const shouldTrackPending = shouldTrackPendingRequest(options.method)
+    let pendingAdded = false
 
-    if (options.method && options.method !== 'GET') {
+    if (shouldTrackPending) {
         if (pendingRequests.has(requestKey)) {
             console.warn('重复提交已拦截:', requestKey)
-            return { code: 429, message: '请求正在处理中...', data: null as any }
+            const duplicateMessage = '请求正在处理中，请勿重复提交'
+            useToastStore().warning(duplicateMessage)
+            throw createHandledError(duplicateMessage, true)
         }
         pendingRequests.add(requestKey)
+        pendingAdded = true
     }
 
     const token = sessionStorage.getItem('token')
-
-    const config: RequestInit = {
-        headers: {
-            ...(token && { Authorization: `Bearer ${token}` }),
-            ...options.headers,
-        } as HeadersInit,
-        ...options,
+    const headers = normalizeHeaders(options.headers)
+    if (token) {
+        headers.Authorization = `Bearer ${token}`
     }
 
-    if (!(options.body instanceof FormData) && !(config.headers as any)['Content-Type']) {
-        (config.headers as any)['Content-Type'] = 'application/json'
+    const config: RequestInit = {
+        ...options,
+        headers,
+    }
+
+    if (shouldAutoSetJsonContentType(options.body) && !hasHeaderIgnoreCase(headers, 'Content-Type')) {
+        headers['Content-Type'] = 'application/json'
     }
 
     try {
         const response = await fetch(`${API_BASE}${url}`, config)
-        let data: Result<T>
-        const rawText = await response.text()
-        if (!rawText) {
-            const normalizedCode = response.status === 204 ? 200 : response.status
-            data = { code: normalizedCode, message: response.statusText || '', data: null as any }
-        } else {
-            try {
-                data = JSON.parse(rawText) as Result<T>
-            } catch {
-                data = { code: response.status, message: '响应解析失败', data: null as any }
-            }
-        }
+        const data = await parseResultFromResponse<T>(response)
 
         const isUnauthorized = response.status === 401 || data.code === 401
         const isForbiddenNeedLogout = (response.status === 403 || data.code === 403) && shouldForceLogoutOnForbidden(data.message)
@@ -269,12 +363,10 @@ export const request = async <T = any>(url: string, options: RequestOptions = {}
         if (!response.ok || data.code !== 200) {
             const friendlyMsg = getFriendlyMessage(data.message)
             useToastStore().error(friendlyMsg)
-            const businessError: RequestError = new Error(friendlyMsg)
-            businessError.handledByToast = true
-            throw businessError
+            throw createHandledError(friendlyMsg)
         }
 
-        if (options.method && options.method !== 'GET') {
+        if (shouldTrackPending) {
             clearCache()
         }
 
@@ -290,25 +382,134 @@ export const request = async <T = any>(url: string, options: RequestOptions = {}
                 useToastStore().error(friendlyMsg)
             }
 
-            SentryService.captureException(sentryError, {
-                level: 'error',
-                tags: {
-                    type: 'api_error',
-                    url: url,
-                    method: options.method || 'GET',
-                },
-                extra: {
-                    requestUrl: `${API_BASE}${url}`,
-                    friendlyMessage: friendlyMsg,
-                    originalMessage: errorMessage,
-                },
-            })
+            if (!requestError.skipSentry) {
+                SentryService.captureException(sentryError, {
+                    level: 'error',
+                    tags: {
+                        type: 'api_error',
+                        url: url,
+                        method: options.method || 'GET',
+                    },
+                    extra: {
+                        requestUrl: `${API_BASE}${url}`,
+                        friendlyMessage: friendlyMsg,
+                        originalMessage: errorMessage,
+                    },
+                })
+            }
         }
         throw err
     } finally {
-        if (options.method && options.method !== 'GET') {
+        if (pendingAdded) {
             pendingRequests.delete(requestKey)
         }
+    }
+}
+
+// 原始响应请求：用于下载文件等需要读取响应头/二进制内容的场景
+export const requestRaw = async (url: string, options: RequestOptions = {}): Promise<Response> => {
+    const requestKey = getRequestKey(url, options)
+    const shouldTrackPending = shouldTrackPendingRequest(options.method)
+    let pendingAdded = false
+
+    if (shouldTrackPending) {
+        if (pendingRequests.has(requestKey)) {
+            console.warn('重复提交已拦截:', requestKey)
+            const duplicateMessage = '请求正在处理中，请勿重复提交'
+            useToastStore().warning(duplicateMessage)
+            throw createHandledError(duplicateMessage, true)
+        }
+        pendingRequests.add(requestKey)
+        pendingAdded = true
+    }
+
+    const token = sessionStorage.getItem('token')
+    const headers = normalizeHeaders(options.headers)
+    if (token) {
+        headers.Authorization = `Bearer ${token}`
+    }
+
+    const config: RequestInit = {
+        ...options,
+        headers,
+    }
+
+    if (shouldAutoSetJsonContentType(options.body) && !hasHeaderIgnoreCase(headers, 'Content-Type')) {
+        headers['Content-Type'] = 'application/json'
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}${url}`, config)
+
+        if (response.status === 401) {
+            forceLogout('登录已过期')
+            throw new Error('权限校验失败')
+        }
+
+        if (response.status === 403) {
+            const forbiddenMessage = await extractResponseMessage(response)
+            if (shouldForceLogoutOnForbidden(forbiddenMessage)) {
+                forceLogout(forbiddenMessage || '登录已过期')
+                throw new Error(forbiddenMessage || '权限校验失败')
+            }
+        }
+
+        if (!response.ok) {
+            const message = await extractResponseMessage(response)
+            const friendlyMsg = getFriendlyMessage(message)
+            useToastStore().error(friendlyMsg)
+            throw createHandledError(friendlyMsg)
+        }
+
+        if (shouldTrackPending) {
+            clearCache()
+        }
+
+        return response
+    } catch (err: unknown) {
+        const errorMessage = getErrorMessage(err)
+        const requestError = err as RequestError
+        const sentryError = err instanceof Error ? err : new Error(errorMessage)
+
+        if (!errorMessage.includes('权限校验') && !errorMessage.includes('禁用')) {
+            const friendlyMsg = getFriendlyMessage(errorMessage)
+            if (!requestError.handledByToast) {
+                useToastStore().error(friendlyMsg)
+            }
+
+            if (!requestError.skipSentry) {
+                SentryService.captureException(sentryError, {
+                    level: 'error',
+                    tags: {
+                        type: 'api_error',
+                        url: url,
+                        method: options.method || 'GET',
+                    },
+                    extra: {
+                        requestUrl: `${API_BASE}${url}`,
+                        friendlyMessage: friendlyMsg,
+                        originalMessage: errorMessage,
+                    },
+                })
+            }
+        }
+        throw err
+    } finally {
+        if (pendingAdded) {
+            pendingRequests.delete(requestKey)
+        }
+    }
+}
+
+// 下载类请求统一入口：复用鉴权、错误处理与埋点逻辑
+export const requestBlob = async (url: string, options: RequestOptions = {}): Promise<BlobResponse> => {
+    const response = await requestRaw(url, options)
+    const blob = await response.blob()
+    const filename = extractFilenameFromDisposition(response.headers.get('Content-Disposition'))
+    return {
+        blob,
+        filename,
+        response,
     }
 }
 
@@ -413,4 +614,3 @@ export const stopHeartbeat = (): void => {
 
 export const startStatusCheck = startHeartbeat
 export const stopStatusCheck = stopHeartbeat
-export const setSkipFirstCheck = (): void => { }

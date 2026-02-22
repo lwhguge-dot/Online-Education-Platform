@@ -152,7 +152,15 @@
     
     <!-- 自定义弹出框 -->
     <Transition name="scale">
-      <div v-if="showToast" class="fixed inset-0 flex items-center justify-center z-50">
+      <div
+        v-if="showToast"
+        class="fixed inset-0 flex items-center justify-center z-50"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="toastTitle || '提示信息'"
+        tabindex="-1"
+        @keydown.esc="showToast = false"
+      >
         <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-sm" @click="showToast = false"></div>
         <div class="relative glass-card rounded-2xl p-8 max-w-sm w-full mx-4 transform animate-scale-in">
           <div class="text-center">

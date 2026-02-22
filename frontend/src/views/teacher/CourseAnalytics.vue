@@ -2,9 +2,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import {
   Users, TrendingUp, Award, BarChart3, AlertTriangle,
-  ChevronDown, RefreshCw, BookOpen, Target, LineChart
+  RefreshCw, BookOpen, Target, LineChart
 } from 'lucide-vue-next'
-import { progressAPI, courseAPI } from '../../services/api'
+import { progressAPI } from '../../services/api'
 import GlassCard from '../../components/ui/GlassCard.vue'
 import BaseButton from '../../components/ui/BaseButton.vue'
 import BaseSelect from '../../components/ui/BaseSelect.vue'
@@ -104,9 +104,6 @@ const courseOptions = computed(() => {
     ...props.courses.map(c => ({ value: c.id, label: c.title }))
   ]
 })
-
-// 计算柱状图高度
-const getBarHeight = (value, max = 100) => Math.max((value / max) * 100, 2)
 
 onMounted(() => {
   // 如果有课程，默认选择第一个并加载数据

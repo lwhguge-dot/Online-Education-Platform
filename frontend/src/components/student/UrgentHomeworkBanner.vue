@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { AlertTriangle, Clock, ChevronRight, X } from 'lucide-vue-next'
+import { AlertTriangle, Clock, ChevronRight } from 'lucide-vue-next'
 
 const props = defineProps({
   homeworks: {

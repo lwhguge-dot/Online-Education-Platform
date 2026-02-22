@@ -2,6 +2,8 @@ package com.eduplatform.progress.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.eduplatform.progress.client.HomeworkServiceClient;
+import com.eduplatform.progress.dto.QuizSubmitDTO;
+import com.eduplatform.progress.dto.VideoProgressDTO;
 import com.eduplatform.progress.entity.Chapter;
 import com.eduplatform.progress.entity.ChapterProgress;
 import com.eduplatform.progress.mapper.ChapterMapper;
@@ -24,6 +26,7 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -67,6 +70,12 @@ class ProgressServiceTest {
 
     @Mock
     private CacheManager cacheManager;
+
+    @Mock
+    private ProgressAnalyticsService progressAnalyticsService;
+
+    @Mock
+    private ProgressTrackingService progressTrackingService;
 
     private ChapterProgress testProgress;
     private Chapter testChapter;
@@ -183,6 +192,63 @@ class ProgressServiceTest {
         void quizScoreTooLow() {
             testProgress.setQuizScore(50);
             assertFalse(testProgress.getQuizScore() >= 60);
+        }
+    }
+
+    // =========================================================================
+    // 学情分析文案测试
+    // =========================================================================
+    @Nested
+    @DisplayName("学情分析文案测试")
+    class AnalyticsTextTests {
+
+        @Test
+        @DisplayName("知识掌握度查询应委托分析服务")
+        void knowledgeMasteryShouldDelegateToAnalyticsService() {
+            Map<String, Object> analyticsResult = Map.of(
+                    "masteryLevel", "熟练",
+                    "avgQuizScore", 75);
+            when(progressAnalyticsService.getKnowledgeMastery(1L)).thenReturn(analyticsResult);
+
+            // ProgressService 仅做兼容入口，具体查询由 ProgressAnalyticsService 承担
+            Map<String, Object> mastery = progressService.getKnowledgeMastery(1L);
+
+            assertEquals("熟练", mastery.get("masteryLevel"));
+            verify(progressAnalyticsService, times(1)).getKnowledgeMastery(1L);
+        }
+    }
+
+    // =========================================================================
+    // 写流程委托测试
+    // =========================================================================
+    @Nested
+    @DisplayName("写流程委托测试")
+    class WriteDelegationTests {
+
+        @Test
+        @DisplayName("视频进度上报应委托写模型服务")
+        void reportVideoProgressShouldDelegateToTrackingService() {
+            VideoProgressDTO dto = new VideoProgressDTO();
+            Map<String, Object> expected = Map.of("unlockTriggered", false);
+            when(progressTrackingService.reportVideoProgress(dto)).thenReturn(expected);
+
+            Map<String, Object> actual = progressService.reportVideoProgress(dto);
+
+            assertEquals(expected, actual);
+            verify(progressTrackingService, times(1)).reportVideoProgress(dto);
+        }
+
+        @Test
+        @DisplayName("章节测验提交应委托写模型服务")
+        void submitQuizShouldDelegateToTrackingService() {
+            QuizSubmitDTO dto = new QuizSubmitDTO();
+            Map<String, Object> expected = Map.of("score", 100);
+            when(progressTrackingService.submitQuiz(dto)).thenReturn(expected);
+
+            Map<String, Object> actual = progressService.submitQuiz(dto);
+
+            assertEquals(expected, actual);
+            verify(progressTrackingService, times(1)).submitQuiz(dto);
         }
     }
 }

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { homeworkAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
 import { 
@@ -57,7 +57,7 @@ const loadPendingSubmissions = async () => {
         await loadSubmissionDetail(submissions.value[currentIndex.value].id)
       }
     }
-  } catch (e) {
+  } catch {
     toast.error('加载失败')
   } finally {
     loading.value = false
@@ -82,7 +82,7 @@ const loadSubmissionDetail = async (submissionId) => {
         }
       }
     }
-  } catch (e) {
+  } catch {
     toast.error('加载详情失败')
   }
 }
@@ -142,7 +142,7 @@ const saveGrade = async (autoNext = false) => {
         await nextSubmission()
       }
     }
-  } catch (e) {
+  } catch {
     toast.error('保存失败')
   } finally {
     saving.value = false

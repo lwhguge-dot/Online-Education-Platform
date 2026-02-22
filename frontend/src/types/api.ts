@@ -12,6 +12,8 @@ export interface Result<T = any> {
   code: number
   message: string
   data: T
+  // 可选链路追踪ID，用于定位后端错误日志
+  traceId?: string
 }
 
 /**
@@ -145,6 +147,29 @@ export interface RegisterRequest {
 export interface ResetPasswordRequest {
   email: string
   realName: string
+  newPassword: string
+}
+
+/**
+ * 申请密码重置令牌请求
+ */
+export interface PasswordResetIssueRequest {
+  email: string
+  realName: string
+}
+
+/**
+ * 申请密码重置令牌响应
+ */
+export interface PasswordResetTokenResponse {
+  resetToken: string | null
+}
+
+/**
+ * 确认密码重置请求
+ */
+export interface PasswordResetConfirmRequest {
+  resetToken: string
   newPassword: string
 }
 
