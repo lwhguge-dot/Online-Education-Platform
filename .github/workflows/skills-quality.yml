@@ -37,7 +37,7 @@ jobs:
 
       - name: Upload health report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: skills-health-report
           path: ./.reports/skills/health.json
@@ -59,7 +59,7 @@ jobs:
 
       - name: Upload lint report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: skills-lint-report
           path: ./.reports/skills/lint.json
@@ -96,7 +96,7 @@ jobs:
 
       - name: Upload smoke report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: skills-smoke-report
           path: ./.reports/skills/smoke.json
@@ -118,7 +118,7 @@ jobs:
 
       - name: Upload regression report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: skills-regression-report
           path: ./.reports/skills/regression.json
