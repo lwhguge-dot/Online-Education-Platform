@@ -75,7 +75,7 @@ jobs:
       # 4. 生成镜像元数据 (标签、标注)
       - name: 生成镜像元数据
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
           tags: |
@@ -131,7 +131,7 @@ jobs:
       # 4. 生成镜像元数据
       - name: 生成镜像元数据
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/frontend
           tags: |
