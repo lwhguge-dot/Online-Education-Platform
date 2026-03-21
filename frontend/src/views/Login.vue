@@ -274,7 +274,7 @@ const clearError = () => {
             type="button"
             @click="isLogin = true; showPassword = false; showConfirmPassword = false"
             :class="[
-              'flex-1 py-2.5 rounded-lg font-medium transition-all duration-300 text-sm',
+              'flex-1 py-2.5 rounded-lg font-medium transition-[background-color,color,box-shadow] duration-300 text-sm',
               isLogin ? 'bg-white shadow-md text-shuimo' : 'text-shuimo/80 hover:text-shuimo'
             ]"
             :aria-pressed="isLogin"
@@ -286,7 +286,7 @@ const clearError = () => {
             type="button"
             @click="isLogin = false; showPassword = false; showConfirmPassword = false"
             :class="[
-              'flex-1 py-2.5 rounded-lg font-medium transition-all duration-300 text-sm',
+              'flex-1 py-2.5 rounded-lg font-medium transition-[background-color,color,box-shadow] duration-300 text-sm',
               !isLogin ? 'bg-white shadow-md text-shuimo' : 'text-shuimo/80 hover:text-shuimo'
             ]"
             :aria-pressed="!isLogin"
@@ -309,7 +309,7 @@ const clearError = () => {
               type="button"
               @click="selectedRole = role.id"
               :class="[
-                'flex-1 px-4 py-2.5 rounded-xl border transition-all duration-300 flex items-center justify-center gap-2',
+                'flex-1 px-4 py-2.5 rounded-xl border transition-[transform,background-color,color,border-color,box-shadow] duration-300 flex items-center justify-center gap-2',
                 selectedRole === role.id
                   ? `border-transparent bg-gradient-to-r ${role.color} text-white shadow-md`
                   : 'border-slate-200 bg-white/50 text-shuimo/70 hover:border-qinghua/30 hover:bg-white/80'
@@ -707,6 +707,17 @@ const clearError = () => {
 }
 
 .animate-float {
-  animation: float-enhanced var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  /* 中文注释：装饰浮动改为有限次播放，降低长驻页面持续重绘 */
+  animation: float-enhanced var(--motion-duration-loop-slow) var(--motion-ease-standard) 3 both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float {
+    animation: none !important;
+  }
+
+  .logo-hover:hover .logo-icon {
+    animation: none !important;
+  }
 }
 </style>

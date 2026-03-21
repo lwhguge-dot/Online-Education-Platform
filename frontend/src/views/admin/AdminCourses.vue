@@ -318,7 +318,7 @@ onDeactivated(stopRefreshTimer)
               v-for="tab in [{id: 'all', label: '全部'}, {id: '0', label: '待审核'}, {id: '1', label: '已发布'}, {id: '2', label: '已下架'}]"
               :key="tab.id"
               @click="statusFilter = tab.id"
-              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors transition-shadow whitespace-nowrap"
               :class="statusFilter === tab.id ? 'bg-tianlv text-white shadow-md shadow-tianlv/20' : 'text-shuimo/60 hover:text-shuimo hover:bg-slate-100'"
             >
               {{ tab.label }}
@@ -345,7 +345,7 @@ onDeactivated(stopRefreshTimer)
               type="text" 
               placeholder="搜索课程..."
               aria-label="搜索课程名称或教师"
-              class="w-40 pl-9 pr-3 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-tianlv/20 transition-all text-sm"
+              class="w-40 pl-9 pr-3 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-tianlv/20 transition-colors transition-shadow text-sm"
             />
           </div>
           
@@ -403,7 +403,7 @@ onDeactivated(stopRefreshTimer)
          >
            <!-- 覆盖层：选择框与操作按钮 -->
            <template #overlay>
-             <div class="absolute inset-0 z-10 flex flex-col justify-between p-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
+             <div class="absolute inset-0 z-10 flex flex-col justify-between p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                <!-- 顶部：选择框 -->
                <div class="flex justify-start">
                  <button @click.stop="toggleSelectCourse(course.id)" class="p-2 rounded-lg bg-white/90 hover:bg-white text-shuimo shadow-lg backdrop-blur-sm transform -translate-y-2 group-hover:translate-y-0 transition-transform duration-300">

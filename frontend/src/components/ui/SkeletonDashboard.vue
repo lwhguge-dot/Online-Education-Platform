@@ -170,6 +170,9 @@ defineProps({
 .skeleton-dashboard .bg-slate-200 {
   /* P1 第二批：仪表盘骨架动画压缩 */
   animation: shimmer var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  /* 中文注释：骨架闪烁接入功能型循环门控，降低持续渲染压力 */
+  animation-iteration-count: var(--motion-loop-iterations-functional, infinite);
+  animation-fill-mode: both;
 }
 
 .skeleton-stat-card,

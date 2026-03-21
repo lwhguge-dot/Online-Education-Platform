@@ -351,13 +351,14 @@ onUnmounted(() => {
   <div class="min-h-screen relative overflow-hidden font-sans">
     <!-- Background Decoration -->
     <div class="fixed inset-0 pointer-events-none z-0">
-      <div class="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-tianlv/5 rounded-full blur-3xl animate-float"></div>
-      <div class="absolute top-[40%] -right-[10%] w-[40%] h-[40%] bg-qinghua/5 rounded-full blur-3xl animate-float" style="animation-delay: 2s"></div>
+      <!-- 中文注释：修复阶段禁用大面积持续漂浮动画，降低长时会话渲染压力 -->
+      <div class="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-tianlv/5 rounded-full blur-3xl"></div>
+      <div class="absolute top-[40%] -right-[10%] w-[40%] h-[40%] bg-qinghua/5 rounded-full blur-3xl"></div>
     </div>
 
     <!-- Sidebar -->
     <aside 
-      :class="['fixed top-0 left-0 h-full bg-white/80 backdrop-blur-xl border-r border-slate-200/60 z-50 transition-all duration-500 ease-out shadow-lg shadow-slate-200/50', 
+      :class="['fixed top-0 left-0 h-full bg-white/80 backdrop-blur-xl border-r border-slate-200/60 z-50 shadow-lg shadow-slate-200/50 transition-[background-color,border-color,box-shadow] duration-300', 
               sidebarOpen ? 'w-64' : 'w-20']"
     >
       <div class="p-6 flex items-center gap-3 mb-6">
@@ -383,7 +384,7 @@ onUnmounted(() => {
               :key="item.id"
               @click="activeMenu = item.id"
               :class="[
-                'w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden menu-item-glow',
+                'w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-[background-color,color,transform,box-shadow] duration-300 group relative overflow-hidden menu-item-glow',
                 activeMenu === item.id
                   ? 'bg-gradient-to-r from-tianlv to-qingsong text-white shadow-lg shadow-tianlv/25'
                   : 'text-shuimo/70 hover:bg-slate-100/80 hover:text-shuimo'
@@ -398,7 +399,7 @@ onUnmounted(() => {
               <component
                 :is="item.icon"
                 :class="[
-                  'w-5 h-5 transition-all duration-300 flex-shrink-0',
+                  'w-5 h-5 transition-transform transition-colors duration-300 flex-shrink-0',
                   activeMenu === item.id ? 'scale-110' : 'group-hover:scale-110 group-hover:text-tianlv'
                 ]"
               />
@@ -439,7 +440,7 @@ onUnmounted(() => {
 
     <!-- Main Content -->
     <main 
-      :class="['relative z-10 min-h-screen transition-all duration-500 ease-out flex flex-col', sidebarOpen ? 'ml-64' : 'ml-20']"
+      :class="['relative z-10 min-h-screen flex flex-col transition-colors duration-300', sidebarOpen ? 'ml-64' : 'ml-20']"
     >
       <!-- Header -->
       <header class="sticky top-0 z-40 px-8 py-5 flex items-center justify-between bg-white/60 backdrop-blur-xl border-b border-white/50">
@@ -455,7 +456,7 @@ onUnmounted(() => {
         <div class="flex items-center gap-6">
           <button class="relative p-2 hover:bg-white/50 rounded-xl transition-colors group">
             <Bell class="w-5 h-5 text-shuimo group-hover:animate-bell-shake" />
-            <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-yanzhi rounded-full ring-2 ring-white animate-pulse"></span>
+            <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-yanzhi rounded-full ring-2 ring-white notification-dot-pulse"></span>
           </button>
           
           <div class="flex items-center gap-3 pl-6 border-l border-slate-200/50">
@@ -647,6 +648,24 @@ onUnmounted(() => {
 /* 通知铃铛摇晃动画 */
 .animate-bell-shake {
   animation: bell-shake var(--motion-duration-medium) var(--motion-ease-standard);
+}
+
+/* 中文注释：通知点提示采用有限次脉冲，避免侧栏长驻时持续动画干扰 */
+.notification-dot-pulse {
+  animation: pulse-dot var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-attention, 4);
+  animation-fill-mode: both;
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.72;
+    transform: scale(1.12);
+  }
 }
 
 @keyframes bell-shake {

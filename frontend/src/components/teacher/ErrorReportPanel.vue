@@ -187,7 +187,7 @@ onMounted(() => {
           <div
             v-for="question in reportData.highErrorQuestions"
             :key="question.questionId"
-            class="rounded-xl border transition-all"
+            class="rounded-xl border transition-colors"
             :class="getErrorRateBgColor(question.errorRate)"
           >
             <!-- 题目头部 -->

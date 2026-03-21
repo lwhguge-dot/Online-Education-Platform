@@ -206,9 +206,9 @@ onMounted(async () => {
                <div v-if="day.hours > 0"
                     class="w-full max-w-[40px] mx-auto rounded-t-xl relative overflow-visible cursor-pointer chart-bar" 
                     :style="{ height: Math.max((day.hours / maxHours * 100), 10) + '%', animationDelay: `${index * 0.1}s` }">
-                  <div class="absolute inset-0 bg-gradient-to-t from-qinghua to-halanzi rounded-t-xl opacity-90 group-hover:opacity-100 group-hover:shadow-lg group-hover:shadow-qinghua/30 transition-all"></div>
+                  <div class="absolute inset-0 bg-gradient-to-t from-qinghua to-halanzi rounded-t-xl opacity-90 group-hover:opacity-100 group-hover:shadow-lg group-hover:shadow-qinghua/30 transition-[opacity,box-shadow] duration-300"></div>
                   <!-- Tooltip - 鼠标悬停显示 -->
-                  <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-shuimo text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-20 shadow-lg transform group-hover:scale-100 scale-95">
+                  <div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-shuimo text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-[opacity,transform] duration-200 pointer-events-none whitespace-nowrap z-20 shadow-lg transform group-hover:scale-100 scale-95">
                      <span class="font-bold">{{ day.hours }}</span> 小时
                      <div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-shuimo"></div>
                   </div>
@@ -236,7 +236,7 @@ onMounted(async () => {
         </div>
         
         <!-- 周对比 -->
-        <div class="bg-slate-50 rounded-xl p-4 transition-all hover:bg-slate-100">
+        <div class="bg-slate-50 rounded-xl p-4 transition-colors duration-300 hover:bg-slate-100">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs text-shuimo/60">vs 上周</span>
             <div class="flex items-center gap-1">
@@ -259,7 +259,7 @@ onMounted(async () => {
             <span class="text-shuimo/50">上周: {{ lastWeekHours }}小时</span>
           </div>
           <p 
-            class="text-xs mt-2 text-center py-1.5 rounded-lg transition-all"
+            class="text-xs mt-2 text-center py-1.5 rounded-lg transition-[background-color,color] duration-300"
             :class="{
               'bg-tianlv/10 text-tianlv': weeklyCompareStatus === 'up',
               'bg-yanzhi/10 text-yanzhi': weeklyCompareStatus === 'down',
@@ -323,12 +323,12 @@ onMounted(async () => {
                :style="{ animationDelay: `${index * 0.1}s` }"
                @click="handleTimelineClick(item)"
              >
-                <div class="absolute left-[-5px] top-1 w-2.5 h-2.5 rounded-full ring-4 ring-white transition-all group-hover:scale-125 timeline-dot"
+                <div class="absolute left-[-5px] top-1 w-2.5 h-2.5 rounded-full ring-4 ring-white transition-[background-color,transform] duration-300 group-hover:scale-125 timeline-dot"
                      :class="index === 0 ? 'bg-zijinghui' : 'bg-slate-200 group-hover:bg-zijinghui'"></div>
-                <div class="p-3 rounded-xl transition-all group-hover:bg-slate-50 group-hover:shadow-sm">
+                <div class="p-3 rounded-xl transition-[background-color,box-shadow] duration-300 group-hover:bg-slate-50 group-hover:shadow-sm">
                    <div class="flex items-center justify-between">
                      <p class="font-medium text-shuimo group-hover:text-qinghua transition-colors">{{ item.title }}</p>
-                     <div class="opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1 text-xs text-qinghua transform translate-x-2 group-hover:translate-x-0">
+                     <div class="opacity-0 group-hover:opacity-100 transition-[opacity,transform] duration-300 flex items-center gap-1 text-xs text-qinghua transform translate-x-2 group-hover:translate-x-0">
                        <Play class="w-3 h-3" />
                        <span>继续学习</span>
                      </div>
@@ -369,7 +369,7 @@ onMounted(async () => {
              <div 
                v-for="(quiz, index) in quizzes" 
                :key="index" 
-               class="flex items-center justify-between p-3 rounded-xl bg-slate-50 transition-all hover:shadow-sm stagger-item"
+               class="flex items-center justify-between p-3 rounded-xl bg-slate-50 transition-[background-color,box-shadow] duration-300 hover:shadow-sm stagger-item"
                :class="quiz?.chapterId ? 'hover:bg-slate-100 cursor-pointer' : 'opacity-60 cursor-not-allowed'"
                :style="{ animationDelay: `${index * 0.1}s` }"
                @click="quiz?.chapterId ? handleQuizClick(quiz) : null"

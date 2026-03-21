@@ -171,12 +171,12 @@ onBeforeUnmount(() => {
           <!-- 按钮区域 -->
           <div class="px-6 pb-6 flex gap-3">
             <button @click="handleCancel" :disabled="loading"
-              class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-shuimo/70 hover:bg-slate-50 hover:border-slate-300 transition-all font-medium disabled:opacity-50">
+              class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-shuimo/70 hover:bg-slate-50 hover:border-slate-300 transition-[background-color,color,border-color,box-shadow,transform] duration-300 font-medium disabled:opacity-50">
               {{ cancelText }}
             </button>
             <button @click="handleConfirm" :disabled="loading"
               data-confirm="true"
-              :class="['flex-1 px-4 py-2.5 rounded-xl text-white font-medium transition-all bg-gradient-to-r shadow-lg hover:shadow-xl disabled:opacity-50', colorMap[type].btn]">
+              :class="['flex-1 px-4 py-2.5 rounded-xl text-white font-medium transition-[background-color,color,box-shadow,transform] duration-300 bg-gradient-to-r shadow-lg hover:shadow-xl disabled:opacity-50', colorMap[type].btn]">
               <span v-if="loading" class="flex items-center justify-center gap-2">
                 <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
                 处理中...

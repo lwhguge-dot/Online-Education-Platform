@@ -27,6 +27,12 @@
   --motion-duration-medium: 0.2s;
   --motion-duration-slow: 0.2s;
   --motion-duration-complex: 0.4s;
+  --motion-duration-loop: 1.2s;
+  --motion-duration-loop-slow: 2.4s;
+  /* 中文注释：循环动画门控，默认优先有限次，语义必要动画再显式放开 */
+  --motion-loop-iterations-decorative: 3;
+  --motion-loop-iterations-attention: 4;
+  --motion-loop-iterations-functional: infinite;
 
   /* 基础样式 */
   font-family: 'Noto Sans SC', system-ui, -apple-system, sans-serif;
@@ -254,17 +260,18 @@ h6 {
   position: absolute;
   bottom: 0;
   left: 50%;
-  width: 0;
+  width: 100%;
   height: 2px;
   background-color: #88ada6;
+  transform-origin: center;
+  transform: translateX(-50%) scaleX(0);
   transition:
-    width var(--motion-duration-medium) var(--motion-ease-standard),
+    transform var(--motion-duration-medium) var(--motion-ease-standard),
     background-color var(--motion-duration-medium) var(--motion-ease-standard);
-  transform: translateX(-50%);
 }
 
 .nav-link:hover::after {
-  width: 100%;
+  transform: translateX(-50%) scaleX(1);
 }
 
 /* ===== 核心动画定义 ===== */

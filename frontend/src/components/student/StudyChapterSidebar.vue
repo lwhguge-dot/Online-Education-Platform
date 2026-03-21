@@ -58,7 +58,7 @@ const handleSelect = (chapter: StudyChapterItem): void => {
             v-for="(chapter, idx) in chapters"
             :key="chapter.id"
             @click="handleSelect(chapter)"
-            class="chapter-item group p-4 rounded-xl transition-all duration-300 border border-transparent relative overflow-hidden"
+            class="chapter-item group p-4 rounded-xl transition-colors transition-shadow duration-300 border border-transparent relative overflow-hidden"
             :class="{
               'bg-qinghua/5 border-qinghua/20 shadow-sm active-chapter cursor-pointer': currentChapterId === chapter.id,
               'hover:bg-white/60 hover:shadow-sm cursor-pointer': currentChapterId !== chapter.id && chapter.unlocked,
@@ -71,7 +71,7 @@ const handleSelect = (chapter: StudyChapterItem): void => {
 
             <div class="flex items-start gap-3 relative z-10">
               <div
-                class="chapter-icon w-6 h-6 flex-shrink-0 mt-0.5 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300"
+                class="chapter-icon w-6 h-6 flex-shrink-0 mt-0.5 rounded-full flex items-center justify-center text-xs font-bold transition-colors transition-transform duration-300"
                 :class="chapter.completed ? 'bg-qingsong/10 text-qingsong' : (currentChapterId === chapter.id ? 'bg-qinghua text-white scale-110' : 'bg-slate-200 text-slate-500')"
               >
                 <CheckCircle v-if="chapter.completed" class="w-4 h-4 check-icon" />
@@ -86,9 +86,10 @@ const handleSelect = (chapter: StudyChapterItem): void => {
 
                 <div v-if="chapter.unlocked" class="flex items-center gap-2 mt-2">
                   <div class="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                    <!-- 使用 scaleX 动画替代 width 过渡，减少章节列表重排开销 -->
                     <div
-                      class="h-full bg-gradient-to-r from-qinghua to-halanzi rounded-full transition-all duration-500"
-                      :style="{ width: normalizeProgress(chapter.progress) + '%' }"
+                      class="h-full bg-gradient-to-r from-qinghua to-halanzi rounded-full origin-left will-change-transform transition-transform duration-500"
+                      :style="{ transform: `scaleX(${normalizeProgress(chapter.progress) / 100})` }"
                     ></div>
                   </div>
                 </div>

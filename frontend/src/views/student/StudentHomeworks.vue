@@ -176,7 +176,7 @@ onMounted(async () => {
               v-for="tab in [{id: 'pending', label: '待完成'}, {id: 'completed', label: '已提交'}]"
               :key="tab.id"
               @click="activeTab = tab.id"
-              class="px-4 py-2 rounded-xl text-sm font-medium transition-all btn-ripple"
+              class="px-4 py-2 rounded-xl text-sm font-medium transition-[background-color,color,box-shadow,transform] duration-300 btn-ripple"
               :class="activeTab === tab.id ? 'bg-zhizi text-white shadow-lg shadow-zhizi/30' : 'bg-slate-50 text-shuimo/70 hover:bg-slate-100'"
             >
               {{ tab.label }}
@@ -209,7 +209,7 @@ onMounted(async () => {
           <GlassCard 
             v-for="(hw, index) in filteredPending" 
             :key="hw.id"
-            class="p-4 flex flex-col justify-between gap-4 transition-all cursor-pointer group card-hover-lift stagger-item h-full animate-slide-up"
+            class="p-4 flex flex-col justify-between gap-4 transition-[background-color,border-color,box-shadow,transform] duration-300 cursor-pointer group card-hover-lift stagger-item h-full animate-slide-up"
             :class="urgencyStyles[getHomeworkUrgency(hw.daysLeft)].card"
             :style="{ animationDelay: `${index * 0.08}s`, animationFillMode: 'both' }"
             @click="handleStartHomework(hw)"
@@ -265,7 +265,7 @@ onMounted(async () => {
              </div>
              <div class="flex justify-end">
                 <button 
-                  class="px-4 py-2 rounded-lg text-white text-sm font-bold shadow-md transition-all whitespace-nowrap btn-ripple hover:scale-105 active:scale-95"
+                  class="px-4 py-2 rounded-lg text-white text-sm font-bold shadow-md transition-[background-color,color,box-shadow,transform] duration-300 whitespace-nowrap btn-ripple hover:scale-105 active:scale-95"
                   :class="getHomeworkUrgency(hw.daysLeft) === 'critical' || getHomeworkUrgency(hw.daysLeft) === 'overdue' 
                     ? 'bg-red-500 shadow-red-500/20 hover:bg-red-600' 
                     : getHomeworkUrgency(hw.daysLeft) === 'warning'
@@ -292,7 +292,7 @@ onMounted(async () => {
           <GlassCard 
             v-for="(hw, index) in filteredCompleted" 
             :key="hw.id"
-            class="p-4 flex flex-col justify-between gap-4 hover:bg-slate-50 transition-all cursor-pointer stagger-item card-hover-lift h-full animate-slide-up"
+            class="p-4 flex flex-col justify-between gap-4 hover:bg-slate-50 transition-[background-color,box-shadow,transform] duration-300 cursor-pointer stagger-item card-hover-lift h-full animate-slide-up"
             :style="{ animationDelay: `${index * 0.08}s`, animationFillMode: 'both' }"
             @click="handleViewHomework(hw)"
           >
@@ -332,7 +332,7 @@ onMounted(async () => {
                 <button 
                   v-if="hasMistakes(hw)"
                   @click.stop="handleViewHomework(hw)"
-                  class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yanzhi/10 text-yanzhi text-xs font-bold hover:bg-yanzhi hover:text-white transition-all whitespace-nowrap btn-ripple hover:scale-105"
+                  class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yanzhi/10 text-yanzhi text-xs font-bold hover:bg-yanzhi hover:text-white transition-[background-color,color,box-shadow,transform] duration-300 whitespace-nowrap btn-ripple hover:scale-105"
                 >
                   <RotateCcw class="w-3.5 h-3.5" />
                   查看错题

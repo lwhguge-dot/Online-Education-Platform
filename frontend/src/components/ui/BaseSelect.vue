@@ -306,7 +306,7 @@ watch(() => normalizedOptions.value.length, () => {
       :aria-controls="listboxId"
       :aria-activedescendant="activeOptionId"
       :class="[
-        'w-full flex items-center justify-between gap-2 rounded-xl border transition-all duration-200 text-left',
+        'w-full flex items-center justify-between gap-2 rounded-xl border transition-colors transition-shadow duration-200 text-left',
         sizeClasses,
         isOpen
           ? 'border-danqing ring-2 ring-danqing/20 bg-white shadow-lg'
@@ -353,7 +353,7 @@ watch(() => normalizedOptions.value.length, () => {
             @mouseenter="activeIndex = index"
             @click="selectOption(option)"
             :class="[
-              'flex items-center justify-between px-3 py-2 cursor-pointer transition-all duration-150',
+              'flex items-center justify-between px-3 py-2 cursor-pointer transition-colors duration-150',
               option.value === modelValue || (isOpen && index === activeIndex)
                 ? 'bg-danqing/10 text-danqing font-medium'
                 : 'text-shuimo hover:bg-slate-50'

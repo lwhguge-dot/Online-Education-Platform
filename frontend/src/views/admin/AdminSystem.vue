@@ -202,7 +202,7 @@ const getPermissionIcon = (val) => {
               <p class="text-2xl font-mono text-slate-700 pl-8">{{ uptime }}</p>
            </div>
            
-           <button @click="clearCache" class="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100 hover:bg-red-50 hover:border-red-100 group transition-all text-left">
+           <button @click="clearCache" class="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100 hover:bg-red-50 hover:border-red-100 group transition-[background-color,color,border-color,box-shadow,transform] duration-300 text-left">
               <div class="flex items-center gap-3">
                  <Trash2 class="w-5 h-5 text-slate-500 group-hover:text-red-500 transition-colors" />
                  <div>

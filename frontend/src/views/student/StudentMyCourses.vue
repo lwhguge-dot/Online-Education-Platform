@@ -47,6 +47,13 @@ const studentStatusTips = {
   enroll: '点击后立即报名课程，报名成功后会进入“已选课程”。'
 }
 
+const clampProgress = (value) => Math.max(0, Math.min(100, Number(value) || 0))
+
+// 中文注释：进度条改为 scaleX，避免 width 变化触发布局计算
+const getProgressBarStyle = (value) => ({
+  transform: `scaleX(${clampProgress(value) / 100})`
+})
+
 const filteredList = computed(() => {
   const targetList = activeTab.value === 'enrolled' ? enrolledCourses.value : availableCourses.value
   return targetList.filter(c => {
@@ -138,7 +145,7 @@ onMounted(async () => {
               v-for="tab in [{id: 'enrolled', label: '已选课程'}, {id: 'available', label: '选课中心'}]"
               :key="tab.id"
               @click="activeTab = tab.id"
-              class="px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap btn-ripple"
+              class="px-4 py-2 rounded-xl text-sm font-medium transition-[background-color,color,box-shadow,transform] duration-300 whitespace-nowrap btn-ripple"
               :class="activeTab === tab.id ? 'bg-qinghua text-white shadow-lg shadow-qinghua/30' : 'bg-slate-50 text-shuimo/70 hover:bg-slate-100'"
             >
               {{ tab.label }}
@@ -156,7 +163,7 @@ onMounted(async () => {
                v-model="searchQuery"
                type="text" 
                placeholder="搜索课程、教师..."
-               class="w-48 pl-9 pr-4 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-qinghua/20 transition-all text-sm"
+               class="w-48 pl-9 pr-4 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-qinghua/20 transition-[background-color,color,box-shadow] duration-300 text-sm"
              />
           </div>
           <div class="w-24">
@@ -182,7 +189,7 @@ onMounted(async () => {
         <div 
           v-for="(course, index) in filteredList" 
           :key="course.id"
-          class="group relative rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer h-64 bg-white card-hover-lift stagger-item"
+          class="group relative rounded-2xl overflow-hidden hover:shadow-xl cursor-pointer h-64 bg-white card-hover-lift stagger-item"
           :style="{ animationDelay: `${index * 0.08}s`, opacity: 0, animation: `fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) ${index * 0.08}s forwards` }"
           @click="handleCourseClick(course)"
           @contextmenu.prevent="handleDrop(course)"
@@ -217,7 +224,7 @@ onMounted(async () => {
           
           <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-70 group-hover:opacity-80 transition-opacity"></div>
           
-          <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-50 group-hover:scale-100">
+          <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-[opacity,transform] duration-300 scale-50 group-hover:scale-100">
             <div class="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm border border-white/50 flex items-center justify-center shadow-lg group-active:scale-95 transition-transform play-btn-pulse">
               <div class="w-12 h-12 rounded-full bg-white text-qinghua flex items-center justify-center shadow-sm">
                 <Play class="w-5 h-5 ml-1 fill-current" aria-hidden="true" />
@@ -258,13 +265,13 @@ onMounted(async () => {
               <div class="flex items-center gap-3">
                 <div class="flex-1 h-2 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
                   <div 
-                    class="h-full bg-gradient-to-r from-tianlv to-qingsong rounded-full shadow-[0_0_10px_rgba(255,255,255,0.3)] transition-all duration-500 progress-bar-animated" 
-                    :style="{ width: (course.progress || 0) + '%' }"
+                    class="h-full bg-gradient-to-r from-tianlv to-qingsong rounded-full shadow-[0_0_10px_rgba(255,255,255,0.3)] transition-transform duration-500 origin-left will-change-transform progress-bar-animated" 
+                    :style="getProgressBarStyle(course.progress)"
                   ></div>
                 </div>
                 <button 
                   @click.stop="handleStartStudy(course)" 
-                  class="px-4 py-1.5 text-xs font-bold text-qinghua bg-white rounded-lg hover:shadow-lg transition-all hover:scale-105 active:scale-95 shadow-sm whitespace-nowrap btn-ripple min-h-[44px] min-w-[80px] flex items-center justify-center md:min-h-0 md:py-1.5"
+                  class="px-4 py-1.5 text-xs font-bold text-qinghua bg-white rounded-lg hover:shadow-lg transition-[background-color,color,box-shadow,transform] duration-300 hover:scale-105 active:scale-95 shadow-sm whitespace-nowrap btn-ripple min-h-[44px] min-w-[80px] flex items-center justify-center md:min-h-0 md:py-1.5"
                 >
                   继续学习
                 </button>
@@ -279,7 +286,7 @@ onMounted(async () => {
         <div 
           v-for="(course, index) in filteredList" 
           :key="course.id"
-          class="group relative rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer h-64 bg-white card-hover-lift stagger-item"
+          class="group relative rounded-2xl overflow-hidden hover:shadow-xl cursor-pointer h-64 bg-white card-hover-lift stagger-item"
           :style="{ animationDelay: `${index * 0.08}s`, opacity: 0, animation: `fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) ${index * 0.08}s forwards` }"
           @click="handleCourseClick(course)"
         >
@@ -304,7 +311,7 @@ onMounted(async () => {
           
           <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-70 group-hover:opacity-80 transition-opacity"></div>
           
-          <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-50 group-hover:scale-100">
+          <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-[opacity,transform] duration-300 scale-50 group-hover:scale-100">
             <div class="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm border border-white/50 flex items-center justify-center shadow-lg group-active:scale-95 transition-transform play-btn-pulse">
               <div class="w-12 h-12 rounded-full bg-white text-qinghua flex items-center justify-center shadow-sm">
                 <Play class="w-5 h-5 ml-1 fill-current" aria-hidden="true" />
@@ -340,7 +347,7 @@ onMounted(async () => {
               <BaseTooltip :text="studentStatusTips.enroll" placement="top">
                 <button 
                   @click.stop="handleEnroll(course)" 
-                  class="px-4 py-1.5 text-xs font-bold text-white bg-white/20 hover:bg-white hover:text-qinghua rounded-lg backdrop-blur-md transition-all border border-white/20 btn-ripple hover:scale-105 active:scale-95 min-h-[44px] min-w-[80px] flex items-center justify-center md:min-h-0 md:py-1.5"
+                  class="px-4 py-1.5 text-xs font-bold text-white bg-white/20 hover:bg-white hover:text-qinghua rounded-lg backdrop-blur-md transition-[background-color,color,box-shadow,transform] duration-300 border border-white/20 btn-ripple hover:scale-105 active:scale-95 min-h-[44px] min-w-[80px] flex items-center justify-center md:min-h-0 md:py-1.5"
                 >
                   立即报名
                 </button>
@@ -366,7 +373,7 @@ onMounted(async () => {
        <button
          v-if="activeTab === 'enrolled'"
          @click="activeTab = 'available'"
-         class="mt-6 px-6 py-2.5 rounded-xl bg-qinghua text-white text-sm font-medium hover:bg-qinghua/90 shadow-lg shadow-qinghua/20 transition-all btn-ripple"
+         class="mt-6 px-6 py-2.5 rounded-xl bg-qinghua text-white text-sm font-medium hover:bg-qinghua/90 shadow-lg shadow-qinghua/20 transition-[background-color,color,box-shadow,transform] duration-300 btn-ripple"
        >
          去选课
        </button>

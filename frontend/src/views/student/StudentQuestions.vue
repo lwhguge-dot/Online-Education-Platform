@@ -321,7 +321,7 @@ onMounted(async () => {
        <GlassCard 
          v-for="(q, index) in questions" 
          :key="q.id"
-         class="p-4 transition-all hover:bg-slate-50 cursor-pointer card-hover-lift stagger-item h-fit animate-slide-up"
+         class="p-4 transition-[background-color,box-shadow,transform] duration-300 hover:bg-slate-50 cursor-pointer card-hover-lift stagger-item h-fit animate-slide-up"
          :style="{ animationDelay: `${index * 0.08}s`, animationFillMode: 'both' }"
          @click="toggleExpand(q.id)"
        >
@@ -335,7 +335,7 @@ onMounted(async () => {
                   <div class="flex items-center gap-2 shrink-0">
                     <!-- 状态标签 -->
                     <span 
-                      class="text-xs px-2 py-0.5 rounded-full flex items-center gap-1 transition-all"
+                      class="text-xs px-2 py-0.5 rounded-full flex items-center gap-1 transition-[background-color,color] duration-300"
                       :class="[statusStyles[getQuestionStatus(q)].bg, statusStyles[getQuestionStatus(q)].text]"
                     >
                       <component :is="statusStyles[getQuestionStatus(q)].icon" class="w-3 h-3" />
@@ -355,7 +355,7 @@ onMounted(async () => {
                     <span v-else>暂无回复</span>
                   </div>
                   <button 
-                    class="text-xs text-qinghua flex items-center gap-1 hover:text-qinghua/80 transition-all btn-ripple"
+                    class="text-xs text-qinghua flex items-center gap-1 hover:text-qinghua/80 transition-colors duration-300 btn-ripple"
                     @click.stop="toggleExpand(q.id)"
                   >
                     {{ isExpanded(q.id) ? '收起' : '展开' }}
@@ -410,7 +410,7 @@ onMounted(async () => {
           <p class="text-sm text-shuimo/40 mt-1">有问题随时问老师哦，点击上方"我要提问"按钮</p>
           <button 
             @click="openAskModal"
-            class="mt-4 px-4 py-2 rounded-xl bg-zijinghui/10 text-zijinghui text-sm font-medium hover:bg-zijinghui hover:text-white transition-all btn-ripple"
+            class="mt-4 px-4 py-2 rounded-xl bg-zijinghui/10 text-zijinghui text-sm font-medium hover:bg-zijinghui hover:text-white transition-[background-color,color,box-shadow,transform] duration-300 btn-ripple"
           >
             立即提问
           </button>
@@ -587,4 +587,3 @@ onMounted(async () => {
   transform: translateY(0);
 }
 </style>
-

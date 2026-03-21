@@ -411,7 +411,7 @@ onMounted(() => {
             :key="mode.value"
             @click="viewMode = mode.value"
             :class="[
-              'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              'px-4 py-2 rounded-lg text-sm font-medium transition-colors transition-shadow',
               viewMode === mode.value
                 ? 'bg-tianlv text-white shadow'
                 : 'text-shuimo/70 hover:bg-white/50'
@@ -446,7 +446,7 @@ onMounted(() => {
           <Download class="w-4 h-4" />
           <span class="text-sm">导出</span>
         </button>
-        <button @click="openCreateModal()" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-tianlv to-qingsong text-white rounded-xl shadow-lg shadow-tianlv/20 hover:shadow-xl transition-all">
+        <button @click="openCreateModal()" class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-tianlv to-qingsong text-white rounded-xl shadow-lg shadow-tianlv/20 hover:shadow-xl transition-shadow">
           <Plus class="w-4 h-4" />
           <span class="text-sm font-medium">新建事件</span>
         </button>
@@ -483,7 +483,7 @@ onMounted(() => {
         >
           <!-- 日期数字 -->
           <div :class="[
-            'w-8 h-8 flex items-center justify-center rounded-full text-sm mb-1 transition-all',
+            'w-8 h-8 flex items-center justify-center rounded-full text-sm mb-1 transition-colors transition-shadow',
             isToday(day.date)
               ? 'bg-gradient-to-br from-tianlv to-qingsong text-white font-bold shadow-lg shadow-tianlv/30 animate-today-pulse'
               : day.isCurrentMonth ? 'text-shuimo group-hover:bg-slate-100' : 'text-shuimo/30'
@@ -698,7 +698,7 @@ onMounted(() => {
             <button @click="showEventModal = false" class="px-4 py-2 text-shuimo/70 hover:bg-slate-100 rounded-xl transition-colors">
               取消
             </button>
-            <button @click="saveEvent" class="px-6 py-2 bg-gradient-to-r from-tianlv to-qingsong text-white rounded-xl shadow-lg shadow-tianlv/20 hover:shadow-xl transition-all">
+            <button @click="saveEvent" class="px-6 py-2 bg-gradient-to-r from-tianlv to-qingsong text-white rounded-xl shadow-lg shadow-tianlv/20 hover:shadow-xl transition-shadow">
               保存
             </button>
           </div>
@@ -713,6 +713,8 @@ onMounted(() => {
 .animate-today-pulse {
   /* P1 第二批：日历反馈时长压缩，减少持续动画负担 */
   animation: today-pulse var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-attention, 4);
+  animation-fill-mode: both;
 }
 
 @keyframes today-pulse {
@@ -756,4 +758,3 @@ onMounted(() => {
   }
 }
 </style>
-

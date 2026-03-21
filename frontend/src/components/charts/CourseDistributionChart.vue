@@ -132,7 +132,7 @@ const clickSegment = (segment) => {
               :d="generateArcPath(segment.startPercentage, segment.endPercentage)"
               :fill="segment.color"
               :opacity="hoveredIndex === -1 || hoveredIndex === index ? 1 : 0.5"
-              class="transition-all duration-200 cursor-pointer"
+              class="transition-transform transition-opacity duration-200 cursor-pointer"
               :class="{ 'transform scale-105 origin-center': hoveredIndex === index }"
               @mouseenter="hoveredIndex = index"
               @mouseleave="hoveredIndex = -1"
@@ -169,7 +169,7 @@ const clickSegment = (segment) => {
         <div
           v-for="(segment, index) in pieSegments"
           :key="index"
-          class="flex items-center justify-between p-2 rounded-lg transition-all cursor-pointer hover:bg-gray-50"
+          class="flex items-center justify-between p-2 rounded-lg transition-colors cursor-pointer hover:bg-gray-50"
           :class="{ 'bg-gray-50': hoveredIndex === index }"
           @mouseenter="hoveredIndex = index"
           @mouseleave="hoveredIndex = -1"

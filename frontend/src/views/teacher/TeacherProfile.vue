@@ -156,7 +156,7 @@ const toggleSubject = (subject) => {
           </h3>
           <button
             @click="isEditing ? handleSave() : toggleEdit()"
-            class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 btn-ripple"
+            class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-[background-color,color,box-shadow,transform] duration-300 btn-ripple"
             :class="isEditing ? 'bg-gradient-to-r from-qinghua to-halanzi text-white shadow-lg shadow-qinghua/30 hover:shadow-qinghua/50' : 'bg-slate-100 text-shuimo hover:bg-slate-200'"
           >
             <component :is="isEditing ? Save : Edit" class="w-4 h-4" />
@@ -175,7 +175,7 @@ const toggleSubject = (subject) => {
               <div v-else class="w-full h-full flex items-center justify-center text-3xl font-bold text-slate-300">
                 {{ fullProfile.username?.[0] || '师' }}
               </div>
-              <div class="absolute inset-0 bg-shuimo/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+              <div class="absolute inset-0 bg-shuimo/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <Camera class="w-8 h-8 text-white transform group-hover:scale-110 transition-transform" />
               </div>
             </div>
@@ -196,7 +196,7 @@ const toggleSubject = (subject) => {
             <div class="space-y-1.5 stagger-item" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.1s forwards; opacity: 0;">
               <label for="teacher-profile-username" class="text-xs font-bold text-shuimo/60">用户名/昵称</label>
               <input id="teacher-profile-username" name="username" v-model="fullProfile.username" :disabled="!isEditing" autocomplete="username"
-                     class="w-full bg-slate-50/80 border border-slate-200/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-qinghua/20 focus:border-qinghua/30 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:text-shuimo transition-all duration-300" />
+                     class="w-full bg-slate-50/80 border border-slate-200/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-qinghua/20 focus:border-qinghua/30 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:text-shuimo transition-[background-color,border-color,color,box-shadow,padding] duration-300" />
               <p v-if="isEditing" class="text-xs text-shuimo/40">用户名在系统内显示，可随意修改</p>
             </div>
             <div class="space-y-1.5 stagger-item" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.15s forwards; opacity: 0;">
@@ -214,7 +214,7 @@ const toggleSubject = (subject) => {
             <div class="space-y-1.5 stagger-item" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.25s forwards; opacity: 0;">
               <label for="teacher-profile-phone" class="text-xs font-bold text-shuimo/60 flex items-center gap-1"><Phone class="w-3.5 h-3.5"/>手机号</label>
               <input id="teacher-profile-phone" name="phone" v-model="fullProfile.phone" :disabled="!isEditing" autocomplete="tel"
-                     class="w-full bg-slate-50/80 border border-slate-200/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-qinghua/20 focus:border-qinghua/30 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:text-shuimo transition-all duration-300" />
+                     class="w-full bg-slate-50/80 border border-slate-200/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-qinghua/20 focus:border-qinghua/30 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:text-shuimo transition-[background-color,border-color,color,box-shadow,padding] duration-300" />
             </div>
           </div>
         </div>
@@ -229,10 +229,10 @@ const toggleSubject = (subject) => {
           <div class="space-y-4">
             <div v-for="(label, key) in { newStudent: '新学生', homeworkSubmit: '作业提交', studentQuestion: '学生提问', systemNotice: '系统公告', courseReview: '课程审核', deadlineReminder: '截止提醒' }" :key="key" class="flex items-center justify-between group">
               <span class="text-sm text-shuimo group-hover:text-shuimo/80 transition-colors">{{ label }}</span>
-              <button class="w-11 h-6 rounded-full transition-all duration-300 relative shadow-inner switch-enhanced"
+              <button class="w-11 h-6 rounded-full transition-[background-color,box-shadow] duration-300 relative shadow-inner switch-enhanced"
                       :class="fullProfile.notificationSettings[key] ? 'bg-gradient-to-r from-qinghua to-halanzi' : 'bg-slate-200'"
                       @click="toggleNotification(key)">
-                <div class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md transition-all duration-300"
+                <div class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-300"
                      :class="fullProfile.notificationSettings[key] ? 'translate-x-5' : 'translate-x-0'"></div>
               </button>
             </div>
@@ -255,7 +255,7 @@ const toggleSubject = (subject) => {
             </div>
             <div class="h-2 rounded-full bg-slate-200/80 overflow-hidden">
               <div
-                class="h-full rounded-full bg-gradient-to-r from-tianlv to-qingsong transition-all duration-500"
+                class="h-full rounded-full bg-gradient-to-r from-tianlv to-qingsong transition-[width,background-color] duration-500"
                 :style="{ width: `${subjectCoveragePercent}%` }"
               ></div>
             </div>
@@ -268,7 +268,8 @@ const toggleSubject = (subject) => {
               @click="toggleSubject(subject)"
               :disabled="!isEditing"
               :class="[
-                'px-3 py-2 rounded-xl text-sm border transition-all duration-300',
+                // 中文注释：科目标签收敛为定向过渡，避免全属性过渡带来的绘制抖动
+                'px-3 py-2 rounded-xl text-sm border transition-[background-color,color,border-color,box-shadow,transform] duration-300',
                 fullProfile.teachingSubjects?.includes(subject)
                   ? 'bg-tianlv/15 border-tianlv/40 text-tianlv font-semibold shadow-sm scale-[1.02]'
                   : 'bg-white/60 border-slate-200 text-shuimo/80',

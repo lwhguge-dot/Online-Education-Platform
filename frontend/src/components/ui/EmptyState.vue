@@ -172,7 +172,7 @@ const handleAction = () => {
     <!-- 图标容器 - 增强的渐变背景 -->
     <div
       :class="[
-        'rounded-full flex items-center justify-center mb-5 transition-all relative',
+        'rounded-full flex items-center justify-center mb-5 transition-[background-color,color,box-shadow,transform] duration-300 relative',
         sizeClasses[size].container,
         floatClass
       ]"
@@ -204,7 +204,7 @@ const handleAction = () => {
       v-if="actionText"
       @click="handleAction"
       :class="[
-        'mt-5 rounded-xl font-medium flex items-center gap-2 transition-all duration-300',
+        'mt-5 rounded-xl font-medium flex items-center gap-2 transition-[background-color,color,box-shadow,transform] duration-300',
         sizeClasses[size].btn,
         buttonVariants[actionVariant]
       ]"
@@ -230,6 +230,8 @@ const handleAction = () => {
 .empty-state-float {
   /* P1 第二批：空状态动画统一 200ms 档 */
   animation: hover-float var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-decorative, 3);
+  animation-fill-mode: both;
 }
 
 @keyframes hover-float {
@@ -245,7 +247,7 @@ const handleAction = () => {
 .empty-state-error .empty-state-float {
   animation:
     shake-gentle var(--motion-duration-medium) var(--motion-ease-standard),
-    hover-float var(--motion-duration-medium) var(--motion-ease-standard) infinite var(--motion-duration-medium);
+    hover-float var(--motion-duration-medium) var(--motion-ease-standard) var(--motion-loop-iterations-decorative, 3) var(--motion-duration-medium);
 }
 
 @keyframes shake-gentle {
@@ -258,7 +260,7 @@ const handleAction = () => {
 .empty-state-success .empty-state-float {
   animation:
     scale-bounce var(--motion-duration-medium) var(--motion-ease-standard),
-    hover-float var(--motion-duration-medium) var(--motion-ease-standard) infinite var(--motion-duration-medium);
+    hover-float var(--motion-duration-medium) var(--motion-ease-standard) var(--motion-loop-iterations-decorative, 3) var(--motion-duration-medium);
 }
 
 @keyframes scale-bounce {

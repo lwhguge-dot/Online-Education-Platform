@@ -62,7 +62,7 @@ const handleKeydown = (e) => {
     </div>
     
     <div 
-      class="flex items-start gap-3 p-3 rounded-xl border transition-all"
+      class="flex items-start gap-3 p-3 rounded-xl border transition-colors transition-shadow"
       :class="isFocused ? 'border-qinghua/30 bg-white shadow-sm' : 'border-slate-200 bg-slate-50/50'"
     >
       <textarea
@@ -80,7 +80,7 @@ const handleKeydown = (e) => {
         <button
           @click="handleSubmit"
           :disabled="!canSubmit"
-          class="p-2 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          class="p-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           :class="canSubmit ? 'bg-qinghua text-white hover:bg-qinghua/90' : 'bg-slate-200 text-slate-400'"
         >
           <Send class="w-4 h-4" :class="{ 'animate-pulse': loading }" />
@@ -89,7 +89,7 @@ const handleKeydown = (e) => {
         <button
           v-if="isReply"
           @click="handleCancel"
-          class="p-2 rounded-lg bg-slate-100 text-shuimo/60 hover:bg-slate-200 transition-all text-xs"
+          class="p-2 rounded-lg bg-slate-100 text-shuimo/60 hover:bg-slate-200 transition-colors text-xs"
         >
           取消
         </button>

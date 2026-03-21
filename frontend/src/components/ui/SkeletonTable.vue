@@ -47,5 +47,8 @@ defineProps({
 .skeleton-table .animate-pulse {
   /* P1 第二批：表格骨架动画压缩 */
   animation: shimmer var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  /* 中文注释：骨架闪烁使用功能型门控，避免页面长驻时无限循环消耗 */
+  animation-iteration-count: var(--motion-loop-iterations-functional, infinite);
+  animation-fill-mode: both;
 }
 </style>

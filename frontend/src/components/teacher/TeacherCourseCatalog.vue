@@ -72,7 +72,7 @@ const onManageChapters = (course: TeacherCourseItem): void => {
               v-for="tab in tabs"
               :key="tab.id"
               @click="emit('update:activeTab', tab.id)"
-              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors transition-shadow whitespace-nowrap"
               :class="activeTab === tab.id ? 'bg-tianlv text-white shadow-md shadow-tianlv/20' : 'text-shuimo/60 hover:text-shuimo hover:bg-slate-100'"
             >
               {{ tab.label }}
@@ -90,7 +90,7 @@ const onManageChapters = (course: TeacherCourseItem): void => {
               :value="searchQuery"
               type="text"
               placeholder="搜索课程..."
-              class="w-40 pl-9 pr-3 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-tianlv/20 transition-all text-sm"
+              class="w-40 pl-9 pr-3 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-tianlv/20 transition-colors transition-shadow text-sm"
               @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
             />
           </div>

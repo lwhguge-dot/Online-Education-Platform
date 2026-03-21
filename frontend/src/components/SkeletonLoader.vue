@@ -93,5 +93,6 @@ defineProps({
 .animate-pulse {
   /* P1：统一脉冲缓动曲线 */
   animation: pulse var(--motion-duration-slow) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-functional, infinite);
 }
 </style>

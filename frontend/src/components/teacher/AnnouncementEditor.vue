@@ -26,7 +26,7 @@
                 type="text" 
                 required
                 placeholder="请输入公告标题"
-                class="w-full px-4 py-3 rounded-xl border border-shuimo/20 focus:border-tianlv focus:ring-2 focus:ring-tianlv/20 outline-none transition-all"
+                class="w-full px-4 py-3 rounded-xl border border-shuimo/20 focus:border-tianlv focus:ring-2 focus:ring-tianlv/20 outline-none transition-colors transition-shadow"
               />
             </div>
             
@@ -40,7 +40,7 @@
                 required
                 rows="6"
                 placeholder="请输入公告内容..."
-                class="w-full px-4 py-3 rounded-xl border border-shuimo/20 focus:border-tianlv focus:ring-2 focus:ring-tianlv/20 outline-none transition-all resize-none"
+                class="w-full px-4 py-3 rounded-xl border border-shuimo/20 focus:border-tianlv focus:ring-2 focus:ring-tianlv/20 outline-none transition-colors transition-shadow resize-none"
               ></textarea>
             </div>
             

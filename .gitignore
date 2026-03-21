@@ -91,3 +91,7 @@ task_plan.md
 findings.md
 progress.md
 docs/plans/
+
+# ==================== 前端 UI 审查运行产物（本地临时，不入库） ====================
+artifacts/ui-audit/
+docs/reviews/frontend-ui-motion-audit-*.md

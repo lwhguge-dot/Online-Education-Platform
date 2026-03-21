@@ -198,6 +198,8 @@
   border-radius: 9999px;
   /* P0 动效时长收敛：高风险动画统一压到 400ms */
   animation: ripple-status var(--motion-duration-slow) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-attention, 4);
+  animation-fill-mode: both;
 }
 
 .ripple-1 { animation-delay: 0s; }
@@ -283,11 +285,14 @@
 /* 时间线绘制 */
 @keyframes timeline-draw {
   from {
-    height: 0;
+    /* 中文注释：改用 scaleY 避免 height 动画触发布局重排 */
+    transform: scaleY(0);
+    transform-origin: top;
   }
 
   to {
-    height: 100%;
+    transform: scaleY(1);
+    transform-origin: top;
   }
 }
 
@@ -307,4 +312,3 @@
     opacity: 1;
   }
 }
-

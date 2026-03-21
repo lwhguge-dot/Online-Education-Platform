@@ -38,6 +38,17 @@ const progressPercent = computed(() => totalCount.value > 0 ? Math.round(gradedC
 const canGoPrev = computed(() => currentIndex.value > 0)
 const canGoNext = computed(() => currentIndex.value < submissions.value.length - 1)
 
+// 中文注释：进度条统一改为 transform 缩放，避免 width 变化引发布局重排
+const clampProgressPercent = (value) => {
+  const numberValue = Number(value)
+  if (!Number.isFinite(numberValue)) return 0
+  return Math.max(0, Math.min(100, numberValue))
+}
+
+const getProgressScaleStyle = (value) => ({
+  transform: `scaleX(${clampProgressPercent(value) / 100})`
+})
+
 // 加载待批改列表
 const loadPendingSubmissions = async () => {
   loading.value = true
@@ -216,7 +227,10 @@ onUnmounted(() => {
         <div class="flex items-center gap-3">
           <span class="text-sm text-shuimo/60">批改进度</span>
           <div class="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
-            <div class="h-full bg-tianlv rounded-full transition-all" :style="{ width: progressPercent + '%' }"></div>
+            <div
+              class="h-full bg-tianlv rounded-full origin-left transition-transform duration-300 will-change-transform"
+              :style="getProgressScaleStyle(progressPercent)"
+            ></div>
           </div>
           <span class="text-sm font-mono font-bold text-tianlv">{{ gradedCount }}/{{ totalCount }}</span>
         </div>
@@ -243,7 +257,7 @@ onUnmounted(() => {
             :key="sub.id"
             @click="selectSubmission(idx)"
             :class="[
-              'w-full text-left p-3 rounded-xl transition-all',
+              'w-full text-left p-3 rounded-xl transition-[background-color,border-color,box-shadow] duration-300',
               currentIndex === idx 
                 ? 'bg-tianlv/10 border border-tianlv/30' 
                 : 'hover:bg-white border border-transparent'

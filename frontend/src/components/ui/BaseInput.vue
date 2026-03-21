@@ -52,7 +52,7 @@ const handleBlur = (e) => {
 }
 
 const containerClasses = computed(() => [
-  'relative transition-all duration-300 rounded-xl border-2 flex items-center bg-white/50 backdrop-blur-sm',
+  'relative transition-colors transition-shadow duration-300 rounded-xl border-2 flex items-center bg-white/50 backdrop-blur-sm',
   isFocused.value ? 'border-primary ring-4 ring-primary/10 shadow-lg shadow-primary/10' : 'border-transparent hover:border-text-muted/30',
   props.error ? 'border-danger ring-danger/10' : '',
   props.disabled ? 'opacity-60 bg-gray-100 cursor-not-allowed' : ''

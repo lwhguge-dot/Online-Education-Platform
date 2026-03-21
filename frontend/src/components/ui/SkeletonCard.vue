@@ -56,5 +56,6 @@ defineProps({
   background-size: 200% 100%;
   /* P1 第二批：骨架屏流光时长压缩 */
   animation: shimmer var(--motion-duration-medium) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-functional, infinite);
 }
 </style>

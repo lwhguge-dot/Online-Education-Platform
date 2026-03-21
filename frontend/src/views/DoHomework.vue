@@ -43,6 +43,11 @@ const completionRate = computed(() => {
   return Math.round((answeredCount / questions.value.length) * 100)
 })
 
+// 中文注释：进度条使用 scaleX，避免 width 过渡触发布局重排
+const getCompletionScaleStyle = () => ({
+  transform: `scaleX(${Math.max(0, Math.min(100, completionRate.value)) / 100})`
+})
+
 // 是否全部完成
 const isAllCompleted = computed(() => completionRate.value === 100)
 
@@ -238,13 +243,13 @@ const goBack = () => {
              <BaseButton 
                @click="submitHomework" 
                :disabled="submitting" 
-               variant="custom"
-               :class="[
-                 'px-6 py-2 text-white rounded-xl shadow-lg transition-all duration-300',
-                 isAllCompleted 
-                   ? 'bg-gradient-to-r from-tianlv to-qingsong shadow-tianlv/30 animate-pulse-subtle' 
-                   : 'bg-gradient-to-r from-zhizi to-tanxiang shadow-zhizi/20'
-               ]"
+                variant="custom"
+                :class="[
+                  'px-6 py-2 text-white rounded-xl shadow-lg transition-[transform,box-shadow,background-color] duration-300',
+                  isAllCompleted 
+                    ? 'bg-gradient-to-r from-tianlv to-qingsong shadow-tianlv/30 animate-pulse-subtle' 
+                    : 'bg-gradient-to-r from-zhizi to-tanxiang shadow-zhizi/20'
+                ]"
              >
                <Sparkles v-if="isAllCompleted && !submitting" class="w-4 h-4 mr-1" />
                {{ submitting ? '提交中...' : (isAllCompleted ? '全部完成，提交作业' : '提交作业') }}
@@ -272,8 +277,10 @@ const goBack = () => {
         
         <!-- 进度条 -->
         <div v-if="!loading && !isViewMode" class="h-1 bg-slate-100 rounded-full overflow-hidden w-full">
-          <div class="h-full bg-gradient-to-r from-qinghua to-halanzi transition-all duration-500 ease-out" 
-               :style="{ width: completionRate + '%' }"></div>
+          <div
+            class="h-full bg-gradient-to-r from-qinghua to-halanzi origin-left transition-transform duration-500 ease-out will-change-transform"
+            :style="getCompletionScaleStyle()"
+          ></div>
         </div>
       </div>
     </header>
@@ -329,7 +336,7 @@ const goBack = () => {
           <TransitionGroup name="question-list" appear>
           <GlassCard v-for="(question, index) in questions" :key="question.id" 
                      :hoverable="!isViewMode"
-                     class="transition-all duration-500 question-card"
+                     class="transition-[transform,box-shadow,border-color,background-color] duration-500 question-card"
                      :class="{'ring-2 ring-qinghua/20': !isViewMode}"
                      :style="{ '--delay': index * 0.08 + 's' }">
             
@@ -360,14 +367,14 @@ const goBack = () => {
                 <div v-if="question.questionType === 'single'" class="space-y-3">
                   <div v-for="(option, idx) in parseQuestionOptions(question.options)" :key="idx" 
                        @click="selectSingleChoice(question.id, String.fromCharCode(65 + idx))"
-                       :class="['group relative p-4 rounded-xl border transition-all duration-300 option-item',
-                                !isViewMode && 'cursor-pointer hover:border-qinghua/50 hover:bg-white/80',
-                                studentAnswers[question.id] === String.fromCharCode(65 + idx) 
-                                  ? 'border-qinghua bg-qinghua/5 shadow-sm ring-1 ring-qinghua/20' 
-                                  : 'border-slate-200/60 bg-white/40',
-                                isOptionAnimating(question.id, String.fromCharCode(65 + idx)) && 'animate-option-select']">
+                       :class="['group relative p-4 rounded-xl border transition-[transform,box-shadow,border-color,background-color] duration-300 option-item',
+                                 !isViewMode && 'cursor-pointer hover:border-qinghua/50 hover:bg-white/80',
+                                 studentAnswers[question.id] === String.fromCharCode(65 + idx) 
+                                   ? 'border-qinghua bg-qinghua/5 shadow-sm ring-1 ring-qinghua/20' 
+                                   : 'border-slate-200/60 bg-white/40',
+                                 isOptionAnimating(question.id, String.fromCharCode(65 + idx)) && 'animate-option-select']">
                     <div class="flex items-center gap-3">
-                      <div :class="['w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-200',
+                      <div :class="['w-5 h-5 rounded-full border flex items-center justify-center transition-[transform,border-color,background-color] duration-200',
                                     studentAnswers[question.id] === String.fromCharCode(65 + idx)
                                       ? 'border-qinghua/50 bg-qinghua text-white scale-110'
                                       : 'border-slate-300 group-hover:border-qinghua/50']">
@@ -386,14 +393,14 @@ const goBack = () => {
                 <div v-else-if="question.questionType === 'multiple'" class="space-y-3">
                   <div v-for="(option, idx) in parseQuestionOptions(question.options)" :key="idx"
                        @click="toggleMultipleChoice(question.id, String.fromCharCode(65 + idx))"
-                       :class="['group relative p-4 rounded-xl border transition-all duration-300 option-item',
-                                !isViewMode && 'cursor-pointer hover:border-qinghua/50 hover:bg-white/80',
-                                (studentAnswers[question.id] || '').includes(String.fromCharCode(65 + idx))
-                                  ? 'border-qinghua/50 bg-qinghua/5 shadow-sm ring-1 ring-qinghua/20' 
-                                  : 'border-slate-200/60 bg-white/40',
-                                isOptionAnimating(question.id, String.fromCharCode(65 + idx)) && 'animate-option-select']">
+                       :class="['group relative p-4 rounded-xl border transition-[transform,box-shadow,border-color,background-color] duration-300 option-item',
+                                 !isViewMode && 'cursor-pointer hover:border-qinghua/50 hover:bg-white/80',
+                                 (studentAnswers[question.id] || '').includes(String.fromCharCode(65 + idx))
+                                   ? 'border-qinghua/50 bg-qinghua/5 shadow-sm ring-1 ring-qinghua/20' 
+                                   : 'border-slate-200/60 bg-white/40',
+                                 isOptionAnimating(question.id, String.fromCharCode(65 + idx)) && 'animate-option-select']">
                     <div class="flex items-center gap-3">
-                      <div :class="['w-5 h-5 rounded border flex items-center justify-center transition-all duration-200',
+                      <div :class="['w-5 h-5 rounded border flex items-center justify-center transition-[transform,border-color,background-color] duration-200',
                                     (studentAnswers[question.id] || '').includes(String.fromCharCode(65 + idx))
                                       ? 'border-qinghua bg-qinghua text-white scale-110'
                                       : 'border-slate-300 group-hover:border-qinghua/50']">
@@ -411,7 +418,7 @@ const goBack = () => {
 
                 <div v-else-if="question.questionType === 'fill'" class="relative">
                   <input v-model="studentAnswers[question.id]" type="text" :disabled="isViewMode"
-                         class="w-full px-4 py-3 rounded-xl border border-slate-200/60 bg-white/50 focus:bg-white focus:border-qinghua focus:ring-4 focus:ring-qinghua/10 outline-none transition-all disabled:bg-slate-50 disabled:text-shuimo/60 placeholder:text-shuimo/30"
+                         class="w-full px-4 py-3 rounded-xl border border-slate-200/60 bg-white/50 focus:bg-white focus:border-qinghua focus:ring-4 focus:ring-qinghua/10 outline-none transition-[background-color,border-color,box-shadow,color] duration-300 disabled:bg-slate-50 disabled:text-shuimo/60 placeholder:text-shuimo/30"
                          placeholder="在此输入您的答案..." />
                 </div>
 
@@ -419,7 +426,7 @@ const goBack = () => {
 
                 <div v-else-if="question.questionType === 'subjective'">
                   <textarea v-model="studentAnswers[question.id]" rows="5" :disabled="isViewMode"
-                            class="w-full px-4 py-3 rounded-xl border border-slate-200/60 bg-white/50 focus:bg-white focus:border-qinghua focus:ring-4 focus:ring-qinghua/10 outline-none resize-none transition-all disabled:bg-slate-50 disabled:text-shuimo/60 placeholder:text-shuimo/30"
+                            class="w-full px-4 py-3 rounded-xl border border-slate-200/60 bg-white/50 focus:bg-white focus:border-qinghua focus:ring-4 focus:ring-qinghua/10 outline-none resize-none transition-[background-color,border-color,box-shadow,color] duration-300 disabled:bg-slate-50 disabled:text-shuimo/60 placeholder:text-shuimo/30"
                             placeholder="在此输入您的详细解答..."></textarea>
                 </div>
 
@@ -468,7 +475,7 @@ const goBack = () => {
           <BaseButton 
              @click="goBack"
              variant="custom"
-             class="px-8 py-3 bg-white border border-slate-200 text-shuimo rounded-xl hover:bg-slate-50 hover:shadow-md transition-all font-medium"
+             class="px-8 py-3 bg-white border border-slate-200 text-shuimo rounded-xl hover:bg-slate-50 hover:shadow-md transition-[background-color,box-shadow,color] duration-300 font-medium"
           >
             返回作业列表
           </BaseButton>
@@ -553,7 +560,7 @@ const goBack = () => {
 
 /* 选中圆点/勾选动画 */
 .animate-scale-in {
-  animation: scale-in 0.2s ease-out;
+  animation: scale-in var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes scale-in {
@@ -579,24 +586,27 @@ const goBack = () => {
 @keyframes result-expand {
   from {
     opacity: 0;
-    max-height: 0;
-    transform: translateY(-10px);
+    /* 中文注释：改为 transform + opacity，避免 max-height 动画带来的布局抖动 */
+    transform: translateY(-8px) scaleY(0.96);
+    transform-origin: top;
   }
   to {
     opacity: 1;
-    max-height: 500px;
-    transform: translateY(0);
+    transform: translateY(0) scaleY(1);
+    transform-origin: top;
   }
 }
 
 @keyframes result-collapse {
   from {
     opacity: 1;
-    max-height: 500px;
+    transform: translateY(0) scaleY(1);
+    transform-origin: top;
   }
   to {
     opacity: 0;
-    max-height: 0;
+    transform: translateY(-8px) scaleY(0.96);
+    transform-origin: top;
   }
 }
 
@@ -638,6 +648,8 @@ const goBack = () => {
 /* 微弱脉冲动画（完成状态按钮） */
 .animate-pulse-subtle {
   animation: pulse-subtle var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-attention, 4);
+  animation-fill-mode: both;
 }
 
 @keyframes pulse-subtle {

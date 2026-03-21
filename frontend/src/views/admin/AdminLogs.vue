@@ -129,7 +129,7 @@ onMounted(() => {
               v-for="type in [{id: '', label: '全部'}, {id: 'USER_ENABLE', label: '启用'}, {id: 'USER_DISABLE', label: '禁用'}, {id: 'COURSE_APPROVE', label: '审核'}]"
               :key="type.id"
               @click="typeFilter = type.id; applyFilters()"
-              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors transition-shadow whitespace-nowrap"
               :class="typeFilter === type.id ? 'bg-zijinghui text-white shadow-md shadow-zijinghui/20' : 'text-shuimo/60 hover:text-shuimo hover:bg-slate-100'"
             >
               {{ type.label }}
@@ -161,7 +161,7 @@ onMounted(() => {
               v-model="searchQuery"
               type="text" 
               placeholder="搜索..."
-              class="w-32 pl-9 pr-3 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-zijinghui/20 transition-all text-sm"
+              class="w-32 pl-9 pr-3 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-zijinghui/20 transition-colors transition-shadow text-sm"
             />
             <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-shuimo/40 hover:text-shuimo">
               <X class="w-3 h-3" />

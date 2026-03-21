@@ -272,7 +272,7 @@ watch(() => props.modelValue, (newVal) => {
                 v-model="searchQuery"
                 type="text"
                 placeholder="搜索用户名、姓名或邮箱..."
-                class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-qingsong/20 transition-all text-sm"
+                class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-qingsong/20 transition-colors transition-shadow text-sm"
               />
               <button
                 v-if="searchQuery"
@@ -294,7 +294,7 @@ watch(() => props.modelValue, (newVal) => {
               <div
                 v-for="user in filteredUsers"
                 :key="user.id || user.userId"
-                class="flex items-center justify-between p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-all group"
+                class="flex items-center justify-between p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors group"
               >
                 <div class="flex items-center gap-3">
                   <!-- 头像 -->

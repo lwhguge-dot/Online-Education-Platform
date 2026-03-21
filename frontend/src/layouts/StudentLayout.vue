@@ -95,7 +95,7 @@ onUnmounted(() => {
 
     <!-- Sidebar -->
     <aside 
-      class="fixed top-0 left-0 h-full bg-white/80 backdrop-blur-xl border-r border-slate-200/60 z-50 transition-all duration-300 flex flex-col will-change-[width,transform]"
+      class="fixed top-0 left-0 h-full bg-white/80 backdrop-blur-xl border-r border-slate-200/60 z-50 transition-[width,transform] duration-300 flex flex-col will-change-[width,transform]"
       :class="[
         sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0 md:w-20',
         'w-64'
@@ -115,7 +115,7 @@ onUnmounted(() => {
           v-for="item in menuItems"
           :key="item.id"
           @click="handleMenuClick(item.path)"
-          class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qinghua"
+          class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-[background-color,color,box-shadow] duration-300 group relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qinghua"
           :class="route.path.startsWith(item.path) 
             ? 'bg-gradient-to-r from-qinghua to-halanzi text-white shadow-lg shadow-qinghua/30' 
             : 'text-muted hover:bg-slate-100 hover:text-shuimo'"
@@ -141,7 +141,7 @@ onUnmounted(() => {
 
     <!-- Main Content -->
     <main 
-      class="flex-1 transition-all duration-300 min-h-screen flex flex-col will-change-[margin]"
+      class="flex-1 transition-[margin] duration-300 min-h-screen flex flex-col will-change-[margin]"
       :class="sidebarOpen ? 'md:ml-64' : 'md:ml-20'"
       aria-live="polite"
     >
