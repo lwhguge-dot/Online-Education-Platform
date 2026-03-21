@@ -341,7 +341,7 @@ const getGenderLabel = (value) => {
       </h3>
       <button
         @click="isEditing ? handleSave() : toggleEdit()"
-        class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 btn-ripple"
+        class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-[background-color,color,box-shadow,transform] duration-300 btn-ripple"
         :class="isEditing ? 'bg-gradient-to-r from-qinghua to-halanzi text-white shadow-lg shadow-qinghua/30 hover:shadow-qinghua/50' : 'bg-slate-100 text-shuimo hover:bg-slate-200'"
       >
         <component :is="isEditing ? Save : Edit" class="w-4 h-4" />
@@ -365,7 +365,7 @@ const getGenderLabel = (value) => {
           <div v-else class="w-full h-full flex items-center justify-center text-3xl font-bold text-slate-300">
             {{ formData.username?.[0] || '学' }}
           </div>
-          <div class="absolute inset-0 bg-shuimo/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+          <div class="absolute inset-0 bg-shuimo/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <Camera class="w-8 h-8 text-white transform group-hover:scale-110 transition-transform" />
           </div>
         </div>
@@ -392,7 +392,7 @@ const getGenderLabel = (value) => {
             v-model="formData.username"
             :disabled="!isEditing"
             autocomplete="username"
-            class="w-full bg-slate-50/80 border border-slate-200/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-qinghua/20 focus:border-qinghua/30 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:text-shuimo transition-all duration-300"
+            class="w-full bg-slate-50/80 border border-slate-200/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-qinghua/20 focus:border-qinghua/30 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:text-shuimo transition-[background-color,border-color,color,box-shadow,padding] duration-300"
           />
           <p v-if="isEditing" class="text-xs text-shuimo/40">用户名在系统内显示，可随意修改</p>
         </div>
@@ -413,7 +413,7 @@ const getGenderLabel = (value) => {
             :aria-expanded="showDatePicker ? 'true' : 'false'"
             role="button"
             tabindex="0"
-            class="w-full flex items-center justify-between rounded-xl text-sm transition-all duration-300"
+            class="w-full flex items-center justify-between rounded-xl text-sm transition-[background-color,border-color,color,box-shadow,padding] duration-300"
             :class="isEditing ? 'bg-slate-50/80 border border-slate-200/50 cursor-pointer hover:border-qinghua/30 hover:bg-white px-4 py-2.5' : 'text-shuimo py-2.5'"
             @click.stop="openDatePicker"
             @keydown="(event) => handleActivatorKeydown(event, openDatePicker)"
@@ -466,7 +466,7 @@ const getGenderLabel = (value) => {
                       <button
                         v-for="year in yearList"
                         :key="year"
-                        class="py-3 rounded-xl text-sm font-medium transition-all duration-200"
+                        class="py-3 rounded-xl text-sm font-medium transition-[background-color,color,box-shadow,transform] duration-200"
                         :class="[
                           year === currentYear ? 'bg-gradient-to-br from-qinghua to-halanzi text-white shadow-lg shadow-qinghua/30' : 'hover:bg-qinghua/10 text-shuimo',
                           year === new Date().getFullYear() && year !== currentYear ? 'ring-2 ring-qinghua/30 text-qinghua' : ''
@@ -482,7 +482,7 @@ const getGenderLabel = (value) => {
                       <button
                         v-for="(month, idx) in monthsShort"
                         :key="idx"
-                        class="py-3 rounded-xl text-sm font-medium transition-all duration-200"
+                        class="py-3 rounded-xl text-sm font-medium transition-[background-color,color,box-shadow,transform] duration-200"
                         :class="[
                           idx === currentMonth ? 'bg-gradient-to-br from-qinghua to-halanzi text-white shadow-lg shadow-qinghua/30' : 'hover:bg-qinghua/10 text-shuimo',
                           idx === new Date().getMonth() && currentYear === new Date().getFullYear() && idx !== currentMonth ? 'ring-2 ring-qinghua/30 text-qinghua' : ''
@@ -507,7 +507,7 @@ const getGenderLabel = (value) => {
                         <button
                           v-for="(dayObj, idx) in calendarDays"
                           :key="idx"
-                          class="aspect-square flex items-center justify-center text-sm rounded-xl transition-all duration-200"
+                          class="aspect-square flex items-center justify-center text-sm rounded-xl transition-[background-color,color,box-shadow,transform] duration-200"
                           :class="[
                             dayObj.current ? 'hover:bg-qinghua/10 cursor-pointer' : 'text-shuimo/20 cursor-default',
                             isSelectedDay(dayObj) ? 'bg-gradient-to-br from-qinghua to-halanzi text-white shadow-lg shadow-qinghua/30' : '',
@@ -553,7 +553,7 @@ const getGenderLabel = (value) => {
             :aria-expanded="showGenderPicker ? 'true' : 'false'"
             role="button"
             tabindex="0"
-            class="w-full flex items-center justify-between rounded-xl text-sm transition-all duration-300"
+            class="w-full flex items-center justify-between rounded-xl text-sm transition-[background-color,border-color,color,box-shadow,padding] duration-300"
             :class="isEditing ? 'bg-slate-50/80 border border-slate-200/50 cursor-pointer hover:border-qinghua/30 hover:bg-white px-4 py-2.5' : 'text-shuimo py-2.5'"
             @click.stop="toggleGenderPicker"
             @keydown="(event) => handleActivatorKeydown(event, toggleGenderPicker)"
@@ -578,7 +578,7 @@ const getGenderLabel = (value) => {
                   <button
                     v-for="opt in genderOptions"
                     :key="opt.value"
-                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200"
+                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-[background-color,color,box-shadow] duration-200"
                     :class="formData.gender === opt.value ? 'bg-gradient-to-r from-qinghua/10 to-halanzi/10 text-qinghua' : 'hover:bg-slate-50 text-shuimo'"
                     @click.stop="selectGender(opt.value)"
                   >
@@ -609,7 +609,7 @@ const getGenderLabel = (value) => {
             v-model="formData.phone"
             :disabled="!isEditing"
             autocomplete="tel"
-            class="w-full bg-slate-50/80 border border-slate-200/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-qinghua/20 focus:border-qinghua/30 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:text-shuimo transition-all duration-300"
+            class="w-full bg-slate-50/80 border border-slate-200/50 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-qinghua/20 focus:border-qinghua/30 disabled:bg-transparent disabled:border-transparent disabled:px-0 disabled:text-shuimo transition-[background-color,border-color,color,box-shadow,padding] duration-300"
           />
         </div>
       </div>

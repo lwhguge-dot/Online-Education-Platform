@@ -53,12 +53,13 @@ export default {
         '3xl': '2rem',
       },
       animation: {
-        'fade-in': 'fadeIn 0.5s ease-out',
-        'slide-up': 'slideUp 0.4s ease-out',
-        'slide-down': 'slideDown 0.3s ease-out',
-        'scale-in': 'scaleIn 0.3s ease-out',
-        'float': 'float 3s ease-in-out infinite',
-        'shimmer': 'shimmer 1.5s infinite',
+        // 中文注释：统一使用全局 motion token，避免页面各自硬编码时长/缓动
+        'fade-in': 'fadeIn var(--motion-duration-medium) var(--motion-ease-standard)',
+        'slide-up': 'slideUp var(--motion-duration-medium) var(--motion-ease-standard)',
+        'slide-down': 'slideDown var(--motion-duration-medium) var(--motion-ease-standard)',
+        'scale-in': 'scaleIn var(--motion-duration-medium) var(--motion-ease-standard)',
+        'float': 'float var(--motion-duration-loop-slow) var(--motion-ease-standard) infinite',
+        'shimmer': 'shimmer var(--motion-duration-loop) linear infinite',
       },
       keyframes: {
         fadeIn: {

@@ -172,7 +172,7 @@ watch(() => props.courses, (newCourses) => {
             </div>
             <div class="text-xs text-shuimo/60 mt-1">选课学生</div>
           </div>
-          <Users class="absolute -bottom-3 -right-3 w-16 h-16 text-qinghua/8 group-hover:text-qinghua/15 transition-all duration-500" />
+          <Users class="absolute -bottom-3 -right-3 w-16 h-16 text-qinghua/8 group-hover:text-qinghua/15 transition-colors duration-500" />
         </GlassCard>
         <GlassCard class="p-4 text-center relative overflow-hidden group">
           <div class="relative z-10">
@@ -182,7 +182,7 @@ watch(() => props.courses, (newCourses) => {
             </div>
             <div class="text-xs text-shuimo/60 mt-1">活跃学生</div>
           </div>
-          <TrendingUp class="absolute -bottom-3 -right-3 w-16 h-16 text-tianlv/8 group-hover:text-tianlv/15 transition-all duration-500" />
+          <TrendingUp class="absolute -bottom-3 -right-3 w-16 h-16 text-tianlv/8 group-hover:text-tianlv/15 transition-colors duration-500" />
         </GlassCard>
         <GlassCard class="p-4 text-center relative overflow-hidden group">
           <div class="relative z-10">
@@ -192,7 +192,7 @@ watch(() => props.courses, (newCourses) => {
             </div>
             <div class="text-xs text-shuimo/60 mt-1">平均进度</div>
           </div>
-          <Target class="absolute -bottom-3 -right-3 w-16 h-16 text-zhizi/8 group-hover:text-zhizi/15 transition-all duration-500" />
+          <Target class="absolute -bottom-3 -right-3 w-16 h-16 text-zhizi/8 group-hover:text-zhizi/15 transition-colors duration-500" />
         </GlassCard>
         <GlassCard class="p-4 text-center relative overflow-hidden group">
           <div class="relative z-10">
@@ -202,7 +202,7 @@ watch(() => props.courses, (newCourses) => {
             </div>
             <div class="text-xs text-shuimo/60 mt-1">平均分</div>
           </div>
-          <Award class="absolute -bottom-3 -right-3 w-16 h-16 text-qingsong/8 group-hover:text-qingsong/15 transition-all duration-500" />
+          <Award class="absolute -bottom-3 -right-3 w-16 h-16 text-qingsong/8 group-hover:text-qingsong/15 transition-colors duration-500" />
         </GlassCard>
         <GlassCard class="p-4 text-center relative overflow-hidden group">
           <div class="relative z-10">
@@ -212,7 +212,7 @@ watch(() => props.courses, (newCourses) => {
             </div>
             <div class="text-xs text-shuimo/60 mt-1">完课率</div>
           </div>
-          <BookOpen class="absolute -bottom-3 -right-3 w-16 h-16 text-zijinghui/8 group-hover:text-zijinghui/15 transition-all duration-500" />
+          <BookOpen class="absolute -bottom-3 -right-3 w-16 h-16 text-zijinghui/8 group-hover:text-zijinghui/15 transition-colors duration-500" />
         </GlassCard>
       </div>
 

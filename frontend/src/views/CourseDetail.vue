@@ -1,9 +1,9 @@
 <template>
-  <div class="min-h-screen animate-fade-in">
+  <div class="course-detail-root min-h-screen animate-fade-in">
     <div class="max-w-6xl mx-auto px-4 py-8">
       <!-- 返回按钮 -->
       <button @click="goBack" class="mb-6 flex items-center gap-2 text-shuimo/70 hover:text-qinghua transition-colors group">
-        <div class="p-2 rounded-full bg-white/50 group-hover:bg-qinghua/10 transition-all duration-300 group-hover:shadow-sm">
+        <div class="p-2 rounded-full bg-white/50 group-hover:bg-qinghua/10 transition-[background-color,box-shadow] duration-300 group-hover:shadow-sm">
           <ArrowLeft class="w-5 h-5 transition-transform duration-300 group-hover:-translate-x-1" />
         </div>
         <span class="font-medium">返回</span>
@@ -19,7 +19,7 @@
             <div class="md:w-1/3 relative group overflow-hidden rounded-xl">
               <img v-if="course.coverImage" :src="getImageUrl(course.coverImage)" 
                    :alt="course.title"
-                   class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                   class="course-hero-cover w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
               <div v-else class="w-full h-64 bg-gradient-to-br from-qinghua/20 to-halanzi/20 flex items-center justify-center">
                 <svg class="w-16 h-16 text-qinghua/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
@@ -55,7 +55,7 @@
                   @click="handleEnroll"
                   :disabled="enrolling"
                   variant="custom"
-                  class="px-8 py-3 bg-gradient-to-r from-qinghua to-halanzi text-white rounded-xl shadow-lg shadow-qinghua/30 hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300 flex items-center gap-2"
+                  class="course-action-btn px-8 py-3 bg-gradient-to-r from-qinghua to-halanzi text-white rounded-xl shadow-lg shadow-qinghua/30 hover:-translate-y-0.5 hover:shadow-xl transition-[transform,box-shadow,background-color] duration-300 flex items-center gap-2"
                 >
                   <Play class="w-5 h-5" />
                   {{ enrolling ? '正在报名...' : '立即报名' }}
@@ -65,7 +65,7 @@
                   v-if="isEnrolled" 
                   @click="goToStudy"
                   variant="custom"
-                  class="px-8 py-3 bg-gradient-to-r from-tianlv to-qingsong text-white rounded-xl shadow-lg shadow-tianlv/30 hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300 flex items-center gap-2"
+                  class="course-action-btn px-8 py-3 bg-gradient-to-r from-tianlv to-qingsong text-white rounded-xl shadow-lg shadow-tianlv/30 hover:-translate-y-0.5 hover:shadow-xl transition-[transform,box-shadow,background-color] duration-300 flex items-center gap-2"
                 >
                   <Play class="w-5 h-5" />
                   继续学习
@@ -75,7 +75,7 @@
                   v-if="isEnrolled" 
                   @click="handleDrop"
                   variant="custom"
-                  class="px-8 py-3 bg-yanzhi/10 text-yanzhi rounded-xl hover:bg-yanzhi/20 hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2"
+                  class="course-action-btn px-8 py-3 bg-yanzhi/10 text-yanzhi rounded-xl hover:bg-yanzhi/20 hover:-translate-y-0.5 transition-[transform,background-color] duration-300 flex items-center gap-2"
                 >
                   <LogOut class="w-5 h-5" />
                   退出课程
@@ -85,7 +85,7 @@
                   v-if="isAdmin"
                   @click="goToStudy"
                   variant="custom"
-                  class="px-8 py-3 bg-gradient-to-r from-zijinghui to-qianniuzi text-white rounded-xl shadow-lg shadow-zijinghui/30 hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300 flex items-center gap-2"
+                  class="course-action-btn px-8 py-3 bg-gradient-to-r from-zijinghui to-qianniuzi text-white rounded-xl shadow-lg shadow-zijinghui/30 hover:-translate-y-0.5 hover:shadow-xl transition-[transform,box-shadow,background-color] duration-300 flex items-center gap-2"
                 >
                   <Eye class="w-5 h-5" />
                   查看课程
@@ -111,18 +111,18 @@
             <TransitionGroup name="chapter-list" appear>
             <div v-for="(chapter, index) in chapters" :key="chapter.id"
                  :class="[
-                   'chapter-item flex items-center justify-between p-5 border border-slate-100/50 bg-white/50 rounded-xl transition-all duration-300 group',
-                   (isEnrolled || isAdmin)
-                     ? 'hover:bg-white/80 hover:shadow-md hover:border-qinghua/30 cursor-pointer'
-                     : 'opacity-60 cursor-not-allowed'
-                 ]"
+                   'chapter-item flex items-center justify-between p-5 border border-slate-100/50 bg-white/50 rounded-xl transition-[background-color,border-color,box-shadow,opacity] duration-300 group',
+                    (isEnrolled || isAdmin)
+                      ? 'hover:bg-white/80 hover:shadow-md hover:border-qinghua/30 cursor-pointer'
+                      : 'opacity-60 cursor-not-allowed'
+                  ]"
                  :style="{ '--delay': index * 0.08 + 's' }"
                  @click="handleChapterClick">
               <!-- 左侧指示条 -->
               <div class="absolute left-0 top-0 bottom-0 w-1 bg-qinghua rounded-l-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               
               <div class="flex items-center gap-5">
-                <span class="chapter-number w-10 h-10 flex items-center justify-center bg-qinghua/10 text-qinghua rounded-xl text-lg font-bold font-song relative overflow-hidden group-hover:bg-qinghua group-hover:text-white transition-all duration-300">
+                <span class="course-chapter-number chapter-number w-10 h-10 flex items-center justify-center bg-qinghua/10 text-qinghua rounded-xl text-lg font-bold font-song relative overflow-hidden group-hover:bg-qinghua group-hover:text-white transition-[background-color,color,transform] duration-300">
                   {{ index + 1 }}
                   <div class="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent"></div>
                 </span>
@@ -131,7 +131,7 @@
                   <p class="text-sm text-shuimo/60">{{ chapter.description }}</p>
                 </div>
               </div>
-              <div class="text-sm font-medium text-shuimo/50 flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-lg group-hover:bg-qinghua/10 group-hover:text-qinghua transition-all duration-300">
+              <div class="text-sm font-medium text-shuimo/50 flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-lg group-hover:bg-qinghua/10 group-hover:text-qinghua transition-[background-color,color] duration-300">
                 <Clock class="w-4 h-4" />
                 {{ formatDuration(chapter.videoDuration) }}
               </div>
@@ -176,7 +176,7 @@
             <h3 class="text-xl font-bold text-shuimo mb-2">{{ toastTitle }}</h3>
             <p class="text-shuimo/60 mb-8">{{ toastMessage }}</p>
             <button @click="showToast = false" 
-                    :class="['w-full py-3 rounded-xl font-medium transition-all shadow-lg hover:-translate-y-0.5',
+                    :class="['w-full py-3 rounded-xl font-medium transition-[transform,box-shadow,background-color] duration-300 shadow-lg hover:-translate-y-0.5',
                              toastType === 'success' ? 'bg-gradient-to-r from-tianlv to-qingsong text-white shadow-tianlv/30' : 'bg-gradient-to-r from-yanzhihong to-yanzhi text-white shadow-yanzhi/30']">
               确定
             </button>
@@ -500,6 +500,59 @@ onMounted(() => {
   100% {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+/* 中文注释：暗色主题默认关闭首屏入场动画，避免高对比背景下产生长帧抖动 */
+:global(html.dark) .stat-item,
+:global(.dark) .stat-item,
+:global(html.dark) .chapter-list-enter-active,
+:global(.dark) .chapter-list-enter-active,
+:global(html.dark) .chapter-list-leave-active,
+:global(.dark) .chapter-list-leave-active,
+:global(html.dark) .chapter-number,
+:global(.dark) .chapter-number {
+  animation: none !important;
+}
+
+/* 中文注释：暗色模式下进一步收敛高频 hover 形变，降低偶发 jank 峰值 */
+:global(html.dark) .course-detail-root .course-hero-cover,
+:global(.dark) .course-detail-root .course-hero-cover,
+:global(html.dark) .course-detail-root .course-action-btn,
+:global(.dark) .course-detail-root .course-action-btn,
+:global(html.dark) .course-detail-root .course-chapter-number,
+:global(.dark) .course-detail-root .course-chapter-number {
+  transform: none !important;
+}
+
+:global(html.dark) .course-detail-root .course-action-btn,
+:global(.dark) .course-detail-root .course-action-btn {
+  box-shadow: none !important;
+}
+
+/* 中文注释：暗色模式进一步收敛过渡属性，降低中等视口高频滚动下的连续长帧 */
+:global(html.dark) .course-detail-root .course-hero-cover,
+:global(.dark) .course-detail-root .course-hero-cover,
+:global(html.dark) .course-detail-root .course-action-btn,
+:global(.dark) .course-detail-root .course-action-btn,
+:global(html.dark) .course-detail-root .chapter-item,
+:global(.dark) .course-detail-root .chapter-item,
+:global(html.dark) .course-detail-root .course-chapter-number,
+:global(.dark) .course-detail-root .course-chapter-number {
+  transition-property: color, background-color, border-color, opacity !important;
+}
+
+/* 中文注释：暗色中小视口关闭首屏入场动画，优先保障性能压测的稳定 60fps */
+@media (max-width: 1024px) {
+  :global(html.dark) .stat-item,
+  :global(.dark) .stat-item,
+  :global(html.dark) .chapter-list-enter-active,
+  :global(.dark) .chapter-list-enter-active,
+  :global(html.dark) .chapter-list-leave-active,
+  :global(.dark) .chapter-list-leave-active,
+  :global(html.dark) .chapter-number,
+  :global(.dark) .chapter-number {
+    animation: none !important;
   }
 }
 </style>

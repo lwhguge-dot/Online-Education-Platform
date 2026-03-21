@@ -73,7 +73,7 @@ const progressColor = computed(() => {
           :class="progressColor"
           :stroke-dasharray="circumference"
           :stroke-dashoffset="strokeDashoffset"
-          class="transition-all duration-700 ease-out"
+          class="transition-[stroke-dashoffset] duration-700 ease-out"
         />
       </svg>
       <!-- 中心图标/数字 -->

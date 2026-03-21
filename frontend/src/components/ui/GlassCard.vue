@@ -17,7 +17,7 @@ const props = defineProps({
 
 <template>
   <div 
-    class="glass-card relative rounded-2xl transition-all duration-300 group border border-white/20 shadow-lg"
+    class="glass-card relative rounded-2xl transition-transform transition-shadow transition-colors duration-300 group border border-white/20 shadow-lg"
     :class="[
       padding,
       props.overflow === 'hidden' ? 'overflow-hidden' : 'overflow-visible',

@@ -96,7 +96,7 @@ const tooltipData = computed(() => getTooltipData(hoveredIndex.value))
           v-for="range in timeRanges"
           :key="range.value"
           @click="changeRange(range.value)"
-          class="px-2 py-1 text-xs rounded transition-all"
+          class="px-2 py-1 text-xs rounded transition-colors"
           :class="selectedRange === range.value
             ? 'bg-qinghua text-white'
             : 'bg-gray-100 text-shuimo/60 hover:bg-gray-200'"
@@ -152,7 +152,7 @@ const tooltipData = computed(() => getTooltipData(hoveredIndex.value))
             stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
-            class="transition-all duration-500"
+            class="transition-colors duration-500"
           />
 
           <!-- 活跃用户折线 -->
@@ -163,7 +163,7 @@ const tooltipData = computed(() => getTooltipData(hoveredIndex.value))
             stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
-            class="transition-all duration-500"
+            class="transition-colors duration-500"
           />
 
           <!-- 在线用户折线 -->
@@ -174,7 +174,7 @@ const tooltipData = computed(() => getTooltipData(hoveredIndex.value))
             stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
-            class="transition-all duration-500"
+            class="transition-colors duration-500"
           />
 
           <!-- 交互区域 -->

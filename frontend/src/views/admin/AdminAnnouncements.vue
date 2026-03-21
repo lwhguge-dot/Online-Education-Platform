@@ -225,7 +225,7 @@ onMounted(() => {
               v-for="status in [{id: '', label: '全部'}, {id: 'DRAFT', label: '草稿'}, {id: 'PUBLISHED', label: '已发布'}]"
               :key="status.id"
               @click="statusFilter = status.id; fetchAnnouncements()"
-              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors transition-shadow whitespace-nowrap"
               :class="statusFilter === status.id ? 'bg-zijinghui text-white shadow-md shadow-zijinghui/20' : 'text-shuimo/60 hover:text-shuimo hover:bg-slate-100'"
             >
               {{ status.label }}
@@ -244,7 +244,7 @@ onMounted(() => {
               type="text" 
               placeholder="搜索公告..."
               aria-label="搜索公告标题或内容"
-              class="w-40 pl-9 pr-3 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-zijinghui/20 transition-all text-sm"
+              class="w-40 pl-9 pr-3 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-zijinghui/20 transition-colors transition-shadow text-sm"
             />
             <button v-if="searchQuery" @click="searchQuery = ''" class="absolute right-3 top-1/2 -translate-y-1/2 text-shuimo/40 hover:text-shuimo">
               <X class="w-3 h-3" />

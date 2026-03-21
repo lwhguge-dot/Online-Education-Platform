@@ -337,7 +337,7 @@ onUnmounted(() => {
     <header class="sticky top-0 z-20 bg-white/70 backdrop-blur-xl border-b border-white/50 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
         <div class="flex items-center gap-4">
-          <button @click="goBack" class="p-2 text-shuimo/70 hover:text-qinghua hover:bg-qinghua/10 rounded-xl transition-all">
+          <button @click="goBack" class="p-2 text-shuimo/70 hover:text-qinghua hover:bg-qinghua/10 rounded-xl transition-colors">
             <ArrowLeft class="w-5 h-5" />
           </button>
           <div>
@@ -347,7 +347,7 @@ onUnmounted(() => {
         </div>
         
         <div class="flex items-center gap-3">
-          <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-300"
+          <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-300"
                :class="videoProgress >= 100 ? 'bg-tianlv/10 text-tianlv' : 'bg-qinghua/10 text-qinghua'">
             <Clock class="w-3 h-3" />
             <span>学习进度 <AnimatedNumber :value="videoProgress" :duration="300" />%</span>

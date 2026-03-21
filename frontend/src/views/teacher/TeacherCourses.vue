@@ -492,7 +492,7 @@ const deleteQuiz = async (quizId) => {
           <div class="flex-1 overflow-y-auto p-3 space-y-2">
              <button 
                @click="prepareChapterForm()" 
-               class="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-shuimo/50 hover:border-tianlv hover:text-tianlv hover:bg-tianlv/5 transition-all text-sm font-bold flex items-center justify-center gap-2"
+               class="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-shuimo/50 hover:border-tianlv hover:text-tianlv hover:bg-tianlv/5 transition-colors text-sm font-bold flex items-center justify-center gap-2"
              >
                <Plus class="w-4 h-4" /> 添加新章节
              </button>
@@ -504,7 +504,7 @@ const deleteQuiz = async (quizId) => {
                @click="prepareChapterForm(chapter)"
                @keydown.enter.prevent="prepareChapterForm(chapter)"
                @keydown.space.prevent="prepareChapterForm(chapter)"
-               :class="['p-4 rounded-xl text-left transition-all border group cursor-pointer hover:shadow-md',
+               :class="['p-4 rounded-xl text-left transition-colors transition-shadow border group cursor-pointer hover:shadow-md',
                  editingChapter?.id === chapter.id ? 'bg-white border-tianlv shadow-md' : 'bg-white border-transparent hover:border-slate-200']"
              >
                 <div class="flex justify-between items-start mb-1">

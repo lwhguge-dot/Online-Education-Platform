@@ -282,7 +282,7 @@ watch(
               v-for="tab in [{id: 'pending', label: '待批改'}, {id: 'all', label: '全部作业'}]"
               :key="tab.id"
               @click="activeTab = tab.id"
-              class="px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap"
+              class="px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap homework-tab-btn"
               :class="activeTab === tab.id ? 'bg-qinghua text-white shadow-lg shadow-qinghua/30' : 'bg-slate-50 text-shuimo/70 hover:bg-slate-100'"
             >
               {{ tab.label }}
@@ -464,10 +464,10 @@ watch(
                 <BaseSelect
                   v-model="newQuestion.questionType"
                   :options="[
-                    { value: 'single', label: '📝 单选题' },
-                    { value: 'multiple', label: '☑️ 多选题' },
-                    { value: 'fill', label: '✏️ 填空题' },
-                    { value: 'subjective', label: '📄 主观题' }
+                    { value: 'single', label: '单选题' },
+                    { value: 'multiple', label: '多选题' },
+                    { value: 'fill', label: '填空题' },
+                    { value: 'subjective', label: '主观题' }
                   ]"
                   size="sm"
                 />
@@ -604,3 +604,26 @@ watch(
 
   </div>
 </template>
+
+<style scoped>
+/* 中文注释：页签按钮仅过渡颜色与阴影，避免 all 过渡带来的额外样式计算 */
+.homework-tab-btn {
+  transition:
+    background-color var(--motion-duration-base) var(--motion-ease-standard),
+    color var(--motion-duration-base) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-base) var(--motion-ease-standard);
+}
+
+/* 中文注释：无障碍降级场景下关闭进入动效，减少连续交互带来的视觉负担 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-scale-in {
+    animation: none !important;
+  }
+
+  .homework-tab-btn {
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>

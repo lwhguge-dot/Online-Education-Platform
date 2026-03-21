@@ -91,7 +91,7 @@ onMounted(() => {
             v-for="filter in [{id: 'all', label: '全部'}, {id: 'pending', label: '待回复'}, {id: 'answered', label: '已回复'}]"
             :key="filter.id"
             @click="activeFilter = filter.id"
-            :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+            :class="['px-3 py-1.5 rounded-lg text-sm font-medium transition-colors transition-shadow',
               activeFilter === filter.id ? 'bg-qinghua text-white' : 'bg-slate-100 text-shuimo/60 hover:bg-slate-200']"
           >
             {{ filter.label }}

@@ -1,6 +1,35 @@
 /* 动画工具层：通用动画类、延迟类与交错动画 */
 /* ===== 动画工具类 ===== */
 
+:root {
+  /* 中文注释：通用装饰动画默认仅播放有限次数，避免长会话持续占用渲染资源 */
+  --motion-loop-iterations-decorative: 3;
+}
+
+.motion-loop-infinite {
+  /* 中文注释：仅在确有业务语义时显式开启无限循环 */
+  --motion-loop-iterations-decorative: infinite;
+}
+
+.motion-loop-functional {
+  /* 中文注释：功能态动画（如加载态）可通过该类显式保持无限循环 */
+  --motion-loop-iterations-decorative: var(--motion-loop-iterations-functional, infinite);
+}
+
+.motion-loop-attention {
+  /* 中文注释：提示态动画使用更温和的循环次数，避免长期视觉噪音 */
+  --motion-loop-iterations-decorative: var(--motion-loop-iterations-attention, 4);
+}
+
+.motion-loop-on-hover {
+  animation-play-state: paused;
+}
+
+.motion-loop-on-hover:hover,
+.motion-loop-on-hover:focus-visible {
+  animation-play-state: running;
+}
+
 .animate-bounce-in {
   animation: bounce-in var(--motion-duration-slow) var(--motion-ease-standard) forwards;
 }
@@ -8,14 +37,20 @@
 .animate-pulse-soft {
   /* P1 第二批：通用动画时长压缩到 200ms 档 */
   animation: pulse-soft var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-decorative, 3);
+  animation-fill-mode: both;
 }
 
 .animate-breathe {
   animation: breathe var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-decorative, 3);
+  animation-fill-mode: both;
 }
 
 .animate-blink {
   animation: blink-attention var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-decorative, 3);
+  animation-fill-mode: both;
 }
 
 .animate-shake {
@@ -32,6 +67,8 @@
 
 .animate-hover-float {
   animation: hover-float var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-decorative, 3);
+  animation-fill-mode: both;
 }
 
 .animate-slide-in-left {
@@ -271,4 +308,3 @@
 .stagger-list > *:nth-child(9) { animation-delay: 0.45s; }
 .stagger-list > *:nth-child(10) { animation-delay: 0.5s; }
 .stagger-list > *:nth-child(n+11) { animation-delay: 0.55s; }
-

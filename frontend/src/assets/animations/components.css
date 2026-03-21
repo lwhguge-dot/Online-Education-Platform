@@ -16,6 +16,8 @@
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
   transform: translateX(-100%);
   animation: progress-shine-transform var(--motion-duration-medium) linear infinite;
+  animation-iteration-count: var(--motion-loop-iterations-decorative, 3);
+  animation-fill-mode: both;
 }
 
 @keyframes progress-shine-transform {
@@ -48,6 +50,9 @@
   width: 200%; /* Make it wider to slide */
   background: inherit;
   animation: progress-stripes-transform var(--motion-duration-medium) linear infinite;
+  /* 中文注释：保留兜底门控，防止该伪元素在某些主题中长时间无限循环 */
+  animation-iteration-count: var(--motion-loop-iterations-decorative, 3);
+  animation-fill-mode: both;
   /* This is tricky because background needs to be on the element itself usually. 
      Let's stick to standard background-position for stripes as it's less critical than LCP skeletons, 
      but actually we can just leave it if it's not main thread blocking. 
@@ -84,6 +89,8 @@
         transparent);
   background-size: 40px 40px;
   animation: progress-stripes-transform var(--motion-duration-medium) linear infinite;
+  animation-iteration-count: var(--motion-loop-iterations-decorative, 3);
+  animation-fill-mode: both;
   transform: translateX(0);
 }
 
@@ -145,7 +152,7 @@
 }
 
 .icon-hover-scale {
-  transition: transform 0.2s ease;
+  transition: transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .icon-hover-scale:hover {
@@ -154,6 +161,7 @@
 
 .icon-spin {
   animation: icon-spin var(--motion-duration-medium) linear infinite;
+  animation-iteration-count: var(--motion-loop-iterations-functional, infinite);
 }
 
 /* ===== 徽章样式增强 ===== */
@@ -172,6 +180,8 @@
 
 .badge-near-unlock {
   animation: pulse-soft var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-attention, 4);
+  animation-fill-mode: both;
 }
 
 .badge-unlocked {
@@ -199,6 +209,8 @@
 .badge-unlocked-glow:hover::before {
   opacity: 1;
   animation: badge-glow-pulse var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-decorative, 3);
+  animation-fill-mode: both;
 }
 
 /* 徽章图标发光效果 */
@@ -226,15 +238,21 @@
 /* ===== 紧急提醒样式 ===== */
 .urgent-pulse {
   animation: pulse-soft var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-attention, 4);
+  animation-fill-mode: both;
 }
 
 .urgent-shake {
   animation: shake-gentle var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-attention, 4);
+  animation-fill-mode: both;
 }
 
 /* ===== 空状态动画 ===== */
 .empty-state-float {
   animation: hover-float var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-decorative, 3);
+  animation-fill-mode: both;
 }
 
 /* ===== 开关按钮增强 ===== */
@@ -331,6 +349,16 @@
   background: inherit;
   opacity: 0.4;
   animation: pulse-soft var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-interaction-loop-iterations, 2);
+  animation-play-state: paused;
+  animation-fill-mode: both;
+}
+
+/* 中文注释：播放按钮脉冲仅在交互时启动，避免卡片静置时持续循环 */
+.group:hover .play-btn-pulse::before,
+.play-btn-pulse:hover::before,
+.play-btn-pulse:focus-visible::before {
+  animation-play-state: running;
 }
 
 /* ===== 时间线动画 ===== */
@@ -394,6 +422,7 @@
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
   transform: translateX(-100%);
   animation: shimmer-transform var(--motion-duration-medium) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-functional, infinite);
 }
 
 @keyframes shimmer-transform {
@@ -408,7 +437,7 @@
 }
 
 .page-transition-leave-active {
-  animation: slide-up 0.2s ease-in reverse forwards;
+  animation: slide-up var(--motion-duration-medium) var(--motion-ease-standard) reverse forwards;
 }
 
 @keyframes shimmer {
@@ -420,16 +449,20 @@
 /* ===== 进度条入场动画 ===== */
 @keyframes progress-bar-enter {
   from {
-    width: 0;
+    /* 中文注释：入场动画改为 transform，避免 width 变化触发布局计算 */
+    transform: scaleX(0);
+    opacity: 0.85;
   }
 
   to {
-    width: var(--progress-width, 0%);
+    transform: scaleX(1);
+    opacity: 1;
   }
 }
 
 .animate-progress-bar {
   animation: progress-bar-enter var(--motion-duration-medium) var(--motion-ease-standard) forwards;
   width: var(--progress-width, 0%);
+  transform-origin: left center;
+  will-change: transform;
 }
-

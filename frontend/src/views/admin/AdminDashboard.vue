@@ -190,7 +190,8 @@ const getRoleName = (role) => {
               <RefreshCw class="w-4 h-4" />
             </button>
             <span class="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <!-- 中文注释：改为静态状态点，避免持续脉冲在暗色模式下叠加绘制 -->
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
               实时
             </span>
             <span class="text-xs text-shuimo/50 dark:text-slate-500">{{ lastUpdateTime }}</span>
@@ -198,14 +199,14 @@ const getRoleName = (role) => {
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 stagger-fast">
-          <div class="stagger-item text-center p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:shadow-lg hover:shadow-blue-100 dark:hover:shadow-blue-900/20 hover:-translate-y-0.5 transition-all duration-300 cursor-default">
+          <div class="stagger-item text-center p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:shadow-lg hover:shadow-blue-100 dark:hover:shadow-blue-900/20 hover:-translate-y-0.5 transition-[background-color,transform,box-shadow] duration-300 cursor-default">
             <UserPlus class="w-6 h-6 text-blue-500 mx-auto mb-2" />
             <div class="text-2xl font-bold text-blue-600 dark:text-blue-400 font-mono">
               <AnimatedNumber :value="todayStats.newUsers" :duration="800" :show-trend="true" />
             </div>
             <div class="text-xs text-blue-600/70 dark:text-blue-400/70 font-medium">新增用户</div>
           </div>
-          <div class="stagger-item text-center p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:shadow-lg hover:shadow-emerald-100 dark:hover:shadow-emerald-900/20 hover:-translate-y-0.5 transition-all duration-300 cursor-default">
+          <div class="stagger-item text-center p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:shadow-lg hover:shadow-emerald-100 dark:hover:shadow-emerald-900/20 hover:-translate-y-0.5 transition-[background-color,transform,box-shadow] duration-300 cursor-default">
             <LogIn class="w-6 h-6 text-emerald-500 mx-auto mb-2" />
             <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
               <AnimatedNumber :value="todayStats.activeUsers" :duration="800" :show-trend="true" />
@@ -214,7 +215,7 @@ const getRoleName = (role) => {
           </div>
           <button
             type="button"
-            class="stagger-item text-center p-4 rounded-xl bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 hover:shadow-lg hover:shadow-green-100 dark:hover:shadow-green-900/20 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer w-full"
+            class="stagger-item text-center p-4 rounded-xl bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 hover:shadow-lg hover:shadow-green-100 dark:hover:shadow-green-900/20 hover:-translate-y-0.5 transition-[background-color,transform,box-shadow] duration-300 cursor-pointer w-full"
             @click="showOnlineUsersModal = true"
             title="点击查看在线用户详情"
             aria-label="查看在线用户详情"
@@ -225,7 +226,7 @@ const getRoleName = (role) => {
             </div>
             <div class="text-xs text-green-600/70 dark:text-green-400/70 font-medium">当前在线</div>
           </button>
-          <div class="stagger-item text-center p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:shadow-lg hover:shadow-amber-100 dark:hover:shadow-amber-900/20 hover:-translate-y-0.5 transition-all duration-300 cursor-default">
+          <div class="stagger-item text-center p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:shadow-lg hover:shadow-amber-100 dark:hover:shadow-amber-900/20 hover:-translate-y-0.5 transition-[background-color,transform,box-shadow] duration-300 cursor-default">
             <BookOpen class="w-6 h-6 text-amber-500 mx-auto mb-2" />
             <div class="text-2xl font-bold text-amber-600 dark:text-amber-400 font-mono">
               <AnimatedNumber :value="courseStats.published" :duration="800" />
@@ -250,7 +251,7 @@ const getRoleName = (role) => {
             v-if="courseStats.pending > 0"
             type="button"
             @click="emit('navigate', { menu: 'courses', filter: '0' })"
-            class="stagger-item flex items-center gap-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-all group text-left w-full"
+            class="stagger-item flex items-center gap-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-[background-color,border-color,transform] duration-300 group text-left w-full"
             aria-label="查看待审核课程详情"
           >
             <div class="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-800/30 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -268,7 +269,7 @@ const getRoleName = (role) => {
             v-if="disabledUsersCount > 0"
             type="button"
             @click="emit('navigate', { menu: 'users', filter: 'disabled' })"
-            class="stagger-item flex items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-600/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all group text-left w-full"
+            class="stagger-item flex items-center gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-700/30 border border-slate-100 dark:border-slate-600/30 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-[background-color,border-color,transform] duration-300 group text-left w-full"
             aria-label="查看已禁用用户详情"
           >
             <div class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-600/30 flex items-center justify-center group-hover:scale-110 transition-transform">

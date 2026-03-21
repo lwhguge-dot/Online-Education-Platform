@@ -45,6 +45,18 @@ onMounted(async () => {
 
 // UI Helpers
 const hoveredBadgeId = ref(null)
+// 中文注释：统一约束课程进度范围，避免异常值导致动画抖动
+const clampProgress = (value) => {
+  const num = Number(value)
+  if (!Number.isFinite(num)) return 0
+  return Math.max(0, Math.min(100, num))
+}
+
+// 中文注释：进度条使用 transform 缩放，减少 width 动画触发布局计算
+const getProgressScaleStyle = (value) => ({
+  transform: `scaleX(${clampProgress(value) / 100})`
+})
+
 const greeting = computed(() => {
   const hour = new Date().getHours()
   if (hour >= 5 && hour < 12) {
@@ -74,7 +86,7 @@ const greeting = computed(() => {
 
 <template>
   <SkeletonDashboard v-if="loading" :stats-count="4" :show-charts="true" />
-  <div v-else class="space-y-6 animate-fade-in">
+  <div v-else class="student-dashboard-root space-y-6 animate-fade-in">
     <!-- 个性化问候区域 -->
     <div class="flex items-center justify-between animate-slide-up" style="animation-delay: 0s; animation-fill-mode: both;">
       <div class="flex items-center gap-4">
@@ -235,7 +247,7 @@ const greeting = computed(() => {
              <div 
                v-for="course in recentCourses" 
                :key="course.id"
-               class="p-4 rounded-xl border border-slate-100/50 hover:shadow-md hover:border-tianlv/30 transition-all cursor-pointer group bg-white/50"
+               class="p-4 rounded-xl border border-slate-100/50 hover:shadow-md hover:border-tianlv/30 transition-[border-color,box-shadow,background-color,transform] duration-300 cursor-pointer group bg-white/50"
                @click="router.push(`/study/${course.id}`)"
              >
                <div class="flex justify-between items-start mb-2">
@@ -247,12 +259,12 @@ const greeting = computed(() => {
                <h3 class="font-bold text-shuimo mb-1 line-clamp-1 h-6">{{ course.lastChapter }}</h3>
                <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden">
                  <div 
-                   class="bg-gradient-to-r from-tianlv to-qingsong h-full rounded-full transition-all duration-500" 
-                   :style="{ width: `${course.progress}%` }"
+                   class="bg-gradient-to-r from-tianlv to-qingsong h-full rounded-full origin-left transition-transform duration-500 will-change-transform progress-fill"
+                   :style="getProgressScaleStyle(course.progress)"
                  ></div>
                </div>
                <div class="flex justify-between mt-1">
-                 <span class="text-xs text-muted">进度 {{ course.progress }}%</span>
+                 <span class="text-xs text-muted">进度 {{ clampProgress(course.progress) }}%</span>
                  <span class="text-xs text-muted">{{ course.lastStudy }}</span>
                </div>
              </div>
@@ -286,7 +298,7 @@ const greeting = computed(() => {
                @mouseleave="hoveredBadgeId = null"
              >
                <div 
-                 class="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 transform group-hover:scale-110"
+                 class="w-10 h-10 rounded-full flex items-center justify-center transition-[transform,box-shadow,background-color,opacity] duration-300 transform group-hover:scale-110"
                  :class="badge.unlocked ? 'bg-gradient-to-br from-slate-50 to-white shadow-sm border border-slate-100' : 'bg-slate-100 grayscale opacity-60'"
                >
                  <component :is="badge.icon" class="w-5 h-5" :class="badge.color" />
@@ -338,12 +350,12 @@ const greeting = computed(() => {
 <style scoped>
 /* Scoped styles reuse default Tailwind classes mostly */
 .animate-fade-in {
-  animation: fadeIn 0.5s ease-out;
+  animation: fadeIn var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 .animate-slide-up {
   opacity: 0;
-  animation: slideUp 0.5s ease-out forwards;
+  animation: slideUp var(--motion-duration-medium) var(--motion-ease-standard) forwards;
 }
 
 @keyframes fadeIn {
@@ -357,7 +369,9 @@ const greeting = computed(() => {
 }
 
 .card-hover-lift {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform var(--motion-duration-medium) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-medium) var(--motion-ease-standard);
 }
 .card-hover-lift:hover {
   transform: translateY(-5px);
@@ -365,18 +379,107 @@ const greeting = computed(() => {
 }
 
 .icon-hover-scale {
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform var(--motion-duration-medium) var(--motion-ease-standard);
 }
 .group:hover .icon-hover-scale {
   transform: scale(1.2) rotate(5deg);
 }
 
 .urgent-pulse {
-  animation: urgentPulse 2s infinite;
+  position: relative;
+  isolation: isolate;
 }
-@keyframes urgentPulse {
-  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-  70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+
+.urgent-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 2px solid rgba(239, 68, 68, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: urgentRing var(--motion-duration-loop) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-attention, 4);
+  animation-fill-mode: both;
+}
+
+@keyframes urgentRing {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+}
+
+/* 中文注释：暗色主题收敛动效强度，降低高频交互下的连续掉帧概率 */
+:global(html.dark) .student-dashboard-root .animate-fade-in,
+:global(.dark) .student-dashboard-root .animate-fade-in {
+  animation-duration: var(--motion-duration-base);
+}
+
+:global(html.dark) .student-dashboard-root .animate-slide-up,
+:global(.dark) .student-dashboard-root .animate-slide-up {
+  animation-duration: var(--motion-duration-base);
+}
+
+:global(html.dark) .student-dashboard-root .urgent-pulse::after,
+:global(.dark) .student-dashboard-root .urgent-pulse::after {
+  animation: none;
+}
+
+:global(html.dark) .student-dashboard-root .group:hover .icon-hover-scale,
+:global(.dark) .student-dashboard-root .group:hover .icon-hover-scale {
+  transform: none;
+}
+
+/* 中文注释：暗色桌面端关闭卡片悬浮位移与阴影增强，降低高频 hover 时的帧抖动 */
+:global(html.dark) .student-dashboard-root .card-hover-lift:hover,
+:global(.dark) .student-dashboard-root .card-hover-lift:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* 中文注释：暗色模式停用持续脉冲/弹跳提示，降低长任务与连续抖动概率 */
+:global(html.dark) .student-dashboard-root .animate-pulse,
+:global(.dark) .student-dashboard-root .animate-pulse,
+:global(html.dark) .student-dashboard-root .animate-bounce,
+:global(.dark) .student-dashboard-root .animate-bounce {
+  animation: none !important;
+}
+
+/* 中文注释：中小视口进一步降低位移动效，优先保障滚动流畅度 */
+@media (max-width: 1024px) {
+  .student-dashboard-root .card-hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  .student-dashboard-root .group:hover .icon-hover-scale {
+    transform: scale(1.06);
+  }
+}
+
+/* 中文注释：无障碍降级，用户要求减少动态效果时关闭关键动画 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-up,
+  .urgent-pulse::after {
+    animation: none !important;
+  }
+
+  .card-hover-lift,
+  .icon-hover-scale,
+  .progress-fill {
+    transition-duration: 0.01ms !important;
+  }
+
+  .card-hover-lift:hover,
+  .group:hover .icon-hover-scale {
+    transform: none !important;
+    box-shadow: none !important;
+  }
 }
 </style>

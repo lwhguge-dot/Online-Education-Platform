@@ -173,18 +173,22 @@ jobs:
       - name: 安装依赖
         run: npm install --no-audit --progress=false
 
-      # 5. TypeScript 类型检查
+      # 5. 前端动效门禁检查
+      - name: 前端动效门禁检查
+        run: npm run lint:motion
+
+      # 6. TypeScript 类型检查
       - name: TypeScript 类型检查
         run: npx vue-tsc --noEmit
         continue-on-error: true
 
-      # 6. 构建生产版本
+      # 7. 构建生产版本
       - name: 构建生产版本
         run: npm run build
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
-      # 7. 上传构建产物
+      # 8. 上传构建产物
       - name: 上传前端构建产物
         uses: actions/upload-artifact@v4
         with:

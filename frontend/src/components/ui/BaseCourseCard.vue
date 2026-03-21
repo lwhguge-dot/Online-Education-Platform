@@ -39,7 +39,7 @@ defineProps({
     
     <!-- 悬浮播放按钮 (可覆盖) -->
     <slot name="overlay">
-      <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 scale-90 group-hover:scale-100">
+      <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity transition-transform duration-300 scale-90 group-hover:scale-100">
         <div class="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm border border-white/50 flex items-center justify-center shadow-lg group-active:scale-95 transition-transform">
           <div class="w-10 h-10 rounded-full bg-white text-danqing flex items-center justify-center shadow-sm">
             <Play class="w-4 h-4 ml-0.5 fill-current" />

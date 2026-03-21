@@ -265,7 +265,7 @@ onMounted(() => {
             </div>
             <div class="text-sm text-shuimo/60 mt-1">学生总数</div>
           </div>
-          <Users class="absolute -bottom-4 -right-4 w-20 h-20 text-qinghua/8 group-hover:text-qinghua/15 transition-all duration-500" />
+          <Users class="absolute -bottom-4 -right-4 w-20 h-20 text-qinghua/8 group-hover:text-qinghua/15 transition-colors duration-500" />
         </GlassCard>
         <GlassCard class="p-4 text-center bg-zhizi/5 border-zhizi/20 relative overflow-hidden group">
           <div class="relative z-10">
@@ -277,7 +277,7 @@ onMounted(() => {
             </div>
             <div class="text-sm text-shuimo/60 mt-1">需关注</div>
           </div>
-          <AlertTriangle class="absolute -bottom-4 -right-4 w-20 h-20 text-zhizi/8 group-hover:text-zhizi/15 transition-all duration-500" />
+          <AlertTriangle class="absolute -bottom-4 -right-4 w-20 h-20 text-zhizi/8 group-hover:text-zhizi/15 transition-colors duration-500" />
         </GlassCard>
         <GlassCard class="p-4 text-center bg-yanzhi/5 border-yanzhi/20 relative overflow-hidden group">
           <div class="relative z-10">
@@ -289,7 +289,7 @@ onMounted(() => {
             </div>
             <div class="text-sm text-shuimo/60 mt-1">不活跃</div>
           </div>
-          <Clock class="absolute -bottom-4 -right-4 w-20 h-20 text-yanzhi/8 group-hover:text-yanzhi/15 transition-all duration-500" />
+          <Clock class="absolute -bottom-4 -right-4 w-20 h-20 text-yanzhi/8 group-hover:text-yanzhi/15 transition-colors duration-500" />
         </GlassCard>
         <GlassCard class="p-4 text-center relative overflow-hidden group">
           <div class="relative z-10">
@@ -301,7 +301,7 @@ onMounted(() => {
             </div>
             <div class="text-sm text-shuimo/60 mt-1">课程数</div>
           </div>
-          <BookOpen class="absolute -bottom-4 -right-4 w-20 h-20 text-tianlv/8 group-hover:text-tianlv/15 transition-all duration-500" />
+          <BookOpen class="absolute -bottom-4 -right-4 w-20 h-20 text-tianlv/8 group-hover:text-tianlv/15 transition-colors duration-500" />
         </GlassCard>
       </div>
       
@@ -311,7 +311,7 @@ onMounted(() => {
           v-for="course in coursesOverview" 
           :key="course.courseId" 
           @click="selectCourse(course.courseId)"
-          class="cursor-pointer hover:shadow-lg hover:border-tianlv/30 transition-all group"
+          class="cursor-pointer hover:shadow-lg hover:border-tianlv/30 transition-colors transition-shadow group"
           hoverable
         >
           <div class="p-4">

@@ -208,7 +208,7 @@ watch(() => props.visible, (val) => {
           <div class="flex items-end justify-between gap-1 h-32 px-2">
             <div v-for="(value, index) in trajectoryChartData.values" :key="index" class="flex-1 flex flex-col items-center gap-1">
               <div
-                class="w-full max-w-6 bg-tianlv/80 rounded-t transition-all duration-500 hover:bg-tianlv"
+                class="w-full max-w-6 bg-tianlv/80 rounded-t transition-colors duration-500 hover:bg-tianlv"
                 :style="{ height: getBarHeight(value, getMaxValue(trajectoryChartData.values)) + '%' }"
                 :title="`${trajectoryChartData.labels[index]}: ${value}分钟`"
                 aria-hidden="true"

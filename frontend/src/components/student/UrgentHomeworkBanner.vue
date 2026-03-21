@@ -167,6 +167,8 @@ const formatTimeLeft = (daysLeft) => {
 .animate-pulse-subtle {
   /* P1 第二批：紧急作业提醒动画压缩 */
   animation: pulse-subtle var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-attention, 4);
+  animation-fill-mode: both;
 }
 
 @keyframes pulse-subtle {

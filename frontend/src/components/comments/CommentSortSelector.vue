@@ -28,7 +28,7 @@ const changeSort = (value) => {
       v-for="option in sortOptions"
       :key="option.value"
       @click="changeSort(option.value)"
-      class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all"
+      class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors transition-shadow"
       :class="currentSort === option.value 
         ? 'bg-white text-qinghua shadow-sm' 
         : 'text-shuimo/60 hover:text-shuimo'"

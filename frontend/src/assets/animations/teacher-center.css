@@ -15,6 +15,8 @@
 
 .animate-number-pulse {
   animation: number-pulse var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-attention, 4);
+  animation-fill-mode: both;
 }
 
 /* 统计卡片悬停时数字高亮 */
@@ -99,6 +101,8 @@
 
 .animate-today-pulse {
   animation: today-pulse var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  animation-iteration-count: var(--motion-loop-iterations-attention, 4);
+  animation-fill-mode: both;
 }
 
 /* 月份切换滑动 */
@@ -135,12 +139,13 @@
 /* Tab 滑动下划线指示器 */
 @keyframes tab-underline-slide {
   from {
-    transform: translateX(var(--tab-from-x, 0));
-    width: var(--tab-from-width, 0);
+    /* 中文注释：下划线动画只保留 transform，避免 width 动画触发布局重排 */
+    transform: translateX(var(--tab-from-x, 0)) scaleX(var(--tab-from-scale, 1));
+    transform-origin: left center;
   }
   to {
-    transform: translateX(var(--tab-to-x, 0));
-    width: var(--tab-to-width, 0);
+    transform: translateX(var(--tab-to-x, 0)) scaleX(1);
+    transform-origin: left center;
   }
 }
 
@@ -149,6 +154,7 @@
   transition:
     transform var(--motion-duration-medium) var(--motion-ease-standard),
     opacity var(--motion-duration-medium) var(--motion-ease-standard);
+  transform-origin: left center;
 }
 
 /* 快捷按钮悬停弹跳 */
@@ -233,6 +239,7 @@
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
   transform: translateX(-100%);
   animation: shimmer-transform var(--motion-duration-medium) linear infinite;
+  animation-iteration-count: var(--motion-loop-iterations-functional, infinite);
 }
 
 /* 卡片悬停装饰图标效果 */

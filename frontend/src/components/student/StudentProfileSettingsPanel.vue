@@ -36,11 +36,11 @@ const toggleNotification = (key, value) => {
             {{ getNotificationLabel(key) }}
           </span>
           <button
-            class="w-11 h-6 rounded-full transition-all duration-300 relative shadow-inner switch-enhanced"
+            class="w-11 h-6 rounded-full transition-colors duration-300 relative shadow-inner switch-enhanced"
             :class="val ? 'bg-gradient-to-r from-qinghua to-halanzi' : 'bg-slate-200'"
             @click="toggleNotification(key, val)"
           >
-            <div class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md transition-all duration-300" :class="val ? 'translate-x-5' : 'translate-x-0'"></div>
+            <div class="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-300" :class="val ? 'translate-x-5' : 'translate-x-0'"></div>
           </button>
         </div>
       </div>

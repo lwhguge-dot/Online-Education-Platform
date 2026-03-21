@@ -30,6 +30,11 @@ const clampPercent = (value: number): number => {
   return Math.min(100, Math.max(0, value))
 }
 
+// 中文注释：进度条采用 scaleX，避免 width 过渡触发布局重排
+const getProgressScaleStyle = (value: number) => ({
+  transform: `scaleX(${clampPercent(value) / 100})`,
+})
+
 // 统一章节时长显示格式，保持与播放器提示一致
 const formatDuration = (seconds: number): string => {
   if (!seconds) {
@@ -65,7 +70,10 @@ const formatDuration = (seconds: number): string => {
         </span>
         <span class="flex items-center gap-2">
           <div class="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
-            <div class="h-full bg-gradient-to-r from-qinghua to-halanzi transition-all duration-500" :style="{ width: clampPercent(chapter?.progress || 0) + '%' }"></div>
+            <div
+              class="h-full bg-gradient-to-r from-qinghua to-halanzi origin-left transition-transform duration-500 will-change-transform"
+              :style="getProgressScaleStyle(chapter?.progress || 0)"
+            ></div>
           </div>
           <AnimatedNumber :value="clampPercent(chapter?.progress || 0)" :duration="300" />%
         </span>
@@ -110,7 +118,7 @@ const formatDuration = (seconds: number): string => {
 }
 
 .badge-pop-leave-active {
-  animation: badge-pop-out 0.2s ease-in;
+  animation: badge-pop-out var(--motion-duration-medium) var(--motion-ease-standard);
 }
 
 @keyframes badge-pop-in {
@@ -139,7 +147,8 @@ const formatDuration = (seconds: number): string => {
 }
 
 .completed-badge {
-  animation: badge-glow var(--motion-duration-medium) var(--motion-ease-standard) infinite;
+  /* 中文注释：已学完徽章改为有限次发光，降低持续重绘开销 */
+  animation: badge-glow var(--motion-duration-loop) var(--motion-ease-standard) 3 both;
 }
 
 @keyframes badge-glow {

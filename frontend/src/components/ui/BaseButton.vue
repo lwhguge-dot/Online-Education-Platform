@@ -75,13 +75,13 @@ const variantClasses = {
   danger: 'bg-danger/10 text-danger hover:bg-danger/20 border border-danger/20 active:scale-95',
   ghost: 'bg-white/50 text-text-main border border-white/60 hover:bg-white/80 backdrop-blur-sm active:scale-95',
   text: 'bg-transparent text-text-main hover:text-primary p-0 shadow-none hover:translate-y-0 hover:bg-transparent active:scale-95',
-  custom: 'shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-300',
+  custom: 'shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-transform transition-shadow transition-colors duration-300',
   outline: 'bg-transparent border-2 border-slate-300 text-text-main hover:border-qinghua hover:text-qinghua hover:bg-qinghua/5 active:scale-95',
 }
 
 const computedClasses = computed(() => {
   return [
-    'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-300 relative overflow-hidden',
+    'inline-flex items-center justify-center font-medium rounded-xl transition-transform transition-shadow transition-colors duration-300 relative overflow-hidden',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-qinghua', // Accessibility Focus
     sizeClasses[props.size],
     variantClasses[props.variant],

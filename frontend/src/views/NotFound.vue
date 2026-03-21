@@ -2,7 +2,7 @@
 import { useRouter } from 'vue-router'
 import BaseButton from '../components/ui/BaseButton.vue'
 import GlassCard from '../components/ui/GlassCard.vue'
-import { Home, ArrowLeft } from 'lucide-vue-next'
+import { Home, ArrowLeft, SearchX } from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -29,7 +29,7 @@ const goBack = () => {
             404
           </h1>
           <div class="absolute inset-0 flex items-center justify-center">
-             <div class="text-6xl animate-bounce">🙈</div>
+            <SearchX class="w-16 h-16 text-qinghua/70 animate-bounce" aria-hidden="true" />
           </div>
         </div>
         
@@ -69,7 +69,7 @@ const goBack = () => {
 <style scoped>
 .animate-pulse-slow {
   /* P1：统一错误页脉冲动效曲线 */
-  animation: pulse var(--motion-duration-slow) var(--motion-ease-standard) infinite;
+  animation: pulse var(--motion-duration-loop-slow) var(--motion-ease-standard) 3 both;
 }
 
 @keyframes pulse {
@@ -80,6 +80,12 @@ const goBack = () => {
   50% {
     opacity: .8;
     transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-slow {
+    animation: none !important;
   }
 }
 </style>

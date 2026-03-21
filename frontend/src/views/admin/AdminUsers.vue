@@ -355,7 +355,7 @@ onDeactivated(stopOnlineStatusTimer)
               v-for="role in [{id: 'all', label: '全部'}, {id: 'admin', label: '管理员'}, {id: 'teacher', label: '教师'}, {id: 'student', label: '学生'}]"
               :key="role.id"
               @click="roleFilter = role.id"
-              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors transition-shadow whitespace-nowrap"
               :class="roleFilter === role.id ? 'bg-zijinghui text-white shadow-md shadow-zijinghui/20' : 'text-shuimo/60 hover:text-shuimo hover:bg-slate-100'"
             >
               {{ role.label }}
@@ -386,7 +386,7 @@ onDeactivated(stopOnlineStatusTimer)
               type="text" 
               placeholder="搜索用户..."
               aria-label="搜索用户名、姓名或邮箱"
-              class="w-40 pl-9 pr-3 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-zijinghui/20 transition-all text-sm"
+              class="w-40 pl-9 pr-3 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-zijinghui/20 transition-colors transition-shadow text-sm"
             />
             <button
               v-if="searchQuery"

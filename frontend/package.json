@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "type-check": "vue-tsc --noEmit",
     "lint": "eslint \"src/**/*.{js,ts,vue}\"",
+    "lint:motion": "node scripts/check-motion-guard.mjs",
     "lint:fix": "eslint \"src/**/*.{js,ts,vue}\" --fix",
     "test": "vitest run",
     "test:watch": "vitest"

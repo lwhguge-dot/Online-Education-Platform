@@ -259,7 +259,7 @@ onMounted(() => {
         :key="stat.id"
         @click="handleStatClick(stat.id)"
         :class="[
-          'p-4 rounded-xl cursor-pointer transition-all border-2',
+          'p-4 rounded-xl cursor-pointer transition-colors transition-shadow border-2',
           filterStatus === stat.id || (stat.id === 'all' && !filterStatus) 
             ? `bg-${stat.color}/10 border-${stat.color}/30` 
             : 'bg-white border-transparent hover:border-slate-200'
@@ -348,7 +348,7 @@ onMounted(() => {
             v-for="discussion in group.discussions" 
             :key="discussion.id"
             :class="[
-              'p-4 rounded-xl border transition-all',
+              'p-4 rounded-xl border transition-colors transition-shadow',
               discussion.isOverdue ? 'border-yanzhi/30 bg-yanzhi/5' : 'border-slate-100 bg-slate-50/50',
               discussion.isTop === 1 ? 'ring-2 ring-zhizi/30' : ''
             ]"

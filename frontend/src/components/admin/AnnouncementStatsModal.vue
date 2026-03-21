@@ -211,10 +211,11 @@ onMounted(() => {
                   <span class="font-mono" :class="readRateColor">{{ stats.readCount }}/{{ stats.totalTargetUsers }}</span>
                 </div>
                 <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+                  <!-- 使用 transform 替代 width 过渡，减少布局重排并提高帧稳定性 -->
                   <div
-                    class="h-full rounded-full transition-all duration-1000 ease-out"
+                    class="h-full rounded-full origin-left will-change-transform transition-transform duration-1000 ease-out"
                     :class="stats.readRate >= 80 ? 'bg-gradient-to-r from-qingsong to-tianlv' : stats.readRate >= 50 ? 'bg-gradient-to-r from-zhizi to-qiuxiang' : 'bg-gradient-to-r from-yanzhi to-mudan'"
-                    :style="{ width: `${stats.readRate}%` }"
+                    :style="{ transform: `scaleX(${Math.max(0, Math.min(stats.readRate, 100)) / 100})` }"
                   ></div>
                 </div>
               </div>

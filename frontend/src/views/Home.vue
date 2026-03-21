@@ -43,6 +43,9 @@ const isHovering = ref(false)
 
 // Header 滚动阴影效果
 const isScrolled = ref(false)
+// 中文注释：滚动事件合帧状态，避免高频滚动下重复计算造成抖动
+const isScrollTicking = ref(false)
+const scrollRafId = ref(null)
 
 const topCoursesBySubject = computed(() => {
   const subjects = ['语文', '数学', '英语', '物理', '化学', '生物', '政治', '历史', '地理']
@@ -84,11 +87,16 @@ const getSubjectBtnStyle = (subject) => {
 
 const startCarousel = () => {
   if (carouselInterval.value) clearInterval(carouselInterval.value)
+  // 中文注释：暗色小视口适当拉长轮播间隔，降低滚动与切页动画并发压力
+  const isDarkSmallViewport = typeof window !== 'undefined'
+    && window.matchMedia('(max-width: 1024px)').matches
+    && document.documentElement.classList.contains('dark')
+  const intervalMs = isDarkSmallViewport ? 5600 : 4000
   carouselInterval.value = setInterval(() => {
     if (!isHovering.value && topCoursesBySubject.value.length > 0) {
       currentSlide.value = (currentSlide.value + 1) % topCoursesBySubject.value.length
     }
-  }, 4000)
+  }, intervalMs)
 }
 
 const stopCarousel = () => {
@@ -130,12 +138,17 @@ const subjectList = [
 
 onMounted(async () => {
   await loadCourses()
-  window.addEventListener('scroll', handleScroll)
+  // 中文注释：使用 passive 监听减少主线程阻塞
+  window.addEventListener('scroll', handleScroll, { passive: true })
   nextTick(() => startCarousel())
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
+  if (scrollRafId.value) {
+    cancelAnimationFrame(scrollRafId.value)
+    scrollRafId.value = null
+  }
   stopCarousel()
 })
 
@@ -207,15 +220,22 @@ const loadMore = () => {
 }
 
 const handleScroll = () => {
-  // 更新 header 阴影状态
-  updateScrollState()
-  
-  const scrollTop = window.scrollY
-  const windowHeight = window.innerHeight
-  const docHeight = document.documentElement.scrollHeight
-  if (scrollTop + windowHeight >= docHeight - 200 && hasMore.value && !loadingMore.value) {
-    loadMore()
-  }
+  if (isScrollTicking.value) return
+  isScrollTicking.value = true
+  scrollRafId.value = requestAnimationFrame(() => {
+    // 中文注释：将滚动相关读取与状态更新合并到同一帧中，减少连续掉帧
+    updateScrollState()
+
+    const scrollTop = window.scrollY
+    const windowHeight = window.innerHeight
+    const docHeight = document.documentElement.scrollHeight
+    if (scrollTop + windowHeight >= docHeight - 200 && hasMore.value && !loadingMore.value) {
+      loadMore()
+    }
+
+    isScrollTicking.value = false
+    scrollRafId.value = null
+  })
 }
 
 const getSubjectColor = (subject) => {
@@ -256,7 +276,7 @@ const goToCenter = () => {
     <!-- Header/Navbar with scroll shadow effect -->
     <header 
       :class="[
-        'sticky top-0 z-50 backdrop-blur-xl border-b transition-all duration-300',
+        'sticky top-0 z-50 home-header border-b transition-[background-color,border-color,box-shadow] duration-300',
         isScrolled 
           ? 'bg-white/90 border-slate-200/50 shadow-lg shadow-slate-200/30' 
           : 'bg-white/70 border-white/30'
@@ -264,7 +284,7 @@ const goToCenter = () => {
     >
       <div class="max-w-7xl mx-auto px-6 py-4">
         <div class="flex items-center justify-between">
-          <router-link to="/" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm border border-white/50 group hover:shadow-md transition-all hover:scale-105">
+          <router-link to="/" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm border border-white/50 group hover:shadow-md transition-[transform,box-shadow] duration-300 hover:scale-105">
             <Sparkles class="w-4 h-4 text-zhizi group-hover:animate-spin-slow" aria-hidden="true" />
             <span class="text-sm font-medium text-shuimo">中学在线教育平台</span>
           </router-link>
@@ -327,13 +347,13 @@ const goToCenter = () => {
               >
                 <!-- 独立背景层 (负责缩放动画) -->
                 <div 
-                  class="absolute -inset-4 transition-transform duration-700 ease-out transform-gpu will-change-transform"
-                  :class="[isHovering ? 'scale-110' : 'scale-100']"
+                  class="home-hero-layer absolute -inset-4 transition-transform duration-500 ease-out transform-gpu will-change-transform"
+                  :class="[isHovering ? 'home-hero-scale-hover' : 'scale-100']"
                 >
                   <!-- 颜色背景 -->
                   <div :class="['absolute inset-0 bg-gradient-to-br', course.color]"></div>
                   <!-- 纹理 -->
-                  <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+                  <div class="hero-texture-layer absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
                   <!-- 遮罩 -->
                   <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                 </div>
@@ -379,14 +399,14 @@ const goToCenter = () => {
           <div class="absolute right-8 bottom-8 flex items-center gap-4 z-20">
             <button 
               @click.stop="prevSlide"
-              class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-105 transition-all text-white/50 hover:text-white"
+              class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-105 transition-[background-color,transform,color] duration-300 text-white/50 hover:text-white"
               aria-label="上一张课程"
             >
               <ChevronLeft class="w-6 h-6" aria-hidden="true" />
             </button>
             <button 
               @click.stop="nextSlide"
-              class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-105 transition-all text-white/50 hover:text-white"
+              class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-105 transition-[background-color,transform,color] duration-300 text-white/50 hover:text-white"
               aria-label="下一张课程"
             >
               <ChevronRight class="w-6 h-6" aria-hidden="true" />
@@ -400,7 +420,7 @@ const goToCenter = () => {
               :key="'dot-' + course.id"
               @mouseenter="goToSlide(index)"
               :class="[
-                'w-2.5 h-1 rounded-full transition-all duration-300',
+                'w-2.5 h-1 rounded-full transition-[width,background-color] duration-300',
                 currentSlide === index ? 'bg-white w-8' : 'bg-white/30 hover:bg-white/50'
               ]"
               :aria-label="`切换到第 ${index + 1} 张课程`"
@@ -421,7 +441,7 @@ const goToCenter = () => {
             :key="subject.name"
             @click="selectedSubject = subject.name"
             :class="[
-              'flex items-center gap-2 px-5 py-2.5 rounded-full font-medium transition-all duration-300 border',
+              'flex items-center gap-2 px-5 py-2.5 rounded-full font-medium transition-[transform,box-shadow,color,border-color,background-color] duration-300 border',
               selectedSubject === subject.name
                 ? `bg-gradient-to-r ${subject.color} border-transparent text-white shadow-lg shadow-danqing/20 scale-105`
                 : 'bg-white border-slate-100 text-shuimo hover:border-danqing/30 hover:text-danqing hover:shadow-md'
@@ -568,6 +588,56 @@ const goToCenter = () => {
   width: 100%;
 }
 
+/* 中文注释：首页头部默认保留毛玻璃，保持视觉层次 */
+.home-header {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* 中文注释：轮播 hover 动效默认缩放幅度控制在 1.05，避免过大的重绘区域 */
+.home-hero-scale-hover {
+  transform: scale(1.05);
+}
+
+/* 中文注释：暗色模式进一步收敛缩放幅度，降低合成抖动概率 */
+:global(html.dark) .home-hero-scale-hover,
+:global(.dark) .home-hero-scale-hover {
+  transform: scale(1);
+}
+
+/* 中文注释：暗色模式适当降低头部模糊半径，减少滚动时毛玻璃计算开销 */
+:global(html.dark) .home-header,
+:global(.dark) .home-header {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* 中文注释：暗色模式关闭纹理层，减少叠层混合与持续重绘 */
+:global(html.dark) .hero-texture-layer,
+:global(.dark) .hero-texture-layer {
+  display: none;
+}
+
+/* 中文注释：暗色小视口关闭毛玻璃，降低滚动时的合成开销 */
+@media (max-width: 1024px) {
+  :global(html.dark) .home-header,
+  :global(.dark) .home-header {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  /* 中文注释：暗色小视口关闭背景纹理并禁用轮播缩放，优先保证 60fps 流畅度 */
+  :global(html.dark) .hero-texture-layer,
+  :global(.dark) .hero-texture-layer {
+    display: none;
+  }
+
+  :global(html.dark) .home-hero-scale-hover,
+  :global(.dark) .home-hero-scale-hover {
+    transform: scale(1);
+  }
+}
+
 /* Header logo spin animation */
 @keyframes spin-slow {
   from { transform: rotate(0deg); }
@@ -575,7 +645,8 @@ const goToCenter = () => {
 }
 
 .group-hover\:animate-spin-slow:hover {
-  animation: spin-slow var(--motion-duration-medium) linear infinite;
+  /* 中文注释：由无限旋转调整为单次旋转，减少暗色移动端连续重绘压力 */
+  animation: spin-slow var(--motion-duration-medium) linear 1;
 }
 
 /* Footer bounce animation */

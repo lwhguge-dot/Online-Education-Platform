@@ -247,7 +247,7 @@ const disabledUsersCount = computed(() => allUsers.value.filter(u => u.status ==
           v-for="item in menuItems"
           :key="item.id"
           @click="activeMenu = item.id"
-          class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden"
+          class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-[background-color,color,transform,box-shadow] duration-300 group relative overflow-hidden"
           :class="activeMenu === item.id
             ? 'bg-gradient-to-r from-zijinghui to-qianniuzi text-white shadow-lg shadow-zijinghui/30'
             : 'text-shuimo/60 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-shuimo dark:hover:text-slate-200'"
@@ -288,8 +288,9 @@ const disabledUsersCount = computed(() => allUsers.value.filter(u => u.status ==
     </aside>
 
     <!-- 主内容区 -->
+    <!-- 中文注释：主内容区仅保留颜色过渡，避免 margin 等布局属性动画导致掉帧 -->
     <main
-      class="flex-1 transition-all duration-300 min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900"
+      class="flex-1 transition-colors duration-300 min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900"
       :class="sidebarOpen ? 'ml-64' : 'ml-20'"
     >
       <!-- 头部区域 -->

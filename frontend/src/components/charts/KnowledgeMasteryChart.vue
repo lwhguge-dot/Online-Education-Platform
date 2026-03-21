@@ -3,7 +3,7 @@
  * 知识点掌握度图表组件
  * 以雷达图/进度条形式展示学生对各章节/知识点的掌握程度
  */
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { Brain, TrendingUp, Target, Award, ChevronRight } from 'lucide-vue-next'
 import { progressAPI } from '../../services/api'
 import GlassCard from '../ui/GlassCard.vue'
@@ -120,11 +120,15 @@ const getMasteryLevel = (mastery) => {
   return '未开始'
 }
 
-/**
- * 计算整体掌握度进度条宽度
- */
-const overallProgressWidth = computed(() => {
-  return `${Math.min(masteryData.value.overallMastery, 100)}%`
+const clampMastery = (value) => {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return 0
+  return Math.max(0, Math.min(100, numeric))
+}
+
+// 中文注释：掌握度进度条改为 scaleX，避免 width 变化触发布局计算
+const getMasteryScaleStyle = (value) => ({
+  transform: `scaleX(${clampMastery(value) / 100})`
 })
 
 /**
@@ -185,9 +189,9 @@ onMounted(() => {
           <!-- 进度条 -->
           <div class="mt-3 h-2 bg-white/50 rounded-full overflow-hidden">
             <div
-              class="h-full rounded-full bg-gradient-to-r transition-all duration-1000 ease-out"
+              class="h-full rounded-full bg-gradient-to-r transition-transform duration-1000 ease-out origin-left will-change-transform"
               :class="getMasteryBarColor(masteryData.overallMastery)"
-              :style="{ width: overallProgressWidth }"
+              :style="getMasteryScaleStyle(masteryData.overallMastery)"
             ></div>
           </div>
         </div>
@@ -231,7 +235,7 @@ onMounted(() => {
           <div
             v-for="chapter in masteryData.chapters"
             :key="chapter.chapterId"
-            class="group p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-all cursor-pointer"
+            class="group p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-[background-color,box-shadow,transform] duration-300 cursor-pointer"
             @click="handleChapterClick(chapter)"
           >
             <div class="flex items-center justify-between mb-2">
@@ -250,15 +254,15 @@ onMounted(() => {
                 <span class="text-sm font-mono font-bold" :class="getMasteryColor(chapter.mastery)">
                   {{ chapter.mastery }}%
                 </span>
-                <ChevronRight class="w-4 h-4 text-shuimo/30 group-hover:text-qinghua group-hover:translate-x-0.5 transition-all" />
+                <ChevronRight class="w-4 h-4 text-shuimo/30 group-hover:text-qinghua group-hover:translate-x-0.5 transition-[color,transform] duration-300" />
               </div>
             </div>
             <!-- 章节进度条 -->
             <div class="h-1.5 bg-slate-200 rounded-full overflow-hidden">
               <div
-                class="h-full rounded-full bg-gradient-to-r transition-all duration-500"
+                class="h-full rounded-full bg-gradient-to-r transition-transform duration-500 origin-left will-change-transform"
                 :class="getMasteryBarColor(chapter.mastery)"
-                :style="{ width: `${chapter.mastery}%` }"
+                :style="getMasteryScaleStyle(chapter.mastery)"
               ></div>
             </div>
             <!-- 详细信息 -->

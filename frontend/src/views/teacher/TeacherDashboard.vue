@@ -129,6 +129,17 @@ const weeklyTrendDirection = computed(() => {
   if (weeklyTrendValue.value < 0) return -1
   return 0
 })
+
+// 中文注释：课程完成率进度条改用 scaleX，避免 width 动画引发布局重排
+const clampProgressPercent = (value) => {
+  const numberValue = Number(value)
+  if (!Number.isFinite(numberValue)) return 0
+  return Math.max(0, Math.min(100, numberValue))
+}
+
+const getCourseProgressStyle = (value) => ({
+  transform: `scaleX(${clampProgressPercent(value) / 100})`
+})
 </script>
 
 <template>
@@ -149,7 +160,7 @@ const weeklyTrendDirection = computed(() => {
       >
         <div class="flex items-center justify-between mb-4 relative z-10">
           <span class="text-sm font-medium text-shuimo/60">我的课程</span>
-          <div class="p-2.5 rounded-xl bg-gradient-to-br from-tianlv/15 to-tianlv/5 text-tianlv shadow-sm group-hover:shadow-md group-hover:scale-110 transition-all duration-300">
+          <div class="p-2.5 rounded-xl bg-gradient-to-br from-tianlv/15 to-tianlv/5 text-tianlv shadow-sm group-hover:shadow-md group-hover:scale-110 transition-[transform,box-shadow,background-color] duration-300">
             <BookOpen class="w-5 h-5" />
           </div>
         </div>
@@ -178,7 +189,7 @@ const weeklyTrendDirection = computed(() => {
       >
         <div class="flex items-center justify-between mb-4 relative z-10">
           <span class="text-sm font-medium text-shuimo/60">学生总数</span>
-          <div class="p-2.5 rounded-xl bg-gradient-to-br from-qinghua/15 to-qinghua/5 text-qinghua shadow-sm group-hover:shadow-md group-hover:scale-110 transition-all duration-300">
+          <div class="p-2.5 rounded-xl bg-gradient-to-br from-qinghua/15 to-qinghua/5 text-qinghua shadow-sm group-hover:shadow-md group-hover:scale-110 transition-[transform,box-shadow,background-color] duration-300">
             <Users class="w-5 h-5" />
           </div>
         </div>
@@ -205,7 +216,7 @@ const weeklyTrendDirection = computed(() => {
       >
         <div class="flex items-center justify-between mb-4 relative z-10">
           <span class="text-sm font-medium text-shuimo/60">待批改作业</span>
-          <div class="p-2.5 rounded-xl bg-gradient-to-br from-zhizi/15 to-zhizi/5 text-zhizi shadow-sm group-hover:shadow-md group-hover:scale-110 transition-all duration-300">
+          <div class="p-2.5 rounded-xl bg-gradient-to-br from-zhizi/15 to-zhizi/5 text-zhizi shadow-sm group-hover:shadow-md group-hover:scale-110 transition-[transform,box-shadow,background-color] duration-300">
             <ClipboardCheck class="w-5 h-5" />
           </div>
         </div>
@@ -233,7 +244,7 @@ const weeklyTrendDirection = computed(() => {
       >
         <div class="flex items-center justify-between mb-4 relative z-10">
           <span class="text-sm font-medium text-shuimo/60">本周互动</span>
-          <div class="p-2.5 rounded-xl bg-gradient-to-br from-zijinghui/15 to-zijinghui/5 text-zijinghui shadow-sm group-hover:shadow-md group-hover:scale-110 transition-all duration-300">
+          <div class="p-2.5 rounded-xl bg-gradient-to-br from-zijinghui/15 to-zijinghui/5 text-zijinghui shadow-sm group-hover:shadow-md group-hover:scale-110 transition-[transform,box-shadow,background-color] duration-300">
             <Activity class="w-5 h-5" />
           </div>
         </div>
@@ -321,8 +332,10 @@ const weeklyTrendDirection = computed(() => {
               <span class="text-shuimo/60 font-mono">{{ Math.round(course.completionRate || course.progress || 0) }}%</span>
             </div>
             <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-              <div class="h-full bg-gradient-to-r from-tianlv to-qingsong rounded-full transition-all duration-1000 ease-out" 
-                   :style="{ width: (course.completionRate || course.progress || 0) + '%' }"></div>
+              <div
+                class="h-full bg-gradient-to-r from-tianlv to-qingsong rounded-full origin-left transition-transform duration-700 ease-out will-change-transform"
+                :style="getCourseProgressStyle(course.completionRate || course.progress || 0)"
+              ></div>
             </div>
             <div v-if="course.studentCount" class="text-xs text-shuimo/40 mt-1">
               {{ course.studentCount }} 名学生
@@ -356,7 +369,7 @@ const weeklyTrendDirection = computed(() => {
                activity.type === 'submit' ? 'bg-tianlv' :
                activity.type === 'enroll' ? 'bg-qinghua' : 'bg-zhizi']"></div>
              
-             <div class="flex-1 bg-slate-50/50 rounded-xl p-3 border border-transparent group-hover:border-slate-200 group-hover:bg-white transition-all">
+             <div class="flex-1 bg-slate-50/50 rounded-xl p-3 border border-transparent group-hover:border-slate-200 group-hover:bg-white transition-[background-color,border-color,box-shadow] duration-300">
                <p class="text-sm text-shuimo leading-relaxed">{{ activity.content }}</p>
                <span class="text-xs text-shuimo/40 mt-1 block font-mono">{{ activity.time }}</span>
              </div>
@@ -370,8 +383,8 @@ const weeklyTrendDirection = computed(() => {
       <h3 class="text-lg font-bold text-shuimo mb-4 font-song">快捷操作</h3>
       <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
         <button @click="navigateTo('courses', { action: 'create' })"
-                class="quick-action-btn group flex items-center justify-center gap-3 p-4 rounded-xl bg-tianlv/5 border border-tianlv/10 hover:bg-tianlv/10 hover:border-tianlv/20 hover:shadow-lg hover:shadow-tianlv/10 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-          <div class="p-2 rounded-full bg-white text-tianlv shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
+                class="quick-action-btn group flex items-center justify-center gap-3 p-4 rounded-xl bg-tianlv/5 border border-tianlv/10 hover:bg-tianlv/10 hover:border-tianlv/20 hover:shadow-lg hover:shadow-tianlv/10 hover:-translate-y-1 transition-[transform,box-shadow,border-color,background-color] duration-300 relative overflow-hidden">
+          <div class="p-2 rounded-full bg-white text-tianlv shadow-sm group-hover:scale-110 group-hover:shadow-md transition-[transform,box-shadow,background-color] duration-300">
              <Plus class="w-5 h-5 icon-bounce" />
           </div>
           <span class="font-bold text-tianlv">创建课程</span>
@@ -379,8 +392,8 @@ const weeklyTrendDirection = computed(() => {
         </button>
 
         <button @click="navigateTo('homework', { action: 'create' })"
-                class="quick-action-btn group flex items-center justify-center gap-3 p-4 rounded-xl bg-qinghua/5 border border-qinghua/10 hover:bg-qinghua/10 hover:border-qinghua/20 hover:shadow-lg hover:shadow-qinghua/10 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-          <div class="p-2 rounded-full bg-white text-qinghua shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
+                class="quick-action-btn group flex items-center justify-center gap-3 p-4 rounded-xl bg-qinghua/5 border border-qinghua/10 hover:bg-qinghua/10 hover:border-qinghua/20 hover:shadow-lg hover:shadow-qinghua/10 hover:-translate-y-1 transition-[transform,box-shadow,border-color,background-color] duration-300 relative overflow-hidden">
+          <div class="p-2 rounded-full bg-white text-qinghua shadow-sm group-hover:scale-110 group-hover:shadow-md transition-[transform,box-shadow,background-color] duration-300">
              <FileText class="w-5 h-5 icon-bounce" />
           </div>
           <span class="font-bold text-qinghua">布置作业</span>
@@ -388,8 +401,8 @@ const weeklyTrendDirection = computed(() => {
         </button>
 
         <button @click="openAnnouncementEditor"
-                class="quick-action-btn group flex items-center justify-center gap-3 p-4 rounded-xl bg-yanzhi/5 border border-yanzhi/10 hover:bg-yanzhi/10 hover:border-yanzhi/20 hover:shadow-lg hover:shadow-yanzhi/10 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-          <div class="p-2 rounded-full bg-white text-yanzhi shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
+                class="quick-action-btn group flex items-center justify-center gap-3 p-4 rounded-xl bg-yanzhi/5 border border-yanzhi/10 hover:bg-yanzhi/10 hover:border-yanzhi/20 hover:shadow-lg hover:shadow-yanzhi/10 hover:-translate-y-1 transition-[transform,box-shadow,border-color,background-color] duration-300 relative overflow-hidden">
+          <div class="p-2 rounded-full bg-white text-yanzhi shadow-sm group-hover:scale-110 group-hover:shadow-md transition-[transform,box-shadow,background-color] duration-300">
              <Megaphone class="w-5 h-5 icon-bounce" />
           </div>
           <span class="font-bold text-yanzhi">发布公告</span>
@@ -397,8 +410,8 @@ const weeklyTrendDirection = computed(() => {
         </button>
 
         <button @click="navigateTo('students')"
-                class="quick-action-btn group flex items-center justify-center gap-3 p-4 rounded-xl bg-zhizi/5 border border-zhizi/10 hover:bg-zhizi/10 hover:border-zhizi/20 hover:shadow-lg hover:shadow-zhizi/10 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-          <div class="p-2 rounded-full bg-white text-zhizi shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
+                class="quick-action-btn group flex items-center justify-center gap-3 p-4 rounded-xl bg-zhizi/5 border border-zhizi/10 hover:bg-zhizi/10 hover:border-zhizi/20 hover:shadow-lg hover:shadow-zhizi/10 hover:-translate-y-1 transition-[transform,box-shadow,border-color,background-color] duration-300 relative overflow-hidden">
+          <div class="p-2 rounded-full bg-white text-zhizi shadow-sm group-hover:scale-110 group-hover:shadow-md transition-[transform,box-shadow,background-color] duration-300">
              <Users class="w-5 h-5 icon-bounce" />
           </div>
           <span class="font-bold text-zhizi">查看学生</span>
@@ -406,8 +419,8 @@ const weeklyTrendDirection = computed(() => {
         </button>
 
         <button @click="navigateTo('homework', { tab: 'pending' })"
-                class="quick-action-btn group flex items-center justify-center gap-3 p-4 rounded-xl bg-zijinghui/5 border border-zijinghui/10 hover:bg-zijinghui/10 hover:border-zijinghui/20 hover:shadow-lg hover:shadow-zijinghui/10 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
-          <div class="p-2 rounded-full bg-white text-zijinghui shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300">
+                class="quick-action-btn group flex items-center justify-center gap-3 p-4 rounded-xl bg-zijinghui/5 border border-zijinghui/10 hover:bg-zijinghui/10 hover:border-zijinghui/20 hover:shadow-lg hover:shadow-zijinghui/10 hover:-translate-y-1 transition-[transform,box-shadow,border-color,background-color] duration-300 relative overflow-hidden">
+          <div class="p-2 rounded-full bg-white text-zijinghui shadow-sm group-hover:scale-110 group-hover:shadow-md transition-[transform,box-shadow,background-color] duration-300">
              <ClipboardCheck class="w-5 h-5 icon-bounce" />
           </div>
           <span class="font-bold text-zijinghui">批改作业</span>
