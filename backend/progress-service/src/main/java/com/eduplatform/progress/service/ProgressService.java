@@ -72,6 +72,7 @@ public class ProgressService {
         return progressTrackingService.submitQuiz(dto);
     }
 
+    @Transactional(readOnly = true)
     public ChapterProgress getProgress(Long studentId, Long chapterId) {
         return progressMapper.selectOne(
                 new LambdaQueryWrapper<ChapterProgress>()
@@ -79,6 +80,7 @@ public class ProgressService {
                         .eq(ChapterProgress::getChapterId, chapterId));
     }
 
+    @Transactional(readOnly = true)
     public List<ChapterProgress> getStudentCourseProgress(Long studentId, Long courseId) {
         return progressMapper.selectList(
                 new LambdaQueryWrapper<ChapterProgress>()
@@ -86,6 +88,7 @@ public class ProgressService {
                         .eq(ChapterProgress::getCourseId, courseId));
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> checkUnlockCondition(Long studentId, Long chapterId) {
         ChapterProgress progress = getProgress(studentId, chapterId);
         Chapter chapter = chapterMapper.selectById(chapterId);
@@ -128,6 +131,7 @@ public class ProgressService {
         return result;
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> getLastStudyPosition(Long studentId, Long courseId) {
         Map<String, Object> result = new HashMap<>();
 

@@ -1,16 +1,43 @@
 import { defineConfig, loadEnv } from 'vite'
+import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import viteCompression from 'vite-plugin-compression'
 import { visualizer } from 'rollup-plugin-visualizer'
+import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const gatewayTarget = env.VITE_GATEWAY_TARGET || 'http://localhost:8090'
+  const gatewayTarget = env.VITE_GATEWAY_TARGET || 'http://demo-gateway:8090'
 
   return {
     plugins: [
-      // 当前项目未使用 Element Plus 与自动导入插件，仅保留 Vue 插件
+      tailwindcss(),
       vue(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/api\..*/i,
+              handler: 'NetworkFirst',
+              options: { cacheName: 'api-cache', expiration: { maxEntries: 100, maxAgeSeconds: 86400 } }
+            }
+          ]
+        },
+        manifest: {
+          name: 'Edu Platform',
+          short_name: 'Edu',
+          description: '在线教育平台',
+          theme_color: '#3b82f6',
+          background_color: '#ffffff',
+          display: 'standalone',
+          icons: [
+            { src: '/pwa-192x192.svg', sizes: '192x192', type: 'image/svg+xml' },
+            { src: '/pwa-512x512.svg', sizes: '512x512', type: 'image/svg+xml' }
+          ]
+        }
+      }),
       viteCompression({
         verbose: true,
         disable: false,

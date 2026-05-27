@@ -48,6 +48,7 @@ public class AnnouncementService {
     /**
      * 创建公告
      */
+    @Transactional
     public Announcement create(Announcement announcement) {
         announcement.setCreatedAt(LocalDateTime.now());
         announcement.setUpdatedAt(LocalDateTime.now());
@@ -71,6 +72,7 @@ public class AnnouncementService {
     /**
      * 更新公告
      */
+    @Transactional
     public Announcement update(Long id, Announcement announcement) {
         Announcement existing = announcementMapper.selectById(id);
         if (existing == null) {
@@ -110,6 +112,7 @@ public class AnnouncementService {
     /**
      * 删除公告
      */
+    @Transactional
     public void delete(Long id) {
         announcementMapper.deleteById(id);
     }
@@ -163,6 +166,7 @@ public class AnnouncementService {
     /**
      * 发布公告
      */
+    @Transactional
     public Announcement publish(Long id) {
         Announcement announcement = announcementMapper.selectById(id);
         if (announcement == null) {

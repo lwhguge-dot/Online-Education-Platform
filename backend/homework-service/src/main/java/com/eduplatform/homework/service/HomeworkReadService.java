@@ -282,6 +282,20 @@ public class HomeworkReadService {
                         .orderByDesc(HomeworkSubmission::getSubmittedAt));
 
         List<Map<String, Object>> result = new ArrayList<>();
+
+        List<Long> submissionIds = submissions.stream()
+                .map(HomeworkSubmission::getId)
+                .collect(Collectors.toList());
+
+        List<HomeworkAnswer> allAnswers = submissionIds.isEmpty() ? Collections.emptyList() :
+                answerMapper.selectList(
+                        new LambdaQueryWrapper<HomeworkAnswer>()
+                                .in(HomeworkAnswer::getSubmissionId, submissionIds));
+
+        Map<Long, List<HomeworkAnswer>> answersBySubmission = allAnswers.stream()
+                .filter(a -> a.getSubmissionId() != null)
+                .collect(Collectors.groupingBy(HomeworkAnswer::getSubmissionId));
+
         for (HomeworkSubmission submission : submissions) {
             Map<String, Object> item = new HashMap<>();
             item.put("submissionId", submission.getId());
@@ -293,9 +307,7 @@ public class HomeworkReadService {
             item.put("submittedAt", submission.getSubmittedAt());
             item.put("gradedAt", submission.getGradedAt());
 
-            List<HomeworkAnswer> answers = answerMapper.selectList(
-                    new LambdaQueryWrapper<HomeworkAnswer>()
-                            .eq(HomeworkAnswer::getSubmissionId, submission.getId()));
+            List<HomeworkAnswer> answers = answersBySubmission.getOrDefault(submission.getId(), Collections.emptyList());
             Map<Long, HomeworkQuestion> questionMap = buildQuestionMapByAnswers(answers);
 
             List<Map<String, Object>> answerDetails = new ArrayList<>();
@@ -389,13 +401,15 @@ public class HomeworkReadService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime deadline = now.plusDays(days);
 
-        for (Long homeworkId : unlockedHomeworkIds) {
-            if (submittedHomeworkIds.contains(homeworkId)) {
-                continue;
-            }
+        List<Long> unsubmittedIds = unlockedHomeworkIds.stream()
+                .filter(id -> !submittedHomeworkIds.contains(id))
+                .collect(Collectors.toList());
 
-            Homework homework = homeworkMapper.selectById(homeworkId);
-            if (homework == null || homework.getDeadline() == null) {
+        List<Homework> homeworks = unsubmittedIds.isEmpty() ? Collections.emptyList() :
+                homeworkMapper.selectBatchIds(unsubmittedIds);
+
+        for (Homework homework : homeworks) {
+            if (homework.getDeadline() == null) {
                 continue;
             }
 

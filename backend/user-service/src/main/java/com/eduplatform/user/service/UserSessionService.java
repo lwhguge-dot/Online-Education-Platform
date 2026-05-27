@@ -62,7 +62,7 @@ public class UserSessionService {
      * @return 生成的 jti 字符串
      */
     @Transactional
-    public String createSession(Long userId) {
+    public String createSession(Long userId, String deviceInfo, String ipAddress) {
         String jti = UUID.randomUUID().toString().replace("-", "");
 
         UserSession session = new UserSession();
@@ -71,6 +71,8 @@ public class UserSessionService {
         session.setStatus(UserSession.STATUS_ONLINE);
         session.setLoginTime(LocalDateTime.now());
         session.setLastActiveTime(LocalDateTime.now());
+        session.setDeviceInfo(deviceInfo);
+        session.setIpAddress(ipAddress);
         session.setCreatedAt(LocalDateTime.now());
         session.setUpdatedAt(LocalDateTime.now());
 
@@ -113,7 +115,7 @@ public class UserSessionService {
                 return true;
             }
         } catch (Exception e) {
-            log.error("Redis session heartbeat failed for JTI: {}", jti, e);
+            log.error("Redis session heartbeat failed", e);
         }
         return false;
     }
@@ -130,7 +132,9 @@ public class UserSessionService {
     /**
      * 强制踢出该用户的所有在线会话 (单点登录 SSO 核心逻辑)
      * 批量清理该用户在多端产生的所有 Redis 会话 Key。
+     * 添加 @Transactional 确保读-清缓存-写数据库三步原子化。
      */
+    @Transactional
     public void forceOfflineUser(Long userId) {
         // 1. 获取该用户名下所有处于 ONLINE 状态的会话
         java.util.List<UserSession> sessions = sessionMapper.selectList(

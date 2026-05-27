@@ -1,6 +1,7 @@
 package com.eduplatform.course.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.course.dto.CourseAuditRequest;
 import com.eduplatform.course.dto.CourseBatchStatusRequest;
 import com.eduplatform.course.dto.CourseDTO;
@@ -55,12 +56,13 @@ public class CourseController {
     public Result<List<CourseVO>> getAllCourses(
             @RequestParam(name = "subject", required = false) String subject,
             @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "keyword", required = false) String keyword,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 课程列表按角色收口：草稿仅教师本人可见，管理员默认不看草稿，学生仅看已发布
         List<Course> courses;
         if (isAdminRole(currentUserRole)) {
-            courses = courseService.getAdminVisibleCourses(subject, status);
+            courses = courseService.getAdminVisibleCourses(subject, status, keyword);
         } else if ("teacher".equalsIgnoreCase(currentUserRole)) {
             Long currentUserId = parseUserId(currentUserIdHeader);
             if (currentUserId == null) {
@@ -301,7 +303,7 @@ public class CourseController {
             @RequestHeader(value = "X-Internal-Token", required = false) String requestInternalToken) {
         // 审核操作仅允许管理员或内部服务
         if (!isAdminRole(currentUserRole) && !hasValidInternalToken(requestInternalToken)) {
-            return Result.failure(403, "权限不足，仅管理员或内部服务可审核课程");
+            throw new BusinessException(403, "权限不足，仅管理员或内部服务可审核课程");
         }
 
         try {
@@ -320,6 +322,9 @@ public class CourseController {
                 courseService.auditCourseInternal(id, action, remark, auditBy);
             }
             return Result.success("审核完成", null);
+        } catch (BusinessException e) {
+            log.warn("审核课程业务异常: courseId={}, message={}", id, e.getMessage());
+            return Result.failure(400, e.getMessage());
         } catch (Exception e) {
             log.error("审核课程失败: courseId={}", id, e);
             return Result.error("审核失败，请稍后重试");
@@ -461,7 +466,7 @@ public class CourseController {
             return;
         }
 
-        List<Course> courses = courseService.getAdminVisibleCourses(null, status);
+        List<Course> courses = courseService.getAdminVisibleCourses(null, status, null);
 
         // 生成带时间戳的文件名
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));

@@ -1,16 +1,19 @@
 package com.eduplatform.course.service;
 
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.course.dto.AuditLogRequest;
 import com.eduplatform.course.entity.Course;
 import com.eduplatform.course.feign.AuditLogClient;
 import com.eduplatform.course.mapper.CourseMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 课程工作流写模型服务。
@@ -26,10 +29,11 @@ public class CourseWorkflowService {
     /**
      * 原子化更新课程状态。
      */
+    @Transactional
     public void updateStatus(Long id, String status) {
         Course course = courseMapper.selectById(id);
         if (course == null) {
-            throw new RuntimeException("课程不存在");
+            throw new BusinessException("课程不存在");
         }
         // 执行状态归一化，兼容旧状态码输入
         String normalizedStatus = normalizeStatus(status);
@@ -41,10 +45,11 @@ public class CourseWorkflowService {
     /**
      * 带审计轨迹的状态更新。
      */
+    @Transactional
     public void updateStatusWithAudit(Long id, String status, Long operatorId, String operatorName, String ipAddress) {
         Course course = courseMapper.selectById(id);
         if (course == null) {
-            throw new RuntimeException("课程不存在");
+            throw new BusinessException("课程不存在");
         }
         String normalizedStatus = normalizeStatus(status);
         course.setStatus(normalizedStatus);
@@ -74,13 +79,14 @@ public class CourseWorkflowService {
     /**
      * 教师提交课程审核。
      */
+    @Transactional
     public void submitReview(Long id) {
         Course course = courseMapper.selectById(id);
         if (course == null) {
-            throw new RuntimeException("课程不存在");
+            throw new BusinessException("课程不存在");
         }
         if (!Course.STATUS_DRAFT.equals(course.getStatus()) && !Course.STATUS_REJECTED.equals(course.getStatus())) {
-            throw new RuntimeException("当前课程状态不允许发起提审");
+            throw new BusinessException("当前课程状态不允许发起提审");
         }
         course.setStatus(Course.STATUS_REVIEWING);
         course.setSubmitTime(LocalDateTime.now());
@@ -91,13 +97,14 @@ public class CourseWorkflowService {
     /**
      * 教师撤回审核申请。
      */
+    @Transactional
     public void withdrawReview(Long id) {
         Course course = courseMapper.selectById(id);
         if (course == null) {
-            throw new RuntimeException("课程不存在");
+            throw new BusinessException("课程不存在");
         }
         if (!Course.STATUS_REVIEWING.equals(course.getStatus())) {
-            throw new RuntimeException("非审核中状态，无法执行撤回操作");
+            throw new BusinessException("非审核中状态，无法执行撤回操作");
         }
         course.setStatus(Course.STATUS_DRAFT);
         course.setUpdatedAt(LocalDateTime.now());
@@ -107,13 +114,14 @@ public class CourseWorkflowService {
     /**
      * 管理员审核课程。
      */
+    @Transactional
     public void auditCourse(Long id, String action, String remark, Long auditBy, String auditByName, String ipAddress) {
         Course course = courseMapper.selectById(id);
         if (course == null) {
-            throw new RuntimeException("课程不存在");
+            throw new BusinessException("课程不存在");
         }
         if (!Course.STATUS_REVIEWING.equals(course.getStatus())) {
-            throw new RuntimeException("课程未处于待审核状态");
+            throw new BusinessException("课程未处于待审核状态");
         }
 
         String actionType;
@@ -127,7 +135,7 @@ public class CourseWorkflowService {
             actionType = "COURSE_REJECT";
             details = "驳回课程" + (remark != null && !remark.isEmpty() ? "，原因：" + remark : "");
         } else {
-            throw new RuntimeException("由于无效的操作类型，审核请求被拒绝");
+            throw new BusinessException("由于无效的操作类型，审核请求被拒绝");
         }
 
         course.setAuditBy(auditBy);
@@ -160,10 +168,10 @@ public class CourseWorkflowService {
     public void auditCourseInternal(Long id, String action, String remark, Long auditBy) {
         Course course = courseMapper.selectById(id);
         if (course == null) {
-            throw new RuntimeException("课程记录缺失");
+            throw new BusinessException("课程记录缺失");
         }
         if (!Course.STATUS_REVIEWING.equals(course.getStatus())) {
-            throw new RuntimeException("状态不符：无法执行内部审核");
+            throw new BusinessException("状态不符：无法执行内部审核");
         }
 
         if ("APPROVE".equals(action)) {
@@ -171,7 +179,7 @@ public class CourseWorkflowService {
         } else if ("REJECT".equals(action)) {
             course.setStatus(Course.STATUS_REJECTED);
         } else {
-            throw new RuntimeException("无效的内部审核动作");
+            throw new BusinessException("无效的内部审核动作");
         }
 
         course.setAuditBy(auditBy);
@@ -184,10 +192,11 @@ public class CourseWorkflowService {
     /**
      * 强制下线课程。
      */
+    @Transactional
     public void offlineCourse(Long id, Long operatorId, String operatorName, String ipAddress) {
         Course course = courseMapper.selectById(id);
         if (course == null) {
-            throw new RuntimeException("课程记录不存在");
+            throw new BusinessException("课程记录不存在");
         }
 
         course.setStatus(Course.STATUS_OFFLINE);
@@ -215,15 +224,21 @@ public class CourseWorkflowService {
     /**
      * 批量更新课程状态。
      */
+    @Transactional
     public Map<String, Object> batchUpdateStatus(List<Long> courseIds, String status,
             Long operatorId, String operatorName, String ipAddress) {
         int successCount = 0;
         int failCount = 0;
         List<String> failedCourses = new java.util.ArrayList<>();
 
+        List<Course> existingCourses = courseIds.isEmpty() ? java.util.Collections.emptyList()
+                : courseMapper.selectBatchIds(courseIds);
+        java.util.Map<Long, Course> courseMap = existingCourses.stream()
+                .collect(Collectors.toMap(Course::getId, c -> c, (a, b) -> a));
+
         for (Long courseId : courseIds) {
             try {
-                Course course = courseMapper.selectById(courseId);
+                Course course = courseMap.get(courseId);
                 if (course == null) {
                     failCount++;
                     failedCourses.add("课程 ID " + courseId + " 不存在");
@@ -286,6 +301,8 @@ public class CourseWorkflowService {
                 return Course.STATUS_PUBLISHED;
             case "2":
                 return Course.STATUS_OFFLINE;
+            case "3":
+                return Course.STATUS_BANNED;
             case "DRAFT":
             case "REVIEWING":
             case "PUBLISHED":
@@ -294,7 +311,7 @@ public class CourseWorkflowService {
             case "BANNED":
                 return status;
             default:
-                return Course.STATUS_DRAFT;
+                throw new BusinessException("不支持的状态值: " + status);
         }
     }
 
@@ -320,7 +337,8 @@ public class CourseWorkflowService {
      */
     private boolean isValidStatusTransition(String currentStatus, String targetStatus) {
         if (Course.STATUS_PUBLISHED.equals(targetStatus)) {
-            return Course.STATUS_REVIEWING.equals(currentStatus);
+            // 允许从审核中 或 下架状态 转为已发布（重新上架）
+            return Course.STATUS_REVIEWING.equals(currentStatus) || Course.STATUS_OFFLINE.equals(currentStatus);
         }
         if (Course.STATUS_OFFLINE.equals(targetStatus)) {
             return Course.STATUS_PUBLISHED.equals(currentStatus);

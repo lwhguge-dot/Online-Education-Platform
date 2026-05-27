@@ -44,7 +44,7 @@ const fetchLogs = async () => {
       size: pageSize.value,
     }
     if (typeFilter.value) params.type = typeFilter.value
-    if (operatorFilter.value) params.operator = operatorFilter.value
+    if (operatorFilter.value) params.operatorId = operatorFilter.value
     if (startDate.value) params.startDate = startDate.value
     if (endDate.value) params.endDate = endDate.value
 
@@ -139,6 +139,21 @@ onMounted(() => {
 
         <!-- 右侧：搜索、日期筛选和刷新 -->
         <div class="flex items-center gap-3 shrink-0">
+          <!-- 操作人筛选 -->
+          <div class="relative group">
+            <User class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-shuimo/40 transition-colors group-focus-within:text-zijinghui" />
+            <input
+              v-model="operatorFilter"
+              type="text"
+              placeholder="操作人ID..."
+              class="w-28 pl-9 pr-3 py-2 rounded-xl bg-slate-50 border-none focus:ring-2 focus:ring-zijinghui/20 transition-colors transition-shadow text-sm"
+              @change="applyFilters"
+            />
+            <button v-if="operatorFilter" @click="operatorFilter = ''; applyFilters()" class="absolute right-3 top-1/2 -translate-y-1/2 text-shuimo/40 hover:text-shuimo">
+              <X class="w-3 h-3" />
+            </button>
+          </div>
+
           <!-- 日期范围 -->
           <input 
             v-model="startDate"

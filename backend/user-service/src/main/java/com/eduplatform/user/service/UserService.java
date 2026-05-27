@@ -1,7 +1,9 @@
 package com.eduplatform.user.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.user.dto.*;
 import com.eduplatform.user.entity.User;
 import com.eduplatform.user.mapper.UserMapper;
@@ -9,8 +11,10 @@ import com.eduplatform.user.util.JwtUtil;
 import com.eduplatform.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -31,7 +35,9 @@ public class UserService {
     private final JwtUtil jwtUtil;
     private final UserSessionService sessionService;
     private final AuditLogService auditLogService;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    @Autowired
+    private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     /**
      * 将用户实体转换为视图对象
@@ -72,23 +78,23 @@ public class UserService {
      * @return 包含 Token 和用户信息的结果
      * @throws RuntimeException 当密码错误、用户不存在或被禁用时抛出
      */
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponse login(LoginRequest request, String deviceInfo, String ipAddress) {
         // 1. 根据邮箱查询用户
         User user = userMapper.selectOne(
                 new LambdaQueryWrapper<User>().eq(User::getEmail, request.getEmail()));
 
         if (user == null) {
-            throw new RuntimeException("邮箱或密码错误");
+            throw new BusinessException("邮箱或密码错误");
         }
 
         // 2. 检查账号状态（1: 正常）
         if (user.getStatus() != 1) {
-            throw new RuntimeException("账号已被禁用");
+            throw new BusinessException(403, "账号已被禁用");
         }
 
         // 3. 验证 BCrypt 加密后的密码
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("邮箱或密码错误");
+            throw new BusinessException("邮箱或密码错误");
         }
 
         // 4. 处理单点登录：如果已有在线会话，则强制踢出
@@ -96,12 +102,14 @@ public class UserService {
             sessionService.forceOfflineUser(user.getId());
         }
 
-        // 5. 更新登录元数据
-        user.setLastLoginAt(LocalDateTime.now());
-        userMapper.updateById(user);
+        // 5. 更新登录元数据（仅更新 last_login_at，避免覆盖其他可能被并发修改的字段）
+        UpdateWrapper<User> updateWrapper = new UpdateWrapper<User>()
+                .eq("id", user.getId())
+                .set("last_login_at", LocalDateTime.now());
+        userMapper.update(updateWrapper);
 
         // 6. 创建会话追踪并签发 JWT
-        String jti = sessionService.createSession(user.getId());
+        String jti = sessionService.createSession(user.getId(), deviceInfo, ipAddress);
         String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole(), jti);
 
         return LoginResponse.builder()
@@ -127,23 +135,23 @@ public class UserService {
      * @param request 注册请求参数
      * @return 登录成功后的响应（同登录接口）
      */
-    public LoginResponse register(RegisterRequest request) {
+    public LoginResponse register(RegisterRequest request, String deviceInfo, String ipAddress) {
         if ("admin".equals(request.getRole())) {
-            throw new RuntimeException("不允许注册管理员账号");
+            throw new BusinessException(403, "不允许注册管理员账号");
         }
 
         // 1. 检查邮箱唯一性
         User existByEmail = userMapper.selectOne(
                 new LambdaQueryWrapper<User>().eq(User::getEmail, request.getEmail()));
         if (existByEmail != null) {
-            throw new RuntimeException("该邮箱已被注册");
+            throw new BusinessException("该邮箱已被注册");
         }
 
         // 2. 检查用户名唯一性
         User existByUsername = userMapper.selectOne(
                 new LambdaQueryWrapper<User>().eq(User::getUsername, request.getUsername()));
         if (existByUsername != null) {
-            throw new RuntimeException("该用户名已被使用");
+            throw new BusinessException("该用户名已被使用");
         }
 
         // 3. 构建用户实体
@@ -160,7 +168,7 @@ public class UserService {
         userMapper.insert(user);
 
         // 4. 注册成功后自动为用户创建会话并生成 Token
-        String jti = sessionService.createSession(user.getId());
+        String jti = sessionService.createSession(user.getId(), deviceInfo, ipAddress);
         String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole(), jti);
 
         return LoginResponse.builder()
@@ -185,12 +193,12 @@ public class UserService {
                 new LambdaQueryWrapper<User>().eq(User::getEmail, request.getEmail()));
 
         if (user == null) {
-            throw new RuntimeException("该邮箱未注册");
+            throw new BusinessException("该邮箱未注册");
         }
 
         // 验证真实姓名（防止空指针）
         if (user.getName() == null || !user.getName().equals(request.getRealName())) {
-            throw new RuntimeException("真实姓名验证失败");
+            throw new BusinessException("真实姓名验证失败");
         }
 
         // 更新密码
@@ -249,10 +257,15 @@ public class UserService {
      * @param operatorName 执行操作的管理员名称
      * @param ipAddress    操作来源 IP
      */
+    @Transactional
     public void updateStatus(Long id, Integer status, Long operatorId, String operatorName, String ipAddress) {
         User user = userMapper.selectById(id);
         if (user == null) {
-            throw new RuntimeException("用户不存在");
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        if (operatorId.equals(id)) {
+            throw new BusinessException("不能禁用自己的账号");
         }
 
         userMapper.updateStatusById(id, status);
@@ -264,73 +277,28 @@ public class UserService {
     }
 
     /**
-     * 更新用户状态（无审计日志版本，用于内部调用）
+     * 更新用户资料
      */
-    public void updateStatusInternal(Long id, Integer status) {
-        userMapper.updateStatusById(id, status);
-    }
-
-    public void delete(Long id, Long operatorId, String operatorName, String ipAddress) {
-        User user = userMapper.selectById(id);
-        if (user == null) {
-            throw new RuntimeException("用户不存在");
-        }
-        if ("admin".equals(user.getRole())) {
-            throw new RuntimeException("不能删除管理员账号");
-        }
-
-        String username = user.getUsername();
-        userMapper.deleteById(id);
-
-        // 记录审计日志
-        auditLogService.log(operatorId, operatorName, "USER_DELETE", "USER", id, username, "删除用户", ipAddress);
-    }
-
-    /**
-     * 删除用户（无审计日志版本，用于内部调用）
-     */
-    public void deleteInternal(Long id) {
-        User user = userMapper.selectById(id);
-        if (user != null && "admin".equals(user.getRole())) {
-            throw new RuntimeException("不能删除管理员账号");
-        }
-        userMapper.deleteById(id);
-    }
-
-    public long countByRole(String role) {
-        return userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getRole, role));
-    }
-
-    public long countTotal() {
-        return userMapper.selectCount(null);
-    }
-
-    public List<User> getSimpleList(String role) {
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        if (role != null && !role.isEmpty() && !"all".equals(role)) {
-            wrapper.eq(User::getRole, role);
-        }
-        wrapper.orderByAsc(User::getId);
-        return userMapper.selectList(wrapper);
-    }
-
-    public List<User> getRecentLoginUsers(int limit) {
-        return userMapper.selectList(
-                new LambdaQueryWrapper<User>()
-                        .orderByDesc(User::getLastLoginAt)
-                        .last("LIMIT " + limit));
-    }
-
-    public List<User> getRecentCreatedUsers(int limit) {
-        return userMapper.selectList(
-                new LambdaQueryWrapper<User>()
-                        .orderByDesc(User::getCreatedAt)
-                        .last("LIMIT " + limit));
-    }
-
+    @Transactional
     public void updateById(User user) {
         user.setUpdatedAt(LocalDateTime.now());
         userMapper.updateById(user);
+    }
+
+    /**
+     * 删除用户
+     */
+    @Transactional
+    public void delete(Long id, Long operatorId, String operatorName, String ipAddress) {
+        User user = userMapper.selectById(id);
+        if (user == null) {
+            throw new BusinessException(404, "用户不存在");
+        }
+        if ("admin".equals(user.getRole())) {
+            throw new BusinessException(403, "不能删除管理员账号");
+        }
+        userMapper.deleteById(id);
+        auditLogService.log(operatorId, operatorName, "USER_DELETE", "USER", id, user.getUsername(), "删除用户", ipAddress);
     }
 
     /**
@@ -414,5 +382,31 @@ public class UserService {
                 new LambdaQueryWrapper<User>()
                         .ge(User::getLastLoginAt, dayStart)
                         .lt(User::getLastLoginAt, dayEnd));
+    }
+
+    public List<User> getSimpleList(String role) {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        if (role != null && !role.isEmpty()) {
+            wrapper.eq(User::getRole, role);
+        }
+        wrapper.orderByDesc(User::getCreatedAt);
+        return userMapper.selectList(wrapper);
+    }
+
+    public long countTotal() {
+        return userMapper.selectCount(new LambdaQueryWrapper<>());
+    }
+
+    public long countByRole(String role) {
+        return userMapper.selectCount(
+                new LambdaQueryWrapper<User>().eq(User::getRole, role));
+    }
+
+    public List<User> getRecentLoginUsers(int limit) {
+        Page<User> page = new Page<>(1, limit);
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
+                .orderByDesc(User::getLastLoginAt);
+        Page<User> result = userMapper.selectPage(page, wrapper);
+        return result.getRecords();
     }
 }

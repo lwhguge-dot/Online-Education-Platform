@@ -225,7 +225,7 @@ try {
       docker info | Out-Null
     } (Z '[\u9519\u8bef] Docker \u672a\u542f\u52a8\u3002')
 
-    Run-Step (Z '[2/6] \u5f3a\u5236\u5220\u9664\u6240\u6709\u5bb9\u5668\u53ca\u7f51\u7edc...') {
+    Run-Step (Z '[2/5] \u5f3a\u5236\u5220\u9664\u6240\u6709\u5bb9\u5668\u53ca\u7f51\u7edc...') {
       $downArgs = @('down', '--remove-orphans')
       if ($IncludeVolumes) {
         $downArgs += '-v'
@@ -233,18 +233,14 @@ try {
       Invoke-Compose @downArgs
     } (Z '[\u9519\u8bef] \u6e05\u7406\u65e7\u5bb9\u5668\u5931\u8d25\u3002')
 
-    Run-Step (Z '[3/6] \u542f\u52a8\u57fa\u7840\u8bbe\u65bd\u670d\u52a1...') {
-      Invoke-ComposeUp -Services @('postgres', 'redis', 'nacos', 'minio', 'sentinel')
+    Run-Step (Z '[3/5] \u542f\u52a8\u57fa\u7840\u8bbe\u65bd\u670d\u52a1...') {
+      Invoke-ComposeUp -Services @('postgres', 'redis', 'nacos', 'minio')
     } (Z '[\u9519\u8bef] \u57fa\u7840\u8bbe\u65bd\u542f\u52a8\u5931\u8d25\u3002')
 
-    Run-Step (Z '[4/6] \u542f\u52a8\u53ef\u89c2\u6d4b\u670d\u52a1...') {
-      Invoke-ComposeUp -Services @('prometheus', 'grafana', 'jaeger')
-    } (Z '[\u9519\u8bef] \u53ef\u89c2\u6d4b\u670d\u52a1\u542f\u52a8\u5931\u8d25\u3002')
-
-    Write-Host (Z '[5/6] \u7b49\u5f85\u57fa\u7840\u670d\u52a1\u5c31\u7eea\uff0830\u79d2\uff09...')
+    Write-Host (Z '[4/5] \u7b49\u5f85\u57fa\u7840\u670d\u52a1\u5c31\u7eea\uff0830\u79d2\uff09...')
     Start-Sleep -Seconds 30
 
-    Run-Step (Z '[6/7] \u6e05\u7406\u540c\u540d\u6b8b\u7559\u4e1a\u52a1\u5bb9\u5668...') {
+    Run-Step (Z '[5/5] \u6e05\u7406\u540c\u540d\u6b8b\u7559\u4e1a\u52a1\u5bb9\u5668...') {
       Remove-StaleContainers -ContainerNames @(
         'demo-gateway',
         'demo-user-service',
@@ -255,9 +251,9 @@ try {
       )
     } (Z '[\u9519\u8bef] \u6e05\u7406\u6b8b\u7559\u4e1a\u52a1\u5bb9\u5668\u5931\u8d25\u3002')
 
-    Run-Step (Z '[7/7] \u91cd\u65b0\u6784\u5efa\u5e76\u542f\u52a8\u4e1a\u52a1\u670d\u52a1...') {
-      Invoke-ComposeUp -Build -Services @('gateway', 'user-service', 'course-service', 'homework-service', 'progress-service', 'frontend')
-    } (Z '[\u9519\u8bef] \u4e1a\u52a1\u670d\u52a1\u6784\u5efa\u5931\u8d25\u3002')
+    Write-Host (Z '\u6b63\u5728\u91cd\u65b0\u6784\u5efa\u5e76\u542f\u52a8\u4e1a\u52a1\u670d\u52a1...')
+    Invoke-ComposeUp -Build -Services @('gateway', 'user-service', 'course-service', 'homework-service', 'progress-service', 'frontend')
+    Write-Host (Z '[\u5b8c\u6210]')
 
     Write-Host (Z '\u6b63\u5728\u8fdb\u884c\u6700\u540e\u7684\u5065\u5eb7\u68c0\u67e5...')
     $allHealthy = Wait-AllServicesHealthy -TimeoutSeconds $TimeoutSeconds -IntervalSeconds $IntervalSeconds

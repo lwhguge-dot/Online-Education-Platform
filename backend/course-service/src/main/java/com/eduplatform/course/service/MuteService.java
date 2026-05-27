@@ -1,5 +1,7 @@
 package com.eduplatform.course.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.course.entity.MutedUser;
 import com.eduplatform.course.mapper.MutedUserMapper;
 import lombok.RequiredArgsConstructor;
@@ -86,7 +88,7 @@ public class MuteService {
     public void muteUser(Long userId, Long courseId, Long mutedBy, String reason) {
         // 重复操作拦截
         if (isMuted(userId, courseId)) {
-            throw new RuntimeException("合规性冲突：该用户已在此课程中被禁言");
+            throw new BusinessException("合规性冲突：该用户已在此课程中被禁言");
         }
 
         MutedUser mutedUser = new MutedUser();
@@ -109,7 +111,7 @@ public class MuteService {
     public void unmuteUser(Long userId, Long courseId) {
         int affected = mutedUserMapper.unmuteUser(userId, courseId);
         if (affected == 0) {
-            throw new RuntimeException("合规性冲突：该用户当前未被禁言，无需解除");
+            throw new BusinessException("合规性冲突：该用户当前未被禁言，无需解除");
         }
         log.info("审计：社交环境治理 | 用户 {} 在课程 {} 已恢复发言权限", userId, courseId);
     }

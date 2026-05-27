@@ -252,8 +252,8 @@ public class ChapterCommentController {
     public Result<Map<String, Object>> getMuteStatus(
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRoleHeader,
-            @RequestParam("userId") Long userId,
-            @RequestParam("courseId") Long courseId) {
+            @RequestParam(name = "userId") Long userId,
+            @RequestParam(name = "courseId") Long courseId) {
 
         Long currentUserId = resolveUserId(currentUserIdHeader, null);
         // 学生仅允许查询自己的禁言状态，教师与管理员可查询任意用户
@@ -270,7 +270,7 @@ public class ChapterCommentController {
      * 获取课程禁言记录列表。
      */
     @GetMapping("/mute-records")
-    public Result<List<Map<String, Object>>> getMuteRecords(@RequestParam("courseId") Long courseId) {
+    public Result<List<Map<String, Object>>> getMuteRecords(@RequestParam(name = "courseId") Long courseId) {
         log.info("获取禁言记录, courseId={}", courseId);
         List<Map<String, Object>> records = muteService.getMuteRecords(courseId);
         return Result.success(records);
@@ -283,8 +283,8 @@ public class ChapterCommentController {
      */
     @GetMapping("/blocked-words")
     public Result<List<BlockedWordVO>> getBlockedWords(
-            @RequestParam(defaultValue = "global") String scope,
-            @RequestParam(required = false) Long courseId) {
+            @RequestParam(name = "scope", defaultValue = "global") String scope,
+            @RequestParam(name = "courseId", required = false) Long courseId) {
 
         log.info("获取屏蔽词列表, scope={}, courseId={}", scope, courseId);
         List<BlockedWordVO> words = blockedWordService.convertToVOList(

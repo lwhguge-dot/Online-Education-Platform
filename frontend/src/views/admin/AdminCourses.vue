@@ -27,6 +27,10 @@ const props = defineProps({
   initialFilter: {
     type: String, // '0' for pending
     default: 'all'
+  },
+  initialSubject: {
+    type: String,
+    default: 'all'
   }
 })
 
@@ -63,9 +67,20 @@ watch(
 )
 
 watch(
+  () => props.initialSubject,
+  (val) => {
+    if (val && val !== 'all') {
+      subjectFilter.value = val
+    }
+  },
+  { immediate: true }
+)
+
+watch(
   () => props.courses,
   (val) => {
-    const incoming = Array.isArray(val) ? val.map(c => ({ ...c })) : []
+    const raw = Array.isArray(val) ? val.map(c => ({ ...c })) : []
+    const incoming = raw.filter((c, i, arr) => arr.findIndex(x => idKey(x.id) === idKey(c.id)) === i)
     const localById = new Map(localCourses.value.map(c => [idKey(c.id), c]))
     const now = Date.now()
     localCourses.value = incoming.map((c) => {

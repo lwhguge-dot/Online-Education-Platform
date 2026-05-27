@@ -180,7 +180,7 @@ public class CourseReadService {
     /**
      * 管理端课程列表（默认排除草稿）。
      */
-    public List<Course> getAdminVisibleCourses(String subject, String status) {
+    public List<Course> getAdminVisibleCourses(String subject, String status, String keyword) {
         String normalizedStatus = null;
         if (status != null && !status.isEmpty() && !"all".equalsIgnoreCase(status)) {
             normalizedStatus = normalizeStatus(status);
@@ -192,6 +192,9 @@ public class CourseReadService {
         LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
         if (subject != null && !subject.isEmpty() && !"all".equals(subject)) {
             wrapper.eq(Course::getSubject, subject);
+        }
+        if (keyword != null && !keyword.isEmpty()) {
+            wrapper.and(w -> w.like(Course::getTitle, keyword).or().like(Course::getDescription, keyword));
         }
         if (normalizedStatus != null) {
             wrapper.eq(Course::getStatus, normalizedStatus);

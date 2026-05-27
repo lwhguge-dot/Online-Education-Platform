@@ -1,6 +1,7 @@
 package com.eduplatform.user.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.common.result.Result;
 import com.eduplatform.user.dto.CreateAuditLogRequest;
 import com.eduplatform.user.entity.AuditLog;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -49,15 +51,16 @@ public class AuditLogController {
             @RequestParam(name = "type", required = false) String type,
             @RequestParam(name = "operatorId", required = false) Long operatorId,
             @RequestParam(name = "targetType", required = false) String targetType,
-            @RequestParam(name = "startDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(name = "endDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(name = "startDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
+            @RequestParam(name = "endDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         if (!isAdminRole(currentUserRole)) {
-            return Result.failure(403, "权限不足，仅管理员可查询审计日志");
+            throw new BusinessException(403, "权限不足，仅管理员可查询审计日志");
         }
 
-        IPage<AuditLog> pageResult = auditLogService.findByPage(page, size, type, operatorId, targetType, startDate,
-                endDate);
+        IPage<AuditLog> pageResult = auditLogService.findByPage(page, size, type, operatorId, targetType,
+                startDate != null ? startDate.atStartOfDay() : null,
+                endDate != null ? endDate.atTime(23, 59, 59) : null);
 
         Map<String, Object> result = new HashMap<>();
         result.put("records", auditLogService.convertToVOList(pageResult.getRecords()));
@@ -74,14 +77,14 @@ public class AuditLogController {
      */
     @GetMapping("/{id}")
     public Result<AuditLogVO> getAuditLogById(
-            @PathVariable Long id,
+            @PathVariable(name = "id") Long id,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         if (!isAdminRole(currentUserRole)) {
-            return Result.failure(403, "权限不足，仅管理员可查看审计日志详情");
+            throw new BusinessException(403, "权限不足，仅管理员可查看审计日志详情");
         }
         AuditLogVO log = auditLogService.convertToVO(auditLogService.findById(id));
         if (log == null) {
-            return Result.error("审计记录已被存档或不存在");
+            throw new BusinessException(404, "审计记录已被存档或不存在");
         }
         return Result.success(log);
     }

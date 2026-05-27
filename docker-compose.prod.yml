@@ -2,9 +2,6 @@ services:
   nacos:
     ports: !reset []
 
-  sentinel:
-    ports: !reset []
-
   postgres:
     ports: !reset []
 
@@ -24,13 +21,4 @@ services:
     ports: !reset []
 
   minio:
-    ports: !reset []
-
-  prometheus:
-    ports: !reset []
-
-  grafana:
-    ports: !reset []
-
-  jaeger:
     ports: !reset []

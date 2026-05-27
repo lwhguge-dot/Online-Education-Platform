@@ -87,7 +87,7 @@ public class ProgressController {
     @GetMapping("/chapter/{chapterId}")
     public Result<ChapterProgressVO> getChapterProgress(
             @PathVariable("chapterId") Long chapterId,
-            @RequestParam("studentId") Long studentId,
+            @RequestParam(name = "studentId") Long studentId,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 章节进度仅允许本人、教师或管理员查看
@@ -109,7 +109,7 @@ public class ProgressController {
     @GetMapping("/course/{courseId}")
     public Result<List<ChapterProgressVO>> getCourseProgress(
             @PathVariable("courseId") Long courseId,
-            @RequestParam("studentId") Long studentId,
+            @RequestParam(name = "studentId") Long studentId,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 课程进度仅允许本人、教师或管理员查看
@@ -127,8 +127,8 @@ public class ProgressController {
      */
     @GetMapping("/check-unlock")
     public Result<Map<String, Object>> checkUnlockCondition(
-            @RequestParam("studentId") Long studentId,
-            @RequestParam("chapterId") Long chapterId,
+            @RequestParam(name = "studentId") Long studentId,
+            @RequestParam(name = "chapterId") Long chapterId,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 解锁条件仅允许本人、教师或管理员查看
@@ -147,7 +147,7 @@ public class ProgressController {
     @GetMapping("/course/{courseId}/last-position")
     public Result<Map<String, Object>> getLastStudyPosition(
             @PathVariable("courseId") Long courseId,
-            @RequestParam("studentId") Long studentId,
+            @RequestParam(name = "studentId") Long studentId,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 最后学习位置仅允许本人、教师或管理员查看

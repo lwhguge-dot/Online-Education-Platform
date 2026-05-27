@@ -3,19 +3,20 @@ import { ref, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
 import {
   Shield, Database, Activity, HardDrive, Trash2,
   Users, BookOpen, BarChart3, Settings, Play,
-  Check, X
+  Check, X, RefreshCw, FileText
 } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
 import { useAuthStore } from '../../stores/auth'
 import { useConfirmStore } from '../../stores/confirm'
 import { useRouter } from 'vue-router'
-import { healthAPI } from '../../services/api'
+import { healthAPI, statsAPI, userAPI } from '../../services/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const confirmStore = useConfirmStore()
 
 // 应用自有存储键清单：仅清理本应用数据，避免误删同域其他系统数据
+const APP_VERSION = '1.0.0'
 const APP_SESSION_KEYS = ['token', 'user', 'adminActiveMenu', 'teacherActiveMenu']
 const APP_SESSION_KEY_PREFIXES = ['study_chapter_']
 const APP_LOCAL_KEYS = ['student_profile', 'notification_settings', 'study_goal']
@@ -62,6 +63,7 @@ const stopUptimeTimer = () => {
 onMounted(() => {
   checkHealth()
   startUptimeTimer()
+  fetchDataStats()
 })
 
 onUnmounted(() => {
@@ -72,13 +74,15 @@ onActivated(startUptimeTimer)
 onDeactivated(stopUptimeTimer)
 
 // 服务健康状态
+const checkingHealth = ref(false)
 const services = ref([
   { id: 'frontend', name: '前端服务', status: 'up', message: '运行正常 (Node/Vite)', icon: Activity },
   { id: 'gateway', name: 'API 网关 (User)', status: 'checking', message: '检查中...', icon: Shield },
-  { id: 'db', name: '后端 MySQL', status: 'checking', message: '检查中...', icon: Database },
+  { id: 'db', name: '后端 PostgreSQL', status: 'checking', message: '检查中...', icon: Database },
 ])
 
 const checkHealth = async () => {
+  checkingHealth.value = true
   try {
     const res = await healthAPI.check()
     if (res.code === 200 && res.data) {
@@ -94,7 +98,17 @@ const checkHealth = async () => {
     services.value[1].message = '后端服务无法连接'
     services.value[2].status = 'unknown'
     services.value[2].message = '无法检测'
+  } finally {
+    checkingHealth.value = false
   }
+}
+
+const manualCheckHealth = () => {
+  services.value[1].status = 'checking'
+  services.value[1].message = '检查中...'
+  services.value[2].status = 'checking'
+  services.value[2].message = '检查中...'
+  checkHealth()
 }
 
 const getStatusColor = (status) => {
@@ -102,6 +116,32 @@ const getStatusColor = (status) => {
     case 'up': return 'text-emerald-500 bg-emerald-50'
     case 'down': return 'text-red-500 bg-red-50'
     default: return 'text-amber-500 bg-amber-50'
+  }
+}
+
+const dataStats = ref({ totalUsers: 0, totalStudents: 0, totalTeachers: 0, totalCourses: 0, pendingCourses: 0 })
+const loadingStats = ref(false)
+
+const fetchDataStats = async () => {
+  loadingStats.value = true
+  try {
+    const [userRes, statsRes] = await Promise.all([
+      userAPI.getStats(),
+      statsAPI.getAdminDashboard()
+    ])
+    const uData = userRes.data || {}
+    const sData = statsRes.data || {}
+    dataStats.value = {
+      totalUsers: sData.totalUsers || uData.total || 0,
+      totalStudents: sData.totalStudents || uData.students || 0,
+      totalTeachers: sData.totalTeachers || uData.teachers || 0,
+      totalCourses: sData.totalCourses || 0,
+      pendingCourses: sData.pendingCourses || 0
+    }
+  } catch (e) {
+    console.error('数据统计加载失败:', e)
+  } finally {
+    loadingStats.value = false
   }
 }
 
@@ -157,9 +197,19 @@ const getPermissionIcon = (val) => {
     <!-- 第一行：系统状态与维护 -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <GlassCard class="p-6">
-        <h3 class="flex items-center gap-2 text-lg font-bold text-shuimo mb-6 font-song">
-          <Activity class="w-5 h-5 text-zijinghui" /> 系统状态
-        </h3>
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="flex items-center gap-2 text-lg font-bold text-shuimo font-song">
+            <Activity class="w-5 h-5 text-zijinghui" /> 系统状态
+          </h3>
+          <button
+            @click="manualCheckHealth"
+            :disabled="checkingHealth"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-zijinghui text-white hover:bg-zijinghui/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': checkingHealth }" />
+            {{ checkingHealth ? '检查中...' : '健康检查' }}
+          </button>
+        </div>
         <div class="space-y-4">
           <div v-for="svc in services" :key="svc.id" class="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50">
             <div class="flex items-center gap-3">
@@ -200,6 +250,14 @@ const getPermissionIcon = (val) => {
                  <span class="font-bold text-shuimo">系统运行时间</span>
               </div>
               <p class="text-2xl font-mono text-slate-700 pl-8">{{ uptime }}</p>
+           </div>
+           
+           <div class="p-4 rounded-xl bg-slate-50 border border-slate-100">
+              <div class="flex items-center gap-3 mb-2">
+                 <Settings class="w-5 h-5 text-slate-500" />
+                 <span class="font-bold text-shuimo">系统版本</span>
+              </div>
+              <p class="text-lg font-mono text-slate-700 pl-8">v{{ APP_VERSION }}</p>
            </div>
            
            <button @click="clearCache" class="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100 hover:bg-red-50 hover:border-red-100 group transition-[background-color,color,border-color,box-shadow,transform] duration-300 text-left">
@@ -254,6 +312,35 @@ const getPermissionIcon = (val) => {
                 </tr>
              </tbody>
           </table>
+       </div>
+    </GlassCard>
+
+    <!-- 第三行：数据维护 -->
+    <GlassCard class="p-6">
+       <h3 class="flex items-center gap-2 text-lg font-bold text-shuimo mb-6 font-song">
+          <FileText class="w-5 h-5 text-zijinghui" /> 数据维护
+       </h3>
+       <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 text-center">
+             <p class="text-3xl font-bold text-zijinghui">{{ loadingStats ? '...' : dataStats.totalUsers }}</p>
+             <p class="text-xs text-shuimo/50 mt-1">总用户数</p>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 text-center">
+             <p class="text-3xl font-bold text-emerald-600">{{ loadingStats ? '...' : dataStats.totalStudents }}</p>
+             <p class="text-xs text-shuimo/50 mt-1">学生数</p>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 text-center">
+             <p class="text-3xl font-bold text-blue-600">{{ loadingStats ? '...' : dataStats.totalTeachers }}</p>
+             <p class="text-xs text-shuimo/50 mt-1">教师数</p>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 text-center">
+             <p class="text-3xl font-bold text-amber-600">{{ loadingStats ? '...' : dataStats.totalCourses }}</p>
+             <p class="text-xs text-shuimo/50 mt-1">总课程数</p>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 text-center">
+             <p class="text-3xl font-bold text-orange-500">{{ loadingStats ? '...' : dataStats.pendingCourses }}</p>
+             <p class="text-xs text-shuimo/50 mt-1">待审核课程</p>
+          </div>
        </div>
     </GlassCard>
   </div>

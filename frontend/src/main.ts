@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/vue'
 import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './stores/auth'
+import './assets/fonts.css'
 import './assets/main.css'
 import './assets/animations.css'
 

@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +59,7 @@ public class ProgressTrackingService {
      * 上报视频进度，包含异常快进检测、缓存写入与定时落库。
      */
     @Transactional
+    @CacheEvict(value = "learning_track", key = "#dto.studentId")
     public Map<String, Object> reportVideoProgress(VideoProgressDTO dto) {
         String redisKey = PROGRESS_KEY_PREFIX + dto.getStudentId() + ":" + dto.getChapterId();
 
@@ -185,6 +187,7 @@ public class ProgressTrackingService {
      * 提交章节测验并更新测验成绩。
      */
     @Transactional
+    @CacheEvict(value = "learning_track", key = "#dto.studentId")
     public Map<String, Object> submitQuiz(QuizSubmitDTO dto) {
         List<ChapterQuiz> quizzes = quizMapper.selectList(
                 new LambdaQueryWrapper<ChapterQuiz>()

@@ -1,5 +1,6 @@
 package com.eduplatform.course.service;
 
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.course.entity.BlockedWord;
 import com.eduplatform.course.mapper.BlockedWordMapper;
 import com.eduplatform.course.vo.BlockedWordVO;
@@ -85,7 +86,7 @@ public class BlockedWordService {
     public BlockedWord addWord(String word, String scope, Long courseId, Long createdBy) {
         // 幂等性与冲突校验
         if (blockedWordMapper.checkExists(word, scope, courseId) > 0) {
-            throw new RuntimeException("操作失败：该词库条目已存在");
+            throw new BusinessException("操作失败：该词库条目已存在");
         }
 
         BlockedWord blockedWord = new BlockedWord();
@@ -109,7 +110,7 @@ public class BlockedWordService {
     public void deleteWord(Long id) {
         int affected = blockedWordMapper.deleteWord(id);
         if (affected == 0) {
-            throw new RuntimeException("操作失败：词条不存在或已被移除");
+            throw new BusinessException("操作失败：词条不存在或已被移除");
         }
         log.info("审计：敏感词库注销 | ID: {}", id);
     }
@@ -147,9 +148,8 @@ public class BlockedWordService {
         } catch (Exception e) {
             log.error("安全合规异常：实时内容审计流中断, content_len={}, courseId={}",
                     content != null ? content.length() : 0, courseId, e);
-            // 降级策略：审计失败时选择放行，保证业务可用性 (Fail-open)
-            result.put("hasBlockedWord", false);
-            result.put("blockedWords", List.of());
+            result.put("hasBlockedWord", true);
+            result.put("blockedWords", List.of("__SYSTEM_ERROR__"));
         }
 
         return result;

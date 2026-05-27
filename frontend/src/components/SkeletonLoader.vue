@@ -77,6 +77,8 @@ defineProps({
 </script>
 
 <style scoped>
+@reference "tailwindcss";
+
 .skeleton-loader {
   @apply bg-white rounded-xl;
 }

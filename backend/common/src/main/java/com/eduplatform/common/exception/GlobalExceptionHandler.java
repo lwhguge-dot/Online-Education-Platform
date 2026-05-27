@@ -6,6 +6,8 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.BindException;
@@ -13,6 +15,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.UUID;
@@ -45,39 +48,63 @@ public class GlobalExceptionHandler {
 
     /**
      * 处理 @RequestBody 参数校验失败。
+     * 返回所有字段的错误信息（而非仅第一条）。
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public Result<String> handleMethodArgumentNotValidException(MethodArgumentNotValidException e,
-            HttpServletRequest request) {
+    public ResponseEntity<Result<String>> handleMethodArgumentNotValidException(
+            MethodArgumentNotValidException e, HttpServletRequest request) {
         String traceId = resolveTraceId(request);
         String errorMessage = e.getBindingResult().getFieldErrors().stream()
-                .findFirst()
-                .map(FieldError::getDefaultMessage)
-                .orElse("请求参数校验失败");
-        log.warn("参数校验失败", e);
-        return failureWithTraceId(400, errorMessage, traceId);
+                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+                .collect(Collectors.joining("; "));
+        if (errorMessage.isBlank()) {
+            errorMessage = "请求参数校验失败";
+        }
+        log.warn("参数校验失败: {}", errorMessage);
+        return buildResponseEntity(HttpStatus.BAD_REQUEST, 400, errorMessage, traceId);
     }
 
     /**
      * 处理表单参数绑定异常。
+     * 返回所有字段的错误信息（而非仅第一条）。
      */
     @ExceptionHandler(BindException.class)
-    public Result<String> handleBindException(BindException e, HttpServletRequest request) {
+    public ResponseEntity<Result<String>> handleBindException(BindException e, HttpServletRequest request) {
         String traceId = resolveTraceId(request);
         String errorMessage = e.getBindingResult().getFieldErrors().stream()
-                .findFirst()
-                .map(FieldError::getDefaultMessage)
-                .orElse("请求参数校验失败");
-        log.warn("参数绑定失败", e);
-        return failureWithTraceId(400, errorMessage, traceId);
+                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+                .collect(Collectors.joining("; "));
+        if (errorMessage.isBlank()) {
+            errorMessage = "请求参数校验失败";
+        }
+        log.warn("参数绑定失败: {}", errorMessage);
+        return buildResponseEntity(HttpStatus.BAD_REQUEST, 400, errorMessage, traceId);
+    }
+
+    /**
+     * 处理 Spring 6.1+ HandlerMethod 级别的校验异常（如 @Valid List 参数）。
+     */
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<Result<String>> handleHandlerMethodValidationException(
+            HandlerMethodValidationException e, HttpServletRequest request) {
+        String traceId = resolveTraceId(request);
+        String errorMessage = e.getAllErrors().stream()
+                .map(err -> err.getDefaultMessage())
+                .filter(msg -> msg != null && !msg.isBlank())
+                .collect(Collectors.joining("; "));
+        if (errorMessage.isBlank()) {
+            errorMessage = "请求参数校验失败";
+        }
+        log.warn("HandlerMethod 校验失败: {}", errorMessage);
+        return buildResponseEntity(HttpStatus.BAD_REQUEST, 400, errorMessage, traceId);
     }
 
     /**
      * 处理路径参数和查询参数的约束校验异常。
      */
     @ExceptionHandler(ConstraintViolationException.class)
-    public Result<String> handleConstraintViolationException(ConstraintViolationException e,
-            HttpServletRequest request) {
+    public ResponseEntity<Result<String>> handleConstraintViolationException(
+            ConstraintViolationException e, HttpServletRequest request) {
         String traceId = resolveTraceId(request);
         String errorMessage = e.getConstraintViolations().stream()
                 .map(ConstraintViolation::getMessage)
@@ -85,48 +112,81 @@ public class GlobalExceptionHandler {
         if (errorMessage.isBlank()) {
             errorMessage = "请求参数校验失败";
         }
-        log.warn("约束校验失败", e);
-        return failureWithTraceId(400, errorMessage, traceId);
+        log.warn("约束校验失败: {}", errorMessage);
+        return buildResponseEntity(HttpStatus.BAD_REQUEST, 400, errorMessage, traceId);
     }
 
     /**
      * 处理请求体格式错误（例如 JSON 类型不匹配）。
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public Result<String> handleHttpMessageNotReadableException(HttpMessageNotReadableException e,
-            HttpServletRequest request) {
+    public ResponseEntity<Result<String>> handleHttpMessageNotReadableException(
+            HttpMessageNotReadableException e, HttpServletRequest request) {
         String traceId = resolveTraceId(request);
         log.warn("请求体解析失败", e);
-        return failureWithTraceId(400, "请求体格式错误，请检查字段类型与结构", traceId);
+        return buildResponseEntity(HttpStatus.BAD_REQUEST, 400,
+                "请求体格式错误，请检查字段类型与结构", traceId);
     }
 
     /**
-     * 处理运行时异常（通常是业务执行异常）。
+     * 处理业务异常：直接透传业务语义给前端。
+     */
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<Result<String>> handleBusinessException(
+            BusinessException e, HttpServletRequest request) {
+        String traceId = resolveTraceId(request);
+        log.warn("业务异常: code={}, message={}", e.getCode(), e.getMessage());
+        HttpStatus httpStatus = resolveHttpStatus(e.getCode());
+        return buildResponseEntity(httpStatus, e.getCode(), e.getMessage(), traceId);
+    }
+
+    /**
+     * 处理运行时异常（未预期的系统级异常，对外屏蔽细节）。
      */
     @ExceptionHandler(RuntimeException.class)
-    public Result<String> handleRuntimeException(RuntimeException e, HttpServletRequest request) {
+    public ResponseEntity<Result<String>> handleRuntimeException(
+            RuntimeException e, HttpServletRequest request) {
         String traceId = resolveTraceId(request);
-        log.error("发生业务异常", e);
-        return failureWithTraceId(500, "请求处理失败，请稍后重试", traceId);
+        log.error("未预期的运行时异常", e);
+        return buildResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR, 500,
+                "请求处理失败，请稍后重试", traceId);
     }
 
     /**
      * 处理所有未捕获的通用异常。
      */
     @ExceptionHandler(Exception.class)
-    public Result<String> handleException(Exception e, HttpServletRequest request) {
+    public ResponseEntity<Result<String>> handleException(Exception e, HttpServletRequest request) {
         String traceId = resolveTraceId(request);
         log.error("发生系统异常", e);
-        return failureWithTraceId(500, "系统繁忙，请稍后重试", traceId);
+        return buildResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR, 500,
+                "系统繁忙，请稍后重试", traceId);
     }
 
     /**
-     * 构建携带 traceId 的统一失败响应。
+     * 构建包含 HTTP 状态码和 traceId 的统一响应。
      */
-    private <T> Result<T> failureWithTraceId(Integer code, String message, String traceId) {
+    private <T> ResponseEntity<Result<T>> buildResponseEntity(
+            HttpStatus httpStatus, Integer code, String message, String traceId) {
         Result<T> result = Result.failure(code, message);
         result.setTraceId(traceId);
-        return result;
+        return new ResponseEntity<>(result, httpStatus);
+    }
+
+    /**
+     * 将业务错误码映射为 HTTP 状态码。
+     * 匹配逻辑：取业务码首位数字，400→400, 403→403, 404→404, 409→409, 429→429, 5xx→500。
+     */
+    private HttpStatus resolveHttpStatus(Integer code) {
+        if (code == null) {
+            return HttpStatus.BAD_REQUEST;
+        }
+        if (code == 403) return HttpStatus.FORBIDDEN;
+        if (code == 404) return HttpStatus.NOT_FOUND;
+        if (code == 409) return HttpStatus.CONFLICT;
+        if (code == 429) return HttpStatus.TOO_MANY_REQUESTS;
+        if (code >= 500) return HttpStatus.INTERNAL_SERVER_ERROR;
+        return HttpStatus.BAD_REQUEST;
     }
 
     /**

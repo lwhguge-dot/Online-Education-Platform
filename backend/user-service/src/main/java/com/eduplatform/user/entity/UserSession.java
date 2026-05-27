@@ -50,6 +50,12 @@ public class UserSession {
     @TableField("logout_time")
     private LocalDateTime logoutTime;
 
+    @TableField("device_info")
+    private String deviceInfo;
+
+    @TableField("ip_address")
+    private String ipAddress;
+
     /**
      * 记录创建时间
      */

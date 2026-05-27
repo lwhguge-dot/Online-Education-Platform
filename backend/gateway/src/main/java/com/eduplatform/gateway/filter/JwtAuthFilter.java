@@ -13,6 +13,7 @@ import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
@@ -61,6 +62,26 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             "/api/courses/published"
     );
 
+    /**
+     * 管理员专属路径：仅允许 role=admin 的请求通过。
+     * 使用 Ant 风格路径模式，支持通配符匹配。
+     */
+    private static final Set<String> ADMIN_PATHS = Set.of(
+            "/api/users/list",
+            "/api/users/*/status",
+            "/api/users/export",
+            "/api/users/stats",
+            "/api/users/online-status",
+            "/api/courses/reviewing",
+            "/api/courses/*/audit",
+            "/api/courses/*/offline",
+            "/api/courses/batch-status",
+            "/api/courses/export",
+            "/api/audit-logs/**",
+            "/api/announcements",
+            "/api/stats/admin/**"
+    );
+
     private final ObjectMapper objectMapper;
     private final WebClient userServiceWebClient;
 
@@ -79,8 +100,9 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getURI().getPath();
 
-        // 非 API 与 WebSocket 请求先放行，避免影响静态资源和站点路由。
-        if (!path.startsWith("/api/") && !path.startsWith("/ws/")) {
+        // 非 API 请求先放行，避免影响静态资源和站点路由。
+        // WebSocket 请求直接放行，由 user-service 的 WebSocketHandler 自行处理 AUTH 握手。
+        if (!path.startsWith("/api/")) {
             return chain.filter(exchange);
         }
 
@@ -91,15 +113,6 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
         // 白名单接口直接放行。
         if (isPublicPath(path)) {
-            return chain.filter(exchange);
-        }
-
-        // WebSocket 握手请求校验 token 参数，后续由 user-service 二次校验并绑定身份。
-        if (path.startsWith("/ws/")) {
-            String token = exchange.getRequest().getQueryParams().getFirst("token");
-            if (StringUtils.hasText(token) && !validateToken(token)) {
-                return writeError(exchange, HttpStatus.UNAUTHORIZED, 401, "WebSocket 鉴权失败：token 无效");
-            }
             return chain.filter(exchange);
         }
 
@@ -126,6 +139,11 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         }
 
         String userId = String.valueOf(userIdObj);
+
+        // 管理员路径角色校验：非管理员禁止访问管理专属接口
+        if (isAdminPath(path) && !"admin".equalsIgnoreCase(role)) {
+            return writeError(exchange, HttpStatus.FORBIDDEN, 403, "权限不足：仅管理员可访问此接口");
+        }
 
         // 构造可信请求头：先移除同名头，避免被客户端伪造；再注入网关解析结果。
         if (!StringUtils.hasText(internalToken)) {
@@ -164,6 +182,19 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     private boolean isPublicPath(String path) {
         return PUBLIC_PATHS.contains(path);
+    }
+
+    /**
+     * 管理员专属路径判定：使用 AntPathMatcher 进行通配符匹配。
+     */
+    private boolean isAdminPath(String path) {
+        AntPathMatcher matcher = new AntPathMatcher();
+        for (String pattern : ADMIN_PATHS) {
+            if (matcher.match(pattern, path)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -259,7 +290,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
         } catch (Exception e) {
             log.error("网关生成身份签名失败", e);
-            return "";
+            throw new IllegalStateException("身份签名生成失败，服务内部配置异常", e);
         }
     }
 

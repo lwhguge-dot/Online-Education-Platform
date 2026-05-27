@@ -1,5 +1,6 @@
 package com.eduplatform.course.service;
 
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.course.dto.CommentDTO;
 import com.eduplatform.course.entity.ChapterComment;
 import com.eduplatform.course.entity.CommentLike;
@@ -155,12 +156,12 @@ public class ChapterCommentService {
     public void deleteComment(Long commentId, Long userId, boolean isAdmin) {
         ChapterComment comment = commentMapper.selectById(commentId);
         if (comment == null || comment.getStatus() == 0) {
-            throw new RuntimeException("操作失败：评论已过期或不存在");
+            throw new BusinessException("操作失败：评论已过期或不存在");
         }
 
         // 安全审计：权限校验
         if (!isAdmin && !comment.getUserId().equals(userId)) {
-            throw new RuntimeException("违规操作：您无权删除他人发表的评论");
+            throw new BusinessException("违规操作：您无权删除他人发表的评论");
         }
 
         // 执行合规性软删除

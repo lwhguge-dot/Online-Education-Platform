@@ -1,21 +1,58 @@
-/* @import moved to index.html for performance */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-danqing: #88ada6;
+  --color-qianhong: #f0a1a8;
+  --color-yuebai: #d6ecf0;
+  --color-shuimo: #50616d;
+  --color-qingbai: #c0ebd7;
+  --color-yanzhi: #c45a65;
+  --color-zhizi: #eacd76;
+  --color-qingsong: #5dbe8a;
+  --color-tianlv: #20a162;
+  --color-zijinghui: #815c94;
+  --color-qianniuzi: #681752;
+  --color-halanzi: #1781b5;
+  --color-yanzhihong: #c04851;
+  --color-danya: #789262;
+  --color-qinghua: #2e59a7;
+  --color-tanxiang: #b78d71;
+  --color-primary: #2e59a7;
+  --color-secondary: #20a162;
+  --color-success: #5dbe8a;
+  --color-warning: #eacd76;
+  --color-danger: #c45a65;
+  --color-info: #1781b5;
+  --color-text-main: #50616d;
+  --color-text-muted: #64748b;
+  --font-family-song: "Noto Serif SC", serif;
+  --font-family-hei: "Noto Sans SC", sans-serif;
+  --breakpoint-tablet: 744px;
+  --breakpoint-fold: 880px;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+  --animate-fade-in: fade-in var(--motion-duration-medium) var(--motion-ease-standard);
+  --animate-slide-up: slide-up var(--motion-duration-medium) var(--motion-ease-standard);
+  --animate-slide-down: slide-down var(--motion-duration-medium) var(--motion-ease-standard);
+  --animate-scale-in: scale-in var(--motion-duration-medium) var(--motion-ease-standard);
+  --animate-float: float var(--motion-duration-loop-slow) var(--motion-ease-standard) infinite;
+  --animate-shimmer: shimmer var(--motion-duration-loop) linear infinite;
+}
 
 /* ===== CSS 变量定义 ===== */
 :root {
   /* 亮色模式变量 */
-  --color-bg-primary: theme('colors.slate.50'); /* #f8fafb replaced with slate-50 */
-  --color-bg-secondary: theme('colors.white');
-  --color-bg-tertiary: theme('colors.slate.100');
+  --color-bg-primary: var(--color-slate-50);
+  --color-bg-secondary: var(--color-white);
+  --color-bg-tertiary: var(--color-slate-100);
   --color-bg-glass: rgba(255, 255, 255, 0.65);
   --color-bg-glass-hover: rgba(255, 255, 255, 0.85);
-  --color-text-primary: theme('colors.slate.900'); /* #0f172a */
-  --color-text-secondary: theme('colors.shuimo'); /* #50616d */
-  --color-text-muted: theme('colors.slate.400'); /* #94a3b8 */
-  --color-border: theme('colors.slate.300');
-  --color-border-light: theme('colors.slate.100');
+  --color-text-primary: var(--color-slate-900);
+  --color-text-secondary: var(--color-shuimo);
+  --color-text-muted: var(--color-slate-400);
+  --color-border: var(--color-slate-300);
+  --color-border-light: var(--color-slate-100);
   --color-shadow: rgba(0, 0, 0, 0.1);
   --color-shadow-light: rgba(0, 0, 0, 0.05);
 
@@ -48,16 +85,16 @@
 
 /* ===== 暗黑模式变量 ===== */
 .dark {
-  --color-bg-primary: theme('colors.slate.900');
-  --color-bg-secondary: theme('colors.slate.800');
-  --color-bg-tertiary: theme('colors.slate.700');
+  --color-bg-primary: var(--color-slate-900);
+  --color-bg-secondary: var(--color-slate-800);
+  --color-bg-tertiary: var(--color-slate-700);
   --color-bg-glass: rgba(30, 41, 59, 0.8);
   --color-bg-glass-hover: rgba(51, 65, 85, 0.9);
-  --color-text-primary: theme('colors.slate.100');
-  --color-text-secondary: theme('colors.slate.300');
-  --color-text-muted: theme('colors.slate.500');
-  --color-border: theme('colors.slate.600');
-  --color-border-light: theme('colors.slate.700');
+  --color-text-primary: var(--color-slate-100);
+  --color-text-secondary: var(--color-slate-300);
+  --color-text-muted: var(--color-slate-500);
+  --color-border: var(--color-slate-600);
+  --color-border-light: var(--color-slate-700);
   --color-shadow: rgba(0, 0, 0, 0.3);
   --color-shadow-light: rgba(0, 0, 0, 0.2);
 
@@ -66,8 +103,8 @@
 
 /* 暗黑模式 body 样式 */
 .dark body {
-  background: linear-gradient(135deg, theme('colors.slate.900') 0%, theme('colors.slate.800') 100%);
-  color: theme('colors.slate.200');
+  background: linear-gradient(135deg, var(--color-slate-900) 0%, var(--color-slate-800) 100%);
+  color: var(--color-slate-200);
 }
 
 /* 暗黑模式下的标题颜色 */
@@ -77,7 +114,7 @@
 .dark h4,
 .dark h5,
 .dark h6 {
-  color: theme('colors.slate.100');
+  color: var(--color-slate-100);
 }
 
 /* 暗黑模式下的玻璃卡片 */

@@ -43,12 +43,12 @@ const routes: RouteRecordRaw[] = [
     path: '/teacher',
     name: 'TeacherCenter',
     component: () => import('../views/TeacherCenter.vue'),
-    meta: { requiresAuth: true, allowedRoles: ['teacher'], title: '教师中心' }
+    meta: { requiresAuth: true, allowedRoles: ['teacher', 'admin'], title: '教师中心' }
   },
   {
     path: '/student',
     component: () => import('../layouts/StudentLayout.vue'),
-    meta: { requiresAuth: true, allowedRoles: ['student'], title: '学生中心' },
+    meta: { requiresAuth: true, allowedRoles: ['student', 'admin'], title: '学生中心' },
     children: [
       {
         path: '',

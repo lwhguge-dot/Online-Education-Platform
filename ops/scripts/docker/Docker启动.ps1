@@ -204,9 +204,7 @@ $requiredKeys = @(
   'MINIO_ROOT_USER',
   'MINIO_ROOT_PASSWORD',
   'MINIO_ACCESS_KEY',
-  'MINIO_SECRET_KEY',
-  'GRAFANA_ADMIN_USER',
-  'GRAFANA_ADMIN_PASSWORD'
+  'MINIO_SECRET_KEY'
 )
 
 $missingKeys = @($requiredKeys | Where-Object { -not $envMap.ContainsKey($_) -or [string]::IsNullOrWhiteSpace($envMap[$_]) })
@@ -224,7 +222,6 @@ $minLengthRules = @{
   INTERNAL_API_TOKEN = 32
   MINIO_ROOT_PASSWORD = 16
   MINIO_SECRET_KEY = 16
-  GRAFANA_ADMIN_PASSWORD = 12
 }
 
 $weakValues = @(
@@ -298,29 +295,25 @@ Run-Step (Z '[3/8] \u6821\u9a8c\u7f16\u6392\u6587\u4ef6...') {
   Invoke-Compose config | Out-Null
 } (Z '[\u9519\u8bef] docker compose \u914d\u7f6e\u6821\u9a8c\u5931\u8d25\u3002')
 
-Write-Host (Z '[4/8] \u505c\u6b62\u65e7\u7684\u4e1a\u52a1\u5bb9\u5668\uff08\u5982\u5b58\u5728\uff09...')
+Write-Host (Z '[4/7] \u505c\u6b62\u65e7\u7684\u4e1a\u52a1\u5bb9\u5668\uff08\u5982\u5b58\u5728\uff09...')
 Invoke-Compose stop gateway user-service course-service homework-service progress-service frontend | Out-Null
 Write-Host (Z '[\u5b8c\u6210]')
 Write-Host ''
 
-Run-Step (Z '[5/8] \u542f\u52a8\u57fa\u7840\u8bbe\u65bd\u670d\u52a1...') {
-  Invoke-ComposeUp -Services @('postgres', 'redis', 'nacos', 'minio', 'sentinel')
+Run-Step (Z '[5/7] \u542f\u52a8\u57fa\u7840\u8bbe\u65bd\u670d\u52a1...') {
+  Invoke-ComposeUp -Services @('postgres', 'redis', 'nacos', 'minio')
 } (Z '[\u9519\u8bef] \u57fa\u7840\u8bbe\u65bd\u670d\u52a1\u542f\u52a8\u5931\u8d25\u3002')
 
-Run-Step (Z '[6/8] \u542f\u52a8\u53ef\u89c2\u6d4b\u670d\u52a1...') {
-  Invoke-ComposeUp -Services @('prometheus', 'grafana', 'jaeger')
-} (Z '[\u9519\u8bef] \u53ef\u89c2\u6d4b\u670d\u52a1\u542f\u52a8\u5931\u8d25\u3002')
-
-Write-Host (Z '[7/8] \u7b49\u5f85\u5065\u5eb7\u68c0\u67e5\u51c6\u5907\uff08\u7ea6 30 \u79d2\uff09...')
+Write-Host (Z '[6/7] \u7b49\u5f85\u5065\u5eb7\u68c0\u67e5\u51c6\u5907\uff08\u7ea6 30 \u79d2\uff09...')
 Start-Sleep -Seconds 30
 Write-Host (Z '[\u5b8c\u6210]')
 Write-Host ''
 
-Run-Step (Z '[8/8] \u542f\u52a8\u4e1a\u52a1\u670d\u52a1...') {
+Run-Step (Z '[7/7] \u542f\u52a8\u4e1a\u52a1\u670d\u52a1...') {
   Invoke-ComposeUp -Build -Services @('gateway', 'user-service', 'course-service', 'homework-service', 'progress-service', 'frontend')
 } (Z '[\u9519\u8bef] \u4e1a\u52a1\u670d\u52a1\u542f\u52a8\u5931\u8d25\u3002\u8bf7\u67e5\u770b\u65e5\u5fd7\uff1adocker compose logs -f [service]')
 
-Write-Host ((Z '[9/9] \u81ea\u52a8\u68c0\u67e5\u670d\u52a1\u5065\u5eb7\u72b6\u6001\uff08\u6700\u957f {0} \u79d2\uff0c\u95f4\u9694 {1} \u79d2\uff09...') -f $TimeoutSeconds, $IntervalSeconds)
+Write-Host ((Z '\u81ea\u52a8\u68c0\u67e5\u670d\u52a1\u5065\u5eb7\u72b6\u6001\uff08\u6700\u957f {0} \u79d2\uff0c\u95f4\u9694 {1} \u79d2\uff09...') -f $TimeoutSeconds, $IntervalSeconds)
 $allHealthy = Wait-AllServicesHealthy -TimeoutSeconds $TimeoutSeconds -IntervalSeconds $IntervalSeconds
 if (-not $allHealthy) {
   Write-Host (Z '[\u9519\u8bef] \u5b58\u5728\u672a\u5c31\u7eea\u670d\u52a1\uff0c\u8bf7\u6267\u884c docker compose ps \u6216 docker compose logs -f [service] \u6392\u67e5\u3002')
@@ -336,11 +329,7 @@ Write-Host '========================================'
 Write-Host (Z '\u524d\u7aef\u5730\u5740') ': http://localhost'
 Write-Host (Z 'API \u7f51\u5173') ': http://localhost:8090'
 Write-Host 'Nacos:       http://localhost:8848/nacos'
-Write-Host 'Sentinel:    http://localhost:8858'
 Write-Host 'MinIO:       http://localhost:9001'
-Write-Host 'Prometheus:  http://localhost:9090'
-Write-Host 'Grafana:     http://localhost:3000'
-Write-Host 'Jaeger:      http://localhost:16686'
 Write-Host ''
 Write-Host (Z '\u5e38\u7528\u547d\u4ee4\uff1a')
 Write-Host '  docker compose ps'

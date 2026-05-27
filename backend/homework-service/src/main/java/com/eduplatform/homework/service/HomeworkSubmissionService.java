@@ -1,6 +1,7 @@
 package com.eduplatform.homework.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.common.event.EventType;
 import com.eduplatform.common.event.RedisStreamConstants;
 import com.eduplatform.common.event.RedisStreamPublisher;
@@ -19,14 +20,17 @@ import com.eduplatform.homework.vo.HomeworkSubmissionVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 作业提交写模型服务。
@@ -51,7 +55,7 @@ public class HomeworkSubmissionService {
     public Map<String, Object> submitHomework(HomeworkSubmitDTO dto) {
         Homework homework = homeworkMapper.selectById(dto.getHomeworkId());
         if (homework == null) {
-            throw new RuntimeException("作业实体不存在");
+            throw new BusinessException("作业实体不存在");
         }
 
         // 准入层防线：确保解锁状态正确
@@ -78,7 +82,7 @@ public class HomeworkSubmissionService {
                 new LambdaQueryWrapper<HomeworkQuestion>()
                         .eq(HomeworkQuestion::getHomeworkId, dto.getHomeworkId()));
 
-        // 初始化/更新提交工单
+        // 初始化/更新提交工单（并发安全：捕获唯一约束冲突后降级为查询）
         HomeworkSubmission submission = submissionMapper.selectOne(
                 new LambdaQueryWrapper<HomeworkSubmission>()
                         .eq(HomeworkSubmission::getStudentId, dto.getStudentId())
@@ -89,13 +93,32 @@ public class HomeworkSubmissionService {
             submission.setStudentId(dto.getStudentId());
             submission.setHomeworkId(dto.getHomeworkId());
             submission.setSubmitStatus("draft");
-            submissionMapper.insert(submission);
+            try {
+                submissionMapper.insert(submission);
+            } catch (DuplicateKeyException e) {
+                submission = submissionMapper.selectOne(
+                        new LambdaQueryWrapper<HomeworkSubmission>()
+                                .eq(HomeworkSubmission::getStudentId, dto.getStudentId())
+                                .eq(HomeworkSubmission::getHomeworkId, dto.getHomeworkId()));
+            }
         }
 
         int objectiveScore = 0;
         int objectiveTotal = 0;
         boolean hasSubjective = false;
         List<Map<String, Object>> answerResults = new ArrayList<>();
+
+        // 批量查询已有答案，避免 N+1
+        List<Long> questionIds = questions.stream().map(HomeworkQuestion::getId).collect(Collectors.toList());
+        List<HomeworkAnswer> existingAnswers = (submission != null && submission.getId() != null) ?
+                answerMapper.selectList(
+                        new LambdaQueryWrapper<HomeworkAnswer>()
+                                .eq(HomeworkAnswer::getSubmissionId, submission.getId())
+                                .in(HomeworkAnswer::getQuestionId, questionIds)) :
+                Collections.emptyList();
+        java.util.Map<Long, HomeworkAnswer> answerMap = existingAnswers.stream()
+                .filter(a -> a.getQuestionId() != null)
+                .collect(Collectors.toMap(HomeworkAnswer::getQuestionId, a -> a, (a, b) -> a));
 
         for (HomeworkQuestion question : questions) {
             String studentAnswer = dto.getAnswers().stream()
@@ -105,10 +128,7 @@ public class HomeworkSubmissionService {
                     .orElse("");
 
             // 落地具体的答案条目
-            HomeworkAnswer answer = answerMapper.selectOne(
-                    new LambdaQueryWrapper<HomeworkAnswer>()
-                            .eq(HomeworkAnswer::getSubmissionId, submission.getId())
-                            .eq(HomeworkAnswer::getQuestionId, question.getId()));
+            HomeworkAnswer answer = answerMap.get(question.getId());
 
             if (answer == null) {
                 answer = new HomeworkAnswer();

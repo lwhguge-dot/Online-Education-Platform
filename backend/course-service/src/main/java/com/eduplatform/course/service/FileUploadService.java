@@ -1,19 +1,23 @@
 package com.eduplatform.course.service;
 
+import com.eduplatform.common.exception.BusinessException;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ByteArrayInputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -96,19 +100,61 @@ public class FileUploadService {
     }
 
     /**
+     * 常见文件格式的 Magic Bytes 特征。
+     */
+    private static final Map<String, byte[]> MAGIC_BYTES = Map.of(
+            "video/mp4", new byte[]{0x00, 0x00, 0x00, (byte) 0x1C, 0x66, 0x74, 0x79, 0x70},
+            "image/jpeg", new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF},
+            "image/png", new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A},
+            "image/gif", new byte[]{0x47, 0x49, 0x46, 0x38},
+            "image/webp", new byte[]{0x52, 0x49, 0x46, 0x46},
+            "application/pdf", new byte[]{0x25, 0x50, 0x44, 0x46}
+    );
+
+    /**
      * 资源合法性前置校验
      * 核心阈值：基于配置的 maxFileSize 执行强约束拦截。
+     * 除检查 MIME 类型外，还通过 Magic Bytes 进行服务端文件类型验证。
      */
     private void validateFile(MultipartFile file, List<String> allowedTypes, String typeName) {
         if (file.isEmpty()) {
-            throw new RuntimeException("操作失败：上传文件内容不能为空");
+            throw new BusinessException("操作失败：上传文件内容不能为空");
         }
         if (file.getSize() > maxFileSize) {
-            throw new RuntimeException("由于安全策略限制，文件大小不能超过 " + (maxFileSize / 1024 / 1024) + "MB");
+            throw new BusinessException("由于安全策略限制，文件大小不能超过 " + (maxFileSize / 1024 / 1024) + "MB");
         }
         String contentType = file.getContentType();
         if (contentType == null || !allowedTypes.contains(contentType)) {
-            throw new RuntimeException("格式不受支持，该频道仅限上传: " + typeName);
+            throw new BusinessException("格式不受支持，该频道仅限上传: " + typeName);
+        }
+        if (!validateMagicBytes(file, contentType)) {
+            throw new BusinessException("文件内容与声明的格式不符，拒绝上传");
+        }
+    }
+
+    /**
+     * 通过 Magic Bytes 验证文件内容是否与声明类型一致。
+     */
+    private boolean validateMagicBytes(MultipartFile file, String contentType) {
+        byte[] expected = MAGIC_BYTES.get(contentType);
+        if (expected == null) {
+            return true;
+        }
+        try (InputStream in = file.getInputStream()) {
+            byte[] header = new byte[expected.length];
+            int bytesRead = in.readNBytes(header, 0, expected.length);
+            if (bytesRead < expected.length) {
+                return false;
+            }
+            for (int i = 0; i < expected.length; i++) {
+                if (header[i] != expected[i]) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (IOException e) {
+            log.warn("Magic Bytes 验证失败", e);
+            return false;
         }
     }
 
@@ -192,11 +238,18 @@ public class FileUploadService {
     }
 
     /**
-     * 从完整 URL 解析对象键。
+     * 从完整 URL 解析对象键，过滤路径遍历攻击。
      */
     private String resolveObjectName(String filePath) {
         String marker = "/" + bucketName + "/";
         int index = filePath.indexOf(marker);
-        return filePath.substring(index + marker.length());
+        if (index < 0) {
+            throw new BusinessException("文件路径格式不合法");
+        }
+        String objectName = filePath.substring(index + marker.length());
+        if (objectName.contains("..") || objectName.contains("\\")) {
+            throw new BusinessException("文件路径包含非法字符");
+        }
+        return objectName;
     }
 }

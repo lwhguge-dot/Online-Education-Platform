@@ -3,6 +3,7 @@ package com.eduplatform.gateway.config;
 import com.eduplatform.gateway.filter.RateLimitFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
@@ -38,6 +39,7 @@ public class RateLimiterConfig {
     private String trustedProxies;
 
     @Bean
+    @ConditionalOnProperty(name = "gateway.rate-limit.enabled", havingValue = "true")
     public RateLimitFilter rateLimitFilter(ObjectProvider<ReactiveStringRedisTemplate> redisTemplateProvider) {
         return new RateLimitFilter(
                 redisTemplateProvider.getIfAvailable(),

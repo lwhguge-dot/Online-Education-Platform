@@ -3,7 +3,7 @@
 -- 数据库: PostgreSQL 15+
 -- 字符集: UTF-8
 -- 表数量: 29张
--- 默认数据库账号密码: postgres / 123456
+-- 默认数据库账号密码: 请通过环境变量 POSTGRES_USER / POSTGRES_PASSWORD 配置
 -- 最后更新时间: 2026-02-08
 -- =====================================================
 -- 创建数据库（如果需要手动创建，请在psql中执行）
@@ -45,8 +45,9 @@ COMMENT ON COLUMN users.last_login_at IS '最后登录时间';
 COMMENT ON COLUMN users.created_at IS '创建时间';
 COMMENT ON COLUMN users.updated_at IS '更新时间';
 
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
 -- 用户会话表
 CREATE TABLE IF NOT EXISTS user_session (
     id BIGSERIAL PRIMARY KEY,
@@ -56,6 +57,8 @@ CREATE TABLE IF NOT EXISTS user_session (
     login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_active_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     logout_time TIMESTAMP DEFAULT NULL,
+    device_info VARCHAR(256) DEFAULT NULL,
+    ip_address VARCHAR(64) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -67,9 +70,15 @@ COMMENT ON COLUMN user_session.status IS '会话状态';
 COMMENT ON COLUMN user_session.login_time IS '登录时间';
 COMMENT ON COLUMN user_session.last_active_time IS '最后活跃时间';
 COMMENT ON COLUMN user_session.logout_time IS '登出时间';
+COMMENT ON COLUMN user_session.device_info IS '设备信息 (User-Agent解析)';
+COMMENT ON COLUMN user_session.ip_address IS '登录IP地址';
 
 CREATE INDEX IF NOT EXISTS idx_user_session_jti ON user_session(jti);
 CREATE INDEX IF NOT EXISTS idx_user_session_user_status ON user_session(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_user_session_user_id ON user_session(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_session_created_at ON user_session(created_at);
+
+ALTER TABLE IF EXISTS user_session ADD CONSTRAINT IF NOT EXISTS fk_user_session_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 -- 学生扩展信息表
 CREATE TABLE IF NOT EXISTS student_profiles (
     id BIGSERIAL PRIMARY KEY,
@@ -93,6 +102,8 @@ COMMENT ON COLUMN student_profiles.notification_settings IS '通知设置';
 COMMENT ON COLUMN student_profiles.study_goal IS '学习目标';
 
 CREATE INDEX IF NOT EXISTS idx_student_profiles_user_id ON student_profiles(user_id);
+
+ALTER TABLE IF EXISTS student_profiles ADD CONSTRAINT IF NOT EXISTS fk_student_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 -- 教师扩展信息表
 CREATE TABLE IF NOT EXISTS teacher_profiles (
     id BIGSERIAL PRIMARY KEY,
@@ -124,6 +135,8 @@ COMMENT ON COLUMN teacher_profiles.dashboard_layout IS '仪表盘布局自定义
 COMMENT ON COLUMN teacher_profiles.notification_settings IS '细粒度通知设置';
 
 CREATE INDEX IF NOT EXISTS idx_teacher_profiles_user_id ON teacher_profiles(user_id);
+
+ALTER TABLE IF EXISTS teacher_profiles ADD CONSTRAINT IF NOT EXISTS fk_teacher_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 -- =====================================================
 -- 2. 课程相关表
 -- =====================================================
@@ -199,6 +212,10 @@ COMMENT ON COLUMN courses.audit_remark IS '审核备注';
 CREATE INDEX IF NOT EXISTS idx_courses_teacher ON courses(teacher_id);
 CREATE INDEX IF NOT EXISTS idx_courses_subject ON courses(subject);
 CREATE INDEX IF NOT EXISTS idx_courses_status ON courses(status);
+CREATE INDEX IF NOT EXISTS idx_courses_created_at ON courses(created_at);
+
+ALTER TABLE IF EXISTS courses ADD CONSTRAINT IF NOT EXISTS fk_courses_teacher FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE IF EXISTS courses ADD CONSTRAINT IF NOT EXISTS fk_courses_audit_by FOREIGN KEY (audit_by) REFERENCES users(id) ON DELETE SET NULL;
 -- 章节表
 CREATE TABLE IF NOT EXISTS chapters (
     id BIGSERIAL PRIMARY KEY,
@@ -227,6 +244,8 @@ COMMENT ON COLUMN chapters.unlock_quiz_score IS '解锁下一章需测验分数'
 COMMENT ON COLUMN chapters.status IS '状态';
 
 CREATE INDEX IF NOT EXISTS idx_chapters_course ON chapters(course_id);
+
+ALTER TABLE IF EXISTS chapters ADD CONSTRAINT IF NOT EXISTS fk_chapters_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE;
 -- 章节测验表
 CREATE TABLE IF NOT EXISTS chapter_quizzes (
     id BIGSERIAL PRIMARY KEY,
@@ -273,6 +292,11 @@ COMMENT ON COLUMN enrollments.status IS '状态：active/completed/dropped';
 
 CREATE INDEX IF NOT EXISTS idx_enrollments_student ON enrollments(student_id);
 CREATE INDEX IF NOT EXISTS idx_enrollments_course ON enrollments(course_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_status ON enrollments(status);
+CREATE INDEX IF NOT EXISTS idx_enrollments_created_at ON enrollments(created_at);
+
+ALTER TABLE IF EXISTS enrollments ADD CONSTRAINT IF NOT EXISTS fk_enrollments_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE IF EXISTS enrollments ADD CONSTRAINT IF NOT EXISTS fk_enrollments_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE;
 -- =====================================================
 -- 3. 学习进度表
 -- =====================================================
@@ -312,6 +336,9 @@ CREATE INDEX IF NOT EXISTS idx_chapter_progress_student ON chapter_progress(stud
 CREATE INDEX IF NOT EXISTS idx_chapter_progress_chapter ON chapter_progress(chapter_id);
 CREATE INDEX IF NOT EXISTS idx_chapter_progress_course ON chapter_progress(course_id);
 CREATE INDEX IF NOT EXISTS idx_chapter_progress_completed ON chapter_progress(is_completed);
+
+ALTER TABLE IF EXISTS chapter_progress ADD CONSTRAINT IF NOT EXISTS fk_chapter_progress_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE IF EXISTS chapter_progress ADD CONSTRAINT IF NOT EXISTS fk_chapter_progress_chapter FOREIGN KEY (chapter_id) REFERENCES chapters(id) ON DELETE CASCADE;
 -- =====================================================
 -- 4. 作业相关表
 -- =====================================================
@@ -344,9 +371,14 @@ COMMENT ON COLUMN homeworks.test_type IS '测试类型：chapter/final';
 CREATE INDEX IF NOT EXISTS idx_homeworks_course ON homeworks(course_id);
 CREATE INDEX IF NOT EXISTS idx_homeworks_chapter ON homeworks(chapter_id);
 CREATE INDEX IF NOT EXISTS idx_homeworks_teacher ON homeworks(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_homeworks_deadline ON homeworks(deadline);
+CREATE INDEX IF NOT EXISTS idx_homeworks_created_at ON homeworks(created_at);
 
 ALTER TABLE IF EXISTS homeworks
     ADD COLUMN IF NOT EXISTS teacher_id BIGINT DEFAULT NULL;
+
+ALTER TABLE IF EXISTS homeworks ADD CONSTRAINT IF NOT EXISTS fk_homeworks_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE;
+ALTER TABLE IF EXISTS homeworks ADD CONSTRAINT IF NOT EXISTS fk_homeworks_teacher FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE SET NULL;
 
 -- 历史兼容迁移（幂等）：如旧库缺少 teacher_id 字段，则自动补齐
 -- 作业题目表
@@ -373,6 +405,8 @@ COMMENT ON COLUMN homework_questions.score IS '分值';
 COMMENT ON COLUMN homework_questions.sort_order IS '排序';
 
 CREATE INDEX IF NOT EXISTS idx_homework_questions_homework ON homework_questions(homework_id);
+
+ALTER TABLE IF EXISTS homework_questions ADD CONSTRAINT IF NOT EXISTS fk_homework_questions_homework FOREIGN KEY (homework_id) REFERENCES homeworks(id) ON DELETE CASCADE;
 -- 作业提交表
 CREATE TABLE IF NOT EXISTS homework_submissions (
     id BIGSERIAL PRIMARY KEY,
@@ -404,6 +438,11 @@ COMMENT ON COLUMN homework_submissions.feedback IS '总体反馈';
 
 CREATE INDEX IF NOT EXISTS idx_homework_submissions_student ON homework_submissions(student_id);
 CREATE INDEX IF NOT EXISTS idx_homework_submissions_homework ON homework_submissions(homework_id);
+CREATE INDEX IF NOT EXISTS idx_homework_submissions_submit_status ON homework_submissions(submit_status);
+CREATE INDEX IF NOT EXISTS idx_homework_submissions_submitted_at ON homework_submissions(submitted_at);
+
+ALTER TABLE IF EXISTS homework_submissions ADD CONSTRAINT IF NOT EXISTS fk_homework_submissions_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE IF EXISTS homework_submissions ADD CONSTRAINT IF NOT EXISTS fk_homework_submissions_homework FOREIGN KEY (homework_id) REFERENCES homeworks(id) ON DELETE CASCADE;
 -- 作业答案表
 CREATE TABLE IF NOT EXISTS homework_answers (
     id BIGSERIAL PRIMARY KEY,
@@ -428,6 +467,9 @@ COMMENT ON COLUMN homework_answers.teacher_feedback IS '教师反馈';
 
 CREATE INDEX IF NOT EXISTS idx_homework_answers_submission ON homework_answers(submission_id);
 CREATE INDEX IF NOT EXISTS idx_homework_answers_question ON homework_answers(question_id);
+
+ALTER TABLE IF EXISTS homework_answers ADD CONSTRAINT IF NOT EXISTS fk_homework_answers_submission FOREIGN KEY (submission_id) REFERENCES homework_submissions(id) ON DELETE CASCADE;
+ALTER TABLE IF EXISTS homework_answers ADD CONSTRAINT IF NOT EXISTS fk_homework_answers_question FOREIGN KEY (question_id) REFERENCES homework_questions(id) ON DELETE CASCADE;
 -- 作业解锁表
 CREATE TABLE IF NOT EXISTS homework_unlocks (
     id BIGSERIAL PRIMARY KEY,
@@ -446,6 +488,9 @@ COMMENT ON COLUMN homework_unlocks.unlocked_at IS '解锁时间';
 
 CREATE INDEX IF NOT EXISTS idx_homework_unlocks_student ON homework_unlocks(student_id);
 CREATE INDEX IF NOT EXISTS idx_homework_unlocks_homework ON homework_unlocks(homework_id);
+
+ALTER TABLE IF EXISTS homework_unlocks ADD CONSTRAINT IF NOT EXISTS fk_homework_unlocks_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE IF EXISTS homework_unlocks ADD CONSTRAINT IF NOT EXISTS fk_homework_unlocks_homework FOREIGN KEY (homework_id) REFERENCES homeworks(id) ON DELETE CASCADE;
 -- =====================================================
 -- 5. 评论与互动表
 -- =====================================================
@@ -501,6 +546,11 @@ COMMENT ON COLUMN homework_questions_discussion.status IS '状态：pending/answ
 CREATE INDEX IF NOT EXISTS idx_hqd_homework ON homework_questions_discussion(homework_id);
 CREATE INDEX IF NOT EXISTS idx_hqd_student ON homework_questions_discussion(student_id);
 CREATE INDEX IF NOT EXISTS idx_hqd_status ON homework_questions_discussion(status);
+CREATE INDEX IF NOT EXISTS idx_hqd_question_id ON homework_questions_discussion(question_id);
+CREATE INDEX IF NOT EXISTS idx_hqd_created_at ON homework_questions_discussion(created_at);
+
+ALTER TABLE IF EXISTS homework_questions_discussion ADD CONSTRAINT IF NOT EXISTS fk_hqd_homework FOREIGN KEY (homework_id) REFERENCES homeworks(id) ON DELETE CASCADE;
+ALTER TABLE IF EXISTS homework_questions_discussion ADD CONSTRAINT IF NOT EXISTS fk_hqd_student FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE;
 -- 主观题评论表
 CREATE TABLE IF NOT EXISTS subjective_comments (
     id BIGSERIAL PRIMARY KEY,
@@ -541,6 +591,9 @@ CREATE INDEX IF NOT EXISTS idx_sc_parent_id ON subjective_comments(parent_id);
 CREATE INDEX IF NOT EXISTS idx_sc_answer_status ON subjective_comments(answer_status);
 CREATE INDEX IF NOT EXISTS idx_sc_course_id ON subjective_comments(course_id);
 CREATE INDEX IF NOT EXISTS idx_sc_chapter_id ON subjective_comments(chapter_id);
+CREATE INDEX IF NOT EXISTS idx_sc_created_at ON subjective_comments(created_at);
+
+ALTER TABLE IF EXISTS subjective_comments ADD CONSTRAINT IF NOT EXISTS fk_sc_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 -- =====================================================
 -- 6. 徽章与成就表
 -- =====================================================
@@ -617,6 +670,8 @@ COMMENT ON COLUMN notifications.related_id IS '关联ID';
 
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
 -- =====================================================
 -- 8. 管理员功能表
 -- =====================================================
@@ -649,6 +704,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_action_type ON audit_logs(action_type)
 CREATE INDEX IF NOT EXISTS idx_audit_logs_operator_id ON audit_logs(operator_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_target_type ON audit_logs(target_type);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+
+ALTER TABLE IF EXISTS audit_logs ADD CONSTRAINT IF NOT EXISTS fk_audit_logs_operator FOREIGN KEY (operator_id) REFERENCES users(id) ON DELETE SET NULL;
 -- 系统公告表
 CREATE TABLE IF NOT EXISTS announcements (
     id BIGSERIAL PRIMARY KEY,
@@ -657,7 +714,7 @@ CREATE TABLE IF NOT EXISTS announcements (
     target_audience VARCHAR(20) DEFAULT 'ALL',
     course_id BIGINT DEFAULT NULL,
     status VARCHAR(20) DEFAULT 'DRAFT',
-    is_pinned SMALLINT DEFAULT 0,
+    is_pinned BOOLEAN DEFAULT false,
     publish_time TIMESTAMP DEFAULT NULL,
     expire_time TIMESTAMP DEFAULT NULL,
     read_count INT DEFAULT 0,
@@ -701,6 +758,9 @@ COMMENT ON COLUMN announcement_reads.read_at IS '阅读时间';
 
 CREATE INDEX IF NOT EXISTS idx_announcement_reads_announcement ON announcement_reads(announcement_id);
 CREATE INDEX IF NOT EXISTS idx_announcement_reads_user ON announcement_reads(user_id);
+
+ALTER TABLE IF EXISTS announcement_reads ADD CONSTRAINT IF NOT EXISTS fk_announcement_reads_announcement FOREIGN KEY (announcement_id) REFERENCES announcements(id) ON DELETE CASCADE;
+ALTER TABLE IF EXISTS announcement_reads ADD CONSTRAINT IF NOT EXISTS fk_announcement_reads_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 -- =====================================================
 -- 9. 教学日历表
 -- =====================================================
@@ -744,6 +804,8 @@ COMMENT ON COLUMN teaching_events.status IS '状态：active/cancelled/completed
 CREATE INDEX IF NOT EXISTS idx_teaching_events_teacher ON teaching_events(teacher_id);
 CREATE INDEX IF NOT EXISTS idx_teaching_events_start_time ON teaching_events(start_time);
 CREATE INDEX IF NOT EXISTS idx_teaching_events_course ON teaching_events(course_id);
+
+ALTER TABLE IF EXISTS teaching_events ADD CONSTRAINT IF NOT EXISTS fk_teaching_events_teacher FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE;
 -- =====================================================
 -- 10. 评论系统表
 -- =====================================================
@@ -781,6 +843,11 @@ CREATE INDEX IF NOT EXISTS idx_chapter_comments_course ON chapter_comments(cours
 CREATE INDEX IF NOT EXISTS idx_chapter_comments_user ON chapter_comments(user_id);
 CREATE INDEX IF NOT EXISTS idx_chapter_comments_parent ON chapter_comments(parent_id);
 CREATE INDEX IF NOT EXISTS idx_chapter_comments_created ON chapter_comments(created_at);
+CREATE INDEX IF NOT EXISTS idx_chapter_comments_status ON chapter_comments(status);
+
+ALTER TABLE IF EXISTS chapter_comments ADD CONSTRAINT IF NOT EXISTS fk_chapter_comments_chapter FOREIGN KEY (chapter_id) REFERENCES chapters(id) ON DELETE CASCADE;
+ALTER TABLE IF EXISTS chapter_comments ADD CONSTRAINT IF NOT EXISTS fk_chapter_comments_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE;
+ALTER TABLE IF EXISTS chapter_comments ADD CONSTRAINT IF NOT EXISTS fk_chapter_comments_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 -- 评论点赞表
 CREATE TABLE IF NOT EXISTS comment_likes (
     id BIGSERIAL PRIMARY KEY,
@@ -797,6 +864,8 @@ COMMENT ON COLUMN comment_likes.created_at IS '创建时间';
 
 CREATE INDEX IF NOT EXISTS idx_comment_likes_comment ON comment_likes(comment_id);
 CREATE INDEX IF NOT EXISTS idx_comment_likes_user ON comment_likes(user_id);
+
+ALTER TABLE IF EXISTS comment_likes ADD CONSTRAINT IF NOT EXISTS fk_comment_likes_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 -- 禁言用户表
 CREATE TABLE IF NOT EXISTS muted_users (
     id BIGSERIAL PRIMARY KEY,
@@ -829,6 +898,8 @@ COMMENT ON COLUMN muted_users.updated_at IS '更新时间';
 CREATE INDEX IF NOT EXISTS idx_muted_users_user ON muted_users(user_id);
 CREATE INDEX IF NOT EXISTS idx_muted_users_course ON muted_users(course_id);
 CREATE INDEX IF NOT EXISTS idx_muted_users_status ON muted_users(status);
+
+ALTER TABLE IF EXISTS muted_users ADD CONSTRAINT IF NOT EXISTS fk_muted_users_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
 -- muted_users 历史兼容迁移（幂等）
 -- 迁移说明：适配旧版仅包含 operator_id/mute_until 的表结构

@@ -218,6 +218,11 @@ const toggleSelectUser = (id) => {
 
 const toggleUserStatus = async (user) => {
   const newStatus = user.status === 1 ? 0 : 1
+  const currentUser = authStore.user
+  if (user.id === currentUser?.id && newStatus === 0) {
+    toast.warning('不能禁用自己的账号')
+    return
+  }
   const actionText = newStatus === 1 ? '启用' : '禁用'
   const confirmed = await confirmStore.show({
     title: `${actionText}用户`,
@@ -227,7 +232,6 @@ const toggleUserStatus = async (user) => {
     cancelText: '取消'
   })
   if (!confirmed) return
-  const currentUser = authStore.user
   try {
     await userAPI.updateStatus(user.id, newStatus, currentUser?.id, currentUser?.username)
     emit('refresh')

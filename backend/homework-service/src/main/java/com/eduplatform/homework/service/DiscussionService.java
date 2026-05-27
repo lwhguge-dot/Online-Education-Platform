@@ -6,6 +6,7 @@ import com.eduplatform.homework.dto.DiscussionStatsDTO;
 import com.eduplatform.homework.entity.SubjectiveComment;
 import com.eduplatform.homework.mapper.SubjectiveCommentMapper;
 import com.eduplatform.homework.vo.SubjectiveCommentVO;
+import com.eduplatform.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -129,7 +130,10 @@ public class DiscussionService {
     public SubjectiveCommentVO reply(Long parentId, Long userId, String content, Long courseId, Long chapterId) {
         // 获取父评论的 question_id
         SubjectiveComment parent = commentMapper.selectById(parentId);
-        Long questionId = parent != null ? parent.getQuestionId() : 1L; // 默认值为1
+        if (parent == null) {
+            throw new BusinessException("回复失败：父评论不存在");
+        }
+        Long questionId = parent.getQuestionId();
         
         SubjectiveComment comment = new SubjectiveComment();
         comment.setQuestionId(questionId);

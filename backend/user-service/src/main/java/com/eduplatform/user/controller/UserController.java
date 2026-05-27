@@ -1,5 +1,7 @@
 package com.eduplatform.user.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.common.result.Result;
 import com.eduplatform.user.dto.UserProfileDTO;
 import com.eduplatform.user.dto.UserStatusUpdateRequest;
@@ -64,26 +66,24 @@ public class UserController {
             @RequestParam(name = "limit", defaultValue = "10") int limit,
             @RequestParam(name = "role", required = false) String role,
             @RequestParam(name = "status", required = false) Integer status,
-            @RequestParam(name = "keyword", required = false) String keyword) {
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
 
-        java.util.List<User> users = userService.getSimpleList(role);
-        List<UserVO> userVOs = userService.convertToVOList(users);
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可查看用户列表");
+        }
 
-        // 服务端手动分页逻辑 (后续可迁移至 MyBatis-Plus 分页插件)
-        int total = userVOs.size();
-        int start = (page - 1) * limit;
-        int end = Math.min(start + limit, total);
-        java.util.List<UserVO> pageUsers = start < total ? userVOs.subList(start, end)
-                : java.util.Collections.emptyList();
+        Page<User> pageResult = userService.getList(page, limit, role, status, keyword);
+        List<UserVO> userVOs = userService.convertToVOList(pageResult.getRecords());
 
         Map<String, Object> data = new HashMap<>();
-        data.put("list", pageUsers);
+        data.put("list", userVOs);
 
         Map<String, Object> pagination = new HashMap<>();
-        pagination.put("total", total);
+        pagination.put("total", pageResult.getTotal());
         pagination.put("page", page);
         pagination.put("limit", limit);
-        pagination.put("pages", (int) Math.ceil((double) total / limit));
+        pagination.put("pages", (int) Math.ceil((double) pageResult.getTotal() / limit));
         data.put("pagination", pagination);
 
         return Result.success(data);
@@ -96,7 +96,11 @@ public class UserController {
      * @return 统计数据映射集
      */
     @GetMapping("/stats")
-    public Result<Map<String, Object>> getStats() {
+    public Result<Map<String, Object>> getStats(
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!isAdminRole(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅管理员可查看用户统计");
+        }
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", userService.countTotal());
         stats.put("students", userService.countByRole("student"));
@@ -126,7 +130,7 @@ public class UserController {
         if (user != null) {
             return Result.success(userService.convertToVO(user));
         }
-        return Result.error("用户不存在");
+        throw new BusinessException(404, "用户不存在");
     }
 
     /**
@@ -256,7 +260,7 @@ public class UserController {
 
         User user = userService.getById(id);
         if (user == null) {
-            return Result.error("用户不存在");
+            throw new BusinessException(404, "用户不存在");
         }
 
         // 更新允许修改的基础字段
@@ -381,16 +385,30 @@ public class UserController {
     }
 
     /**
-     * 获取全系统当前的在线用户 ID 列表 (管理员/仪表盘使用)
+     * 获取全系统当前的在线用户完整信息列表 (管理员/仪表盘使用)
+     * 返回包含 id/username/name/email/role 的在线用户数据，供前端弹窗展示。
      */
     @GetMapping("/online-status")
-    public Result<List<Long>> getAllOnlineUserIds(
+    public Result<List<Map<String, Object>>> getAllOnlineUserIds(
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         if (!isAdminRole(currentUserRole)) {
             return Result.failure(403, "权限不足，仅管理员可查看在线状态");
         }
         List<Long> onlineUserIds = sessionService.getAllOnlineUserIds();
-        return Result.success(onlineUserIds);
+        if (onlineUserIds.isEmpty()) {
+            return Result.success(Collections.emptyList());
+        }
+        List<User> onlineUsers = userService.getByIds(onlineUserIds);
+        List<Map<String, Object>> result = onlineUsers.stream().map(user -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", user.getId());
+            map.put("username", user.getUsername());
+            map.put("name", user.getName());
+            map.put("email", user.getEmail());
+            map.put("role", user.getRole());
+            return map;
+        }).collect(Collectors.toList());
+        return Result.success(result);
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.eduplatform.course.service;
 
+import com.eduplatform.common.exception.BusinessException;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.eduplatform.course.entity.Chapter;
 import com.eduplatform.course.entity.Course;
@@ -59,7 +60,7 @@ public class CourseCascadeDeleteService {
     public void cascadeDeleteCourse(Long courseId) {
         Course course = courseMapper.selectById(courseId);
         if (course == null) {
-            throw new RuntimeException("操作失败：目标课程不存在或已被销毁");
+            throw new BusinessException("操作失败：目标课程不存在或已被销毁");
         }
 
         log.info("级联审计：启动课程清理流 | courseId={}, title={}", courseId, course.getTitle());
@@ -97,22 +98,24 @@ public class CourseCascadeDeleteService {
         mutedUserMapper.deleteByCourseId(courseId); // 社交管控记录
         blockedWordMapper.deleteByCourseId(courseId); // 课程私有词库
 
-        // 4. 跨域联动：调用分布式微服务清理孤岛数据
+        // 4. 跨域联动：先同步清理远端数据，失败则回滚本地事务
         try {
             progressServiceClient.deleteCourseRelatedData(courseId);
             log.info("RPC 调用：同步清理 Progress-service 成功");
         } catch (Exception e) {
-            log.warn("RPC 异常：Progress 数据同步失败（可能导致统计偏差）, error={}", e.getMessage());
+            log.error("RPC 异常：Progress 数据同步失败，事务将回滚 courseId={}", courseId, e);
+            throw new BusinessException("级联删除失败：学习进度服务不可用，请稍后重试");
         }
 
         try {
             homeworkServiceClient.deleteCourseRelatedData(courseId);
             log.info("RPC 调用：同步清理 Homework-service 成功");
         } catch (Exception e) {
-            log.warn("RPC 异常：Homework 数据同步失败, error={}", e.getMessage());
+            log.error("RPC 异常：Homework 数据同步失败，事务将回滚 courseId={}", courseId, e);
+            throw new BusinessException("级联删除失败：作业服务不可用，请稍后重试");
         }
 
-        // 5. 实体卸载
+        // 5. 远端数据清理成功后，最后删除课程主记录
         courseMapper.deleteById(courseId);
         log.info("持久层审计：课程主表记录已移除");
 
@@ -161,17 +164,19 @@ public class CourseCascadeDeleteService {
         chapterCommentMapper.deleteByUserId(userId);
         mutedUserMapper.deleteByUserId(userId);
 
-        // 跨服务联动：触发进度与作业足迹清理
+        // 跨服务联动：先同步远端，失败则回滚本地事务
         try {
             progressServiceClient.deleteUserRelatedData(userId);
         } catch (Exception e) {
-            log.warn("RPC 异常：Progress 用户数据同步失败 userId={}", userId);
+            log.error("RPC 异常：Progress 用户数据同步失败，事务将回滚 userId={}", userId, e);
+            throw new BusinessException("级联删除失败：学习进度服务不可用，请稍后重试");
         }
 
         try {
             homeworkServiceClient.deleteUserRelatedData(userId);
         } catch (Exception e) {
-            log.warn("RPC 异常：Homework 用户数据同步失败 userId={}", userId);
+            log.error("RPC 异常：Homework 用户数据同步失败，事务将回滚 userId={}", userId, e);
+            throw new BusinessException("级联删除失败：作业服务不可用，请稍后重试");
         }
 
         log.info("级联审计：用户关联清理成功结束 userId={}", userId);

@@ -48,7 +48,6 @@ logs/
 postgres-data/
 minio-data/
 prometheus-data/
-grafana-data/
 
 # ==================== 临时文件 ====================
 tmp/
@@ -56,11 +55,31 @@ temp/
 *.tmp
 *.bak
 
+# ==================== 浏览器测试截图（临时产物）====================
+**/test-screenshots/
+**/tests/screenshots/
+
+# ==================== Python 虚拟环境 & 缓存 ====================
+.venv-hindsight/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
 # ==================== Claude Code 工具 ====================
 .claude/
 
 # ==================== Trae AI 工具 ====================
 .trae/
+
+# ==================== MCP 本地配置 ====================
+mcp.json
+
+# ==================== Playwright MCP 浏览器会话 ====================
+.playwright-mcp/
+
+# ==================== 前端构建缓存 ====================
+frontend/.vite/
 
 # ==================== 前端审计产物 ====================
 frontend/.audit-output/
@@ -77,16 +96,16 @@ tools/audit/
 # ==================== jqwik 测试数据库 ====================
 **/.jqwik-database
 
-# ==================== Codex 技能运行产物（保留技能源码入库） ====================
-.codex/skills/**/node_modules/
-.codex/skills/**/__pycache__/
-.codex/skills/**/.pytest_cache/
-.codex/skills/**/.temp-execution-*.js
-.codex/skills/**/design-system/
-.codex/skills/**/output/
-.codex/skills/**/.cache/
+# ==================== OpenCode 技能产物（已迁移至 DeepSeek，保留兼容） ====================
+.opencode/skills/**/node_modules/
+.opencode/skills/**/__pycache__/
+.opencode/skills/**/.pytest_cache/
+.opencode/skills/**/.temp-execution-*.js
+.opencode/skills/**/design-system/
+.opencode/skills/**/output/
+.opencode/skills/**/.cache/
 
-# ==================== Codex 规划过程产物（本地） ====================
+# ==================== Codex 规划产物（临时文件） ====================
 task_plan.md
 findings.md
 progress.md
@@ -95,3 +114,31 @@ docs/plans/
 # ==================== 前端 UI 审查运行产物（本地临时，不入库） ====================
 artifacts/ui-audit/
 docs/reviews/frontend-ui-motion-audit-*.md
+
+# ==================== 以下为上传 GitHub 最小集排除项（不影响构建运行） ====================
+
+# AI 工具配置
+.opencode/
+.codex/
+AGENTS.md
+
+# CI/CD 工作流（非本地运行必需）
+.github/
+
+# 非必需运维脚本
+ops/scripts/hindsight/
+ops/scripts/ollama/
+ops/scripts/skills/
+ops/scripts/upload/
+ops/skills/
+ops/monitoring/
+
+# 测试设计文档
+test/
+
+# 测试代码
+**/src/test/
+**/*.test.ts
+**/*.spec.ts
+**/*.spec.js
+**/*.spec.mjs

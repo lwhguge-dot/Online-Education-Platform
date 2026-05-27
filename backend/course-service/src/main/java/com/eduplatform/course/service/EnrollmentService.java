@@ -1,6 +1,7 @@
 package com.eduplatform.course.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.common.event.EventType;
 import com.eduplatform.common.event.RedisStreamConstants;
 import com.eduplatform.common.event.RedisStreamPublisher;
@@ -110,14 +111,14 @@ public class EnrollmentService {
     public Enrollment enroll(Long studentId, Long courseId) {
         Course course = courseMapper.selectById(courseId);
         if (course == null) {
-            throw new RuntimeException("操作失败：目标课程不存在");
+            throw new BusinessException("操作失败：目标课程不存在");
         }
         if (!Course.STATUS_PUBLISHED.equals(course.getStatus())) {
-            throw new RuntimeException("由于课程当前未处于发布状态，暂时无法接受报名");
+            throw new BusinessException("由于课程当前未处于发布状态，暂时无法接受报名");
         }
 
         if (isEnrolled(studentId, courseId)) {
-            throw new RuntimeException("您已参与该课程的学习，请勿重复报名");
+            throw new BusinessException("您已参与该课程的学习，请勿重复报名");
         }
 
         Enrollment enrollment = new Enrollment();
@@ -155,7 +156,7 @@ public class EnrollmentService {
                         .ne(Enrollment::getStatus, Enrollment.STATUS_DROPPED));
 
         if (enrollment == null) {
-            throw new RuntimeException("未匹配到有效的报名记录，无法执行退课");
+            throw new BusinessException("未匹配到有效的报名记录，无法执行退课");
         }
 
         enrollment.setStatus(Enrollment.STATUS_DROPPED);
@@ -216,10 +217,11 @@ public class EnrollmentService {
      * @param courseId  课程 ID
      * @param progress  当前总进度百分比 (0-100)
      */
+    @Transactional
     public void updateProgress(Long studentId, Long courseId, Integer progress) {
         Enrollment enrollment = getEnrollment(studentId, courseId);
         if (enrollment == null) {
-            throw new RuntimeException("操作异常：未找到对应的报名记录");
+            throw new BusinessException("操作异常：未找到对应的报名记录");
         }
 
         enrollment.setProgress(progress);

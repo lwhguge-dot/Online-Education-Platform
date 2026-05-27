@@ -9,8 +9,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
@@ -39,7 +41,9 @@ public class PasswordResetService {
     private final UserMapper userMapper;
     private final UserSessionService sessionService;
     private final StringRedisTemplate redisTemplate;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    @Autowired
+    private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Value("${security.password-reset.window-seconds:600}")
     private long windowSeconds = 600;
@@ -60,7 +64,8 @@ public class PasswordResetService {
      * 密码重置状态。
      */
     public enum PasswordResetStatus {
-        ACCEPTED,
+        SUCCESS,
+        TOKEN_INVALID,
         RATE_LIMITED
     }
 
@@ -96,7 +101,7 @@ public class PasswordResetService {
         if (isIdentityMatched(user, normalizedRealName)) {
             cacheResetToken(token, user.getId());
         }
-        return new PasswordResetIssueResult(PasswordResetStatus.ACCEPTED, token);
+        return new PasswordResetIssueResult(PasswordResetStatus.SUCCESS, token);
     }
 
     /**
@@ -107,8 +112,8 @@ public class PasswordResetService {
         if (isRateLimited(RESET_CONFIRM_IP_PREFIX + normalizedIp, confirmLimitPerIp, windowSeconds)) {
             return PasswordResetStatus.RATE_LIMITED;
         }
-        applyResetByToken(resetToken, newPassword);
-        return PasswordResetStatus.ACCEPTED;
+        boolean applied = applyResetByToken(resetToken, newPassword);
+        return applied ? PasswordResetStatus.SUCCESS : PasswordResetStatus.TOKEN_INVALID;
     }
 
     /**
@@ -120,17 +125,18 @@ public class PasswordResetService {
         if (issueResult.getStatus() == PasswordResetStatus.RATE_LIMITED) {
             return PasswordResetStatus.RATE_LIMITED;
         }
-        applyResetByToken(issueResult.getToken(), newPassword);
-        return PasswordResetStatus.ACCEPTED;
+        boolean applied = applyResetByToken(issueResult.getToken(), newPassword);
+        return applied ? PasswordResetStatus.SUCCESS : PasswordResetStatus.TOKEN_INVALID;
     }
 
     /**
      * 真正执行密码落库与会话失效。
-     * 令牌无效或身份不匹配时静默返回，避免形成枚举信号。
+     * 令牌无效或身份不匹配时返回 false。
      */
-    private void applyResetByToken(String token, String newPassword) {
+    @Transactional
+    private boolean applyResetByToken(String token, String newPassword) {
         if (!StringUtils.hasText(token) || !StringUtils.hasText(newPassword)) {
-            return;
+            return false;
         }
 
         String tokenKey = RESET_TOKEN_PREFIX + token;
@@ -139,31 +145,31 @@ public class PasswordResetService {
             userIdText = redisTemplate.opsForValue().get(tokenKey);
         } catch (Exception e) {
             log.warn("读取重置令牌失败，已忽略此次请求", e);
-            return;
+            return false;
         }
         if (!StringUtils.hasText(userIdText)) {
-            return;
+            return false;
         }
 
         try {
             Long userId = Long.parseLong(userIdText);
             User user = userMapper.selectById(userId);
             if (user == null) {
-                return;
+                return false;
             }
 
             user.setPassword(passwordEncoder.encode(newPassword));
             user.setUpdatedAt(LocalDateTime.now());
             userMapper.updateById(user);
-            // 密码变更后强制下线所有会话，防止旧 token 继续使用。
             sessionService.forceOfflineUser(userId);
+            return true;
         } catch (Exception e) {
             log.warn("应用密码重置失败，已忽略本次重置", e);
+            return false;
         } finally {
             try {
                 redisTemplate.delete(tokenKey);
             } catch (Exception e) {
-                // 安全要求：不记录令牌键值，避免敏感信息泄露。
                 log.debug("删除重置令牌失败", e);
             }
         }
@@ -213,9 +219,8 @@ public class PasswordResetService {
             }
             return count > maxAllowed;
         } catch (Exception e) {
-            // Redis 异常时采取安全失败策略，避免被无限重试绕过。
-            log.warn("密码重置限流检查失败，按限流处理", e);
-            return true;
+            log.warn("密码重置限流检查失败，Redis 不可用，已临时放行", e);
+            return false;
         }
     }
 

@@ -7,7 +7,8 @@
 import { ref, onMounted } from 'vue'
 import {
   TrendingUp, UserPlus, LogIn, Users, BookOpen,
-  Bell, Eye, Ban, ChevronRight, RefreshCw
+  Bell, Eye, Ban, ChevronRight, RefreshCw,
+  GraduationCap, Shield
 } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
 import AnimatedNumber from '../../components/ui/AnimatedNumber.vue'
@@ -171,6 +172,50 @@ const getRoleName = (role) => {
 
   <!-- 实际内容 -->
   <div v-else class="space-y-6">
+    <!-- 系统概况 -->
+    <GlassCard class="p-6 dark:bg-slate-800/60 dark:border-slate-700">
+      <div class="flex items-center gap-2 mb-5">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-zijinghui to-qianniuzi flex items-center justify-center shadow-md shadow-purple-500/20">
+          <GraduationCap class="w-4 h-4 text-white" />
+        </div>
+        <h3 class="text-lg font-bold text-shuimo dark:text-slate-200 font-song">系统概况</h3>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="stagger-item text-center p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:shadow-lg hover:shadow-blue-100 dark:hover:shadow-blue-900/20 hover:-translate-y-0.5 transition-[background-color,transform,box-shadow] duration-300 cursor-default">
+          <Users class="w-6 h-6 text-blue-500 mx-auto mb-2" />
+          <div class="text-2xl font-bold text-blue-600 dark:text-blue-400 font-mono">
+            <AnimatedNumber :value="stats.total" :duration="800" />
+          </div>
+          <div class="text-xs text-blue-600/70 dark:text-blue-400/70 font-medium">总用户数</div>
+        </div>
+
+        <div class="stagger-item text-center p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 hover:shadow-lg hover:shadow-emerald-100 dark:hover:shadow-emerald-900/20 hover:-translate-y-0.5 transition-[background-color,transform,box-shadow] duration-300 cursor-default">
+          <GraduationCap class="w-6 h-6 text-emerald-500 mx-auto mb-2" />
+          <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+            <AnimatedNumber :value="stats.students" :duration="800" />
+          </div>
+          <div class="text-xs text-emerald-600/70 dark:text-emerald-400/70 font-medium">学生数</div>
+        </div>
+
+        <div class="stagger-item text-center p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:shadow-lg hover:shadow-amber-100 dark:hover:shadow-amber-900/20 hover:-translate-y-0.5 transition-[background-color,transform,box-shadow] duration-300 cursor-default">
+          <BookOpen class="w-6 h-6 text-amber-500 mx-auto mb-2" />
+          <div class="text-2xl font-bold text-amber-600 dark:text-amber-400 font-mono">
+            <AnimatedNumber :value="stats.teachers" :duration="800" />
+          </div>
+          <div class="text-xs text-amber-600/70 dark:text-amber-400/70 font-medium">教师数</div>
+        </div>
+
+        <div class="stagger-item text-center p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 hover:shadow-lg hover:shadow-purple-100 dark:hover:shadow-purple-900/20 hover:-translate-y-0.5 transition-[background-color,transform,box-shadow] duration-300 cursor-default">
+          <Shield class="w-6 h-6 text-purple-500 mx-auto mb-2" />
+          <div class="text-2xl font-bold text-purple-600 dark:text-purple-400 font-mono">
+            <AnimatedNumber :value="stats.admins" :duration="800" />
+          </div>
+          <div class="text-xs text-purple-600/70 dark:text-purple-400/70 font-medium">管理员数</div>
+        </div>
+      </div>
+    </GlassCard>
+
     <!-- 第一行：今日概况与待办 -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 stagger-list">
 

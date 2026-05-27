@@ -38,7 +38,7 @@ public class ProgressAnalyticsService {
     /**
      * 获取学生学习轨迹摘要。
      */
-    @Cacheable(value = "learning_track", key = "#p0")
+    @Cacheable(value = "learning_track", key = "#p0", sync = true)
     public Map<String, Object> getLearningTrack(Long studentId) {
         Map<String, Object> track = new HashMap<>();
 

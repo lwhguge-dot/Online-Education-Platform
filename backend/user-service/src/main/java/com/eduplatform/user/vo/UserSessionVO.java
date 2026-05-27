@@ -44,4 +44,7 @@ public class UserSessionVO {
      * 登出时间
      */
     private LocalDateTime logoutTime;
+
+    private String deviceInfo;
+    private String ipAddress;
 }

@@ -30,8 +30,6 @@
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
         <jjwt.version>0.12.3</jjwt.version>
         <micrometer.version>1.12.0</micrometer.version>
-        <micrometer-tracing.version>1.2.0</micrometer-tracing.version>
-        <sentinel.version>1.8.6</sentinel.version>
         <langchain4j.version>0.32.0</langchain4j.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -64,36 +62,6 @@
                 <groupId>io.micrometer</groupId>
                 <artifactId>micrometer-registry-prometheus</artifactId>
                 <version>${micrometer.version}</version>
-            </dependency>
-            <!-- Micrometer Tracing Bridge for OpenTelemetry -->
-            <dependency>
-                <groupId>io.micrometer</groupId>
-                <artifactId>micrometer-tracing-bridge-otel</artifactId>
-                <version>${micrometer-tracing.version}</version>
-            </dependency>
-            <!-- OpenTelemetry Exporter for OTLP (Jaeger) -->
-            <dependency>
-                <groupId>io.opentelemetry</groupId>
-                <artifactId>opentelemetry-exporter-otlp</artifactId>
-                <version>1.32.0</version>
-            </dependency>
-            <!-- Sentinel 核心库 -->
-            <dependency>
-                <groupId>com.alibaba.csp</groupId>
-                <artifactId>sentinel-core</artifactId>
-                <version>${sentinel.version}</version>
-            </dependency>
-            <!-- Sentinel 数据源扩展 (Nacos) -->
-            <dependency>
-                <groupId>com.alibaba.csp</groupId>
-                <artifactId>sentinel-datasource-nacos</artifactId>
-                <version>${sentinel.version}</version>
-            </dependency>
-            <!-- Sentinel WebMVC 适配器 (v6x = Jakarta 兼容版, 适配 Spring Boot 3.x) -->
-            <dependency>
-                <groupId>com.alibaba.csp</groupId>
-                <artifactId>sentinel-spring-webmvc-v6x-adapter</artifactId>
-                <version>1.8.8</version>
             </dependency>
                     <!-- LangChain4j BOM -->
             <dependency>

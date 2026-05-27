@@ -110,7 +110,7 @@ public class GatewayUserHeaderSignatureFilter extends OncePerRequestFilter {
             byte[] digest = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
         } catch (Exception e) {
-            return "";
+            throw new IllegalStateException("身份签名生成失败，服务内部配置异常", e);
         }
     }
 

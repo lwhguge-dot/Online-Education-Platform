@@ -2,11 +2,13 @@ package com.eduplatform.course.service;
 
 import com.eduplatform.course.entity.Course;
 import com.eduplatform.course.mapper.CourseMapper;
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.course.dto.CourseDTO;
 import com.eduplatform.course.vo.CourseVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -80,8 +82,8 @@ public class CourseService {
      * @param status  课程状态（可选）
      * @return 管理端可见课程列表
      */
-    public List<Course> getAdminVisibleCourses(String subject, String status) {
-        return courseReadService.getAdminVisibleCourses(subject, status);
+    public List<Course> getAdminVisibleCourses(String subject, String status, String keyword) {
+        return courseReadService.getAdminVisibleCourses(subject, status, keyword);
     }
 
     /**
@@ -126,6 +128,7 @@ public class CourseService {
      * @param dto 包含标题、描述、分类及封面图的原始 DTO
      * @return 初始化完成后的持久层实体
      */
+    @Transactional
     public Course createCourse(CourseDTO dto) {
         if (dto == null) {
             throw new IllegalArgumentException("课程数据载荷缺失");
@@ -148,13 +151,14 @@ public class CourseService {
      * @param id  目标课程唯一标识
      * @param dto 包含待修改属性的容器
      */
+    @Transactional
     public void updateCourse(Long id, CourseDTO dto) {
         if (dto == null) {
             throw new IllegalArgumentException("更新内容不可为空");
         }
         Course existing = courseMapper.selectById(id);
         if (existing == null) {
-            throw new RuntimeException("操作失败：目标课程不存在于系统中");
+            throw new BusinessException("操作失败：目标课程不存在于系统中");
         }
         // 按需覆盖可变属性
         if (dto.getTitle() != null)
@@ -270,6 +274,7 @@ public class CourseService {
      * 物理删除课程记录 (谨慎使用)
      * 注意：本接口未包含级联删除逻辑，若需深度清理请参阅 CourseCascadeDeleteService。
      */
+    @Transactional
     public void deleteCourse(Long id) {
         courseMapper.deleteById(id);
     }
@@ -316,7 +321,7 @@ public class CourseService {
     public Course duplicateCourse(Long courseId, String newTitle, Long teacherId) {
         Course source = courseMapper.selectById(courseId);
         if (source == null) {
-            throw new RuntimeException("操作失败：模板课程记录缺失");
+            throw new BusinessException("操作失败：模板课程记录缺失");
         }
 
         Course newCourse = new Course();

@@ -1,6 +1,7 @@
 package com.eduplatform.homework.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.homework.dto.GradeSubmissionDTO;
 import com.eduplatform.homework.dto.NotificationRequest;
 import com.eduplatform.homework.entity.Homework;
@@ -22,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -39,23 +41,30 @@ public class HomeworkGradingService {
     private final HomeworkQuestionMapper questionMapper;
     private final UserServiceClient userServiceClient;
 
+    private final Map<Long, Object> submissionLocks = new ConcurrentHashMap<>();
+
+    private Object getLock(Long submissionId) {
+        return submissionLocks.computeIfAbsent(submissionId, k -> new Object());
+    }
+
     /**
      * 教师批改单个主观题。
      */
     @Transactional
     public void gradeSubjective(Long submissionId, Long questionId, Integer score, String feedback) {
-        HomeworkAnswer answer = answerMapper.selectOne(
-                new LambdaQueryWrapper<HomeworkAnswer>()
-                        .eq(HomeworkAnswer::getSubmissionId, submissionId)
-                        .eq(HomeworkAnswer::getQuestionId, questionId));
+        synchronized (getLock(submissionId)) {
+            HomeworkAnswer answer = answerMapper.selectOne(
+                    new LambdaQueryWrapper<HomeworkAnswer>()
+                            .eq(HomeworkAnswer::getSubmissionId, submissionId)
+                            .eq(HomeworkAnswer::getQuestionId, questionId));
 
-        if (answer != null) {
-            answer.setScore(score);
-            answer.setTeacherFeedback(feedback);
-            answerMapper.updateById(answer);
+            if (answer != null) {
+                answer.setScore(score);
+                answer.setTeacherFeedback(feedback);
+                answerMapper.updateById(answer);
 
-            // 检查是否所有主观题都已批改，更新提交状态
-            updateSubmissionStatus(submissionId);
+                updateSubmissionStatus(submissionId);
+            }
         }
     }
 
@@ -64,44 +73,41 @@ public class HomeworkGradingService {
      */
     @Transactional
     public void gradeSubmission(Long submissionId, GradeSubmissionDTO dto) {
-        HomeworkSubmission submission = submissionMapper.selectById(submissionId);
-        if (submission == null) {
-            throw new RuntimeException("提交记录不存在");
-        }
+        synchronized (getLock(submissionId)) {
+            HomeworkSubmission submission = submissionMapper.selectById(submissionId);
+            if (submission == null) {
+                throw new BusinessException("提交记录不存在");
+            }
 
-        // 批改每个题目
-        if (dto.getGrades() != null) {
-            for (GradeSubmissionDTO.QuestionGrade grade : dto.getGrades()) {
-                HomeworkAnswer answer = answerMapper.selectOne(
-                        new LambdaQueryWrapper<HomeworkAnswer>()
-                                .eq(HomeworkAnswer::getSubmissionId, submissionId)
-                                .eq(HomeworkAnswer::getQuestionId, grade.getQuestionId()));
+            if (dto.getGrades() != null) {
+                for (GradeSubmissionDTO.QuestionGrade grade : dto.getGrades()) {
+                    HomeworkAnswer answer = answerMapper.selectOne(
+                            new LambdaQueryWrapper<HomeworkAnswer>()
+                                    .eq(HomeworkAnswer::getSubmissionId, submissionId)
+                                    .eq(HomeworkAnswer::getQuestionId, grade.getQuestionId()));
 
-                if (answer != null) {
-                    answer.setScore(grade.getScore());
-                    answer.setTeacherFeedback(grade.getFeedback());
-                    answerMapper.updateById(answer);
+                    if (answer != null) {
+                        answer.setScore(grade.getScore());
+                        answer.setTeacherFeedback(grade.getFeedback());
+                        answerMapper.updateById(answer);
+                    }
                 }
             }
-        }
 
-        // 更新整体评语
-        if (dto.getOverallFeedback() != null) {
-            submission.setFeedback(dto.getOverallFeedback());
-        }
+            if (dto.getOverallFeedback() != null) {
+                submission.setFeedback(dto.getOverallFeedback());
+            }
 
-        // 更新批改人
-        if (dto.getGradedBy() != null) {
-            submission.setGradedBy(dto.getGradedBy());
-        }
+            if (dto.getGradedBy() != null) {
+                submission.setGradedBy(dto.getGradedBy());
+            }
 
-        // 重新计算总分并更新状态
-        updateSubmissionScoreAndStatus(submissionId);
+            updateSubmissionScoreAndStatus(submissionId);
 
-        // 检查是否批改完成，如果完成则发送通知给学生
-        HomeworkSubmission updatedSubmission = submissionMapper.selectById(submissionId);
-        if ("graded".equals(updatedSubmission.getSubmitStatus())) {
-            sendGradingNotification(updatedSubmission);
+            HomeworkSubmission updatedSubmission = submissionMapper.selectById(submissionId);
+            if ("graded".equals(updatedSubmission.getSubmitStatus())) {
+                sendGradingNotification(updatedSubmission);
+            }
         }
     }
 
@@ -122,9 +128,10 @@ public class HomeworkGradingService {
 
         if (allGraded) {
             int totalScore = answers.stream().mapToInt(a -> a.getScore() != null ? a.getScore() : 0).sum();
+            Map<Long, HomeworkQuestion> qMap = buildQuestionMapByAnswers(answers);
             int subjectiveScore = answers.stream()
                     .filter(a -> {
-                        HomeworkQuestion q = questionMapper.selectById(a.getQuestionId());
+                        HomeworkQuestion q = qMap.get(a.getQuestionId());
                         return q != null && "subjective".equals(q.getQuestionType());
                     })
                     .mapToInt(a -> a.getScore() != null ? a.getScore() : 0)

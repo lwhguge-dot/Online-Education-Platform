@@ -1,6 +1,6 @@
-# syntax=docker/dockerfile:1
+ARG DOCKER_MIRROR=docker.io
 
-FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
+FROM ${DOCKER_MIRROR}/library/maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
 
 ARG MODULE_NAME
@@ -17,10 +17,10 @@ COPY progress-service/pom.xml progress-service/pom.xml
 COPY . .
 RUN mvn -pl ${MODULE_NAME} -am clean package -DskipTests -Dmaven.test.skip=true -B --no-transfer-progress -s settings.xml
 
-FROM eclipse-temurin:21-jre-alpine
+FROM ${DOCKER_MIRROR}/library/eclipse-temurin:21-jre
 WORKDIR /app
 
-RUN addgroup -S spring && adduser -S spring -G spring
+RUN groupadd -r spring && useradd -r -g spring spring
 
 ARG MODULE_NAME
 COPY --from=build /app/${MODULE_NAME}/target/*.jar app.jar

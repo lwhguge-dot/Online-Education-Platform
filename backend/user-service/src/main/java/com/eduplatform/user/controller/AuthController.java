@@ -1,5 +1,6 @@
 package com.eduplatform.user.controller;
 
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.common.result.Result;
 import com.eduplatform.user.dto.LoginRequest;
 import com.eduplatform.user.dto.LoginResponse;
@@ -12,6 +13,7 @@ import com.eduplatform.user.service.PasswordResetService;
 import com.eduplatform.user.service.UserService;
 import com.eduplatform.user.service.UserSessionService;
 import com.eduplatform.user.util.JwtUtil;
+import com.eduplatform.user.util.UserAgentParser;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -44,8 +46,13 @@ public class AuthController {
      * @return 包含用户信息及 Token 的响应对象
      */
     @PostMapping("/login")
-    public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        LoginResponse response = userService.login(request);
+    public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpServletRequest) {
+        String userAgent = httpServletRequest.getHeader("User-Agent");
+        String ipAddress = httpServletRequest.getHeader("X-Real-IP");
+        String deviceInfo = UserAgentParser.parse(userAgent);
+        LoginResponse response = userService.login(request, deviceInfo,
+                ipAddress != null ? ipAddress : "unknown");
         return Result.success("登录成功", response);
     }
 
@@ -57,8 +64,13 @@ public class AuthController {
      * @return 登录成功的响应对象
      */
     @PostMapping("/register")
-    public Result<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
-        LoginResponse response = userService.register(request);
+    public Result<LoginResponse> register(@Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpServletRequest) {
+        String userAgent = httpServletRequest.getHeader("User-Agent");
+        String ipAddress = httpServletRequest.getHeader("X-Real-IP");
+        String deviceInfo = UserAgentParser.parse(userAgent);
+        LoginResponse response = userService.register(request, deviceInfo,
+                ipAddress != null ? ipAddress : "unknown");
         return Result.success("注册成功", response);
     }
 
@@ -81,7 +93,7 @@ public class AuthController {
 
         var user = userService.getById(userId);
         if (user == null) {
-            return Result.error("用户不存在");
+            throw new BusinessException(404, "用户不存在");
         }
         if (user.getStatus() != 1) {
             return Result.error("账号已被禁用或处于限制状态");
@@ -165,11 +177,10 @@ public class AuthController {
                 String jti = jwtUtil.getJtiFromToken(token);
                 if (jti != null) {
                     sessionService.logout(jti);
-                    log.debug("用户主动登出成功，jti: {}", jti);
+                    log.debug("用户主动登出成功");
                 }
             } catch (Exception e) {
-                // 若令牌已过期无法解析，尝试强制清理该用户的全端在线记录
-                log.debug("Token解析失败，尝试基于身份强制下线: {}", e.getMessage());
+                log.debug("Token解析失败，尝试基于身份强制下线");
                 try {
                     Long userId = jwtUtil.getUserIdFromToken(token);
                     if (userId != null) {
@@ -213,7 +224,7 @@ public class AuthController {
             @PathVariable("userId") Long userId,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         if (!isAdminRole(currentUserRole)) {
-            return Result.failure(403, "权限不足，仅管理员可强制下线用户");
+            throw new BusinessException(403, "权限不足，仅管理员可强制下线用户");
         }
         sessionService.forceOfflineUser(userId);
         return Result.success("已强制剔除该用户的所有活动会话", true);
@@ -228,7 +239,7 @@ public class AuthController {
             @Valid @RequestBody ResetPasswordRequest request,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         if (!isAdminRole(currentUserRole)) {
-            return Result.failure(403, "权限不足，仅管理员可重置密码");
+            throw new BusinessException(403, "权限不足，仅管理员可重置密码");
         }
         userService.resetPassword(request);
         return Result.success("管理员已重置您的登录密码", true);
@@ -246,7 +257,7 @@ public class AuthController {
                 request.getRealName(),
                 resolveClientIp(httpServletRequest));
         if (issueResult.getStatus() == PasswordResetService.PasswordResetStatus.RATE_LIMITED) {
-            return Result.failure(429, "请求过于频繁，请稍后再试");
+            throw new BusinessException(429, "请求过于频繁，请稍后再试");
         }
         return Result.success(
                 "如信息匹配，重置令牌已生成",
@@ -265,9 +276,12 @@ public class AuthController {
                 request.getNewPassword(),
                 resolveClientIp(httpServletRequest));
         if (status == PasswordResetService.PasswordResetStatus.RATE_LIMITED) {
-            return Result.failure(429, "请求过于频繁，请稍后再试");
+            throw new BusinessException(429, "请求过于频繁，请稍后再试");
         }
-        return Result.success("如令牌有效，密码重置已受理", true);
+        if (status == PasswordResetService.PasswordResetStatus.TOKEN_INVALID) {
+            throw new BusinessException(400, "重置令牌无效或已过期，请重新申请");
+        }
+        return Result.success("密码重置成功，请使用新密码登录", true);
     }
 
     /**

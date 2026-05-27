@@ -32,8 +32,8 @@ public class EnrollmentController {
      */
     @PostMapping("/enroll")
     public Result<EnrollmentVO> enroll(
-            @RequestParam("studentId") Long studentId,
-            @RequestParam("courseId") Long courseId,
+            @RequestParam(name = "studentId") Long studentId,
+            @RequestParam(name = "courseId") Long courseId,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 报名仅允许本人发起，管理员可代操作
@@ -56,8 +56,8 @@ public class EnrollmentController {
      */
     @PostMapping("/drop")
     public Result<Void> drop(
-            @RequestParam("studentId") Long studentId,
-            @RequestParam("courseId") Long courseId,
+            @RequestParam(name = "studentId") Long studentId,
+            @RequestParam(name = "courseId") Long courseId,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 退课仅允许本人发起，管理员可代操作
@@ -80,8 +80,8 @@ public class EnrollmentController {
      */
     @GetMapping("/check")
     public Result<Map<String, Object>> checkEnrollment(
-            @RequestParam("studentId") Long studentId,
-            @RequestParam("courseId") Long courseId,
+            @RequestParam(name = "studentId") Long studentId,
+            @RequestParam(name = "courseId") Long courseId,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 报名关系仅允许本人、教师或管理员查看
@@ -139,9 +139,9 @@ public class EnrollmentController {
      */
     @PutMapping("/progress")
     public Result<Void> updateProgress(
-            @RequestParam("studentId") Long studentId,
-            @RequestParam("courseId") Long courseId,
-            @RequestParam("progress") Integer progress,
+            @RequestParam(name = "studentId") Long studentId,
+            @RequestParam(name = "courseId") Long courseId,
+            @RequestParam(name = "progress") Integer progress,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 报名进度仅允许本人、教师或管理员更新
@@ -163,8 +163,8 @@ public class EnrollmentController {
      */
     @GetMapping("/stats")
     public Result<Map<String, Object>> getStats(
-            @RequestParam(required = false) Long studentId,
-            @RequestParam(required = false) Long courseId,
+            @RequestParam(name = "studentId", required = false) Long studentId,
+            @RequestParam(name = "courseId", required = false) Long courseId,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 统计接口：含 studentId 时仅允许本人、教师或管理员；仅 courseId 时要求教师或管理员
@@ -215,8 +215,8 @@ public class EnrollmentController {
      */
     @GetMapping("/check-new-chapters")
     public Result<Map<String, Object>> checkNewChapters(
-            @RequestParam("studentId") Long studentId,
-            @RequestParam("courseId") Long courseId,
+            @RequestParam(name = "studentId") Long studentId,
+            @RequestParam(name = "courseId") Long courseId,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         // 新章节检查仅允许本人、教师或管理员查看

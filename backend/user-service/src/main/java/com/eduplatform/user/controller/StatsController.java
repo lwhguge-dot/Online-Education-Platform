@@ -1,5 +1,6 @@
 package com.eduplatform.user.controller;
 
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.common.result.Result;
 import com.eduplatform.user.feign.CourseServiceClient;
 import com.eduplatform.user.service.UserService;
@@ -32,7 +33,7 @@ public class StatsController {
     public Result<Map<String, Object>> getAdminDashboard(
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         if (!isAdminRole(currentUserRole)) {
-            return Result.failure(403, "权限不足，仅管理员可访问管理统计");
+            throw new BusinessException(403, "权限不足，仅管理员可访问管理统计");
         }
         Map<String, Object> stats = new HashMap<>();
 
@@ -52,7 +53,6 @@ public class StatsController {
         stats.put("onlineUsers", sessionService.countOnlineUsers());
 
         // 课程统计 - 通过 Feign 调用 course-service
-        // 课程统计 - 通过 Feign 调用 course-service
         Result<Map<String, Object>> courseStatsResult = courseServiceClient.getCourseStats();
         if (courseStatsResult != null && courseStatsResult.getData() != null) {
             Map<String, Object> courseStats = courseStatsResult.getData();
@@ -69,62 +69,6 @@ public class StatsController {
         stats.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
 
         return Result.success(stats);
-    }
-
-    /**
-     * 获取用户增长趋势数据。
-     * 用于管理员仪表盘的趋势图表展示，包含每日新增用户、活跃用户和在线用户峰值。
-     *
-     * @param days 统计天数（默认7天，最大30天）
-     * @return 包含标签和各项指标数组的趋势数据
-     */
-    @GetMapping("/admin/user-trends")
-    public Result<Map<String, Object>> getUserTrends(
-            @RequestParam(value = "days", defaultValue = "7") int days,
-            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
-        if (!isAdminRole(currentUserRole)) {
-            return Result.failure(403, "权限不足，仅管理员可查看用户趋势");
-        }
-        // 限制最大查询天数为30天
-        days = Math.min(days, 30);
-
-        Map<String, Object> result = new HashMap<>();
-        List<String> labels = new ArrayList<>();
-        List<Long> newUsers = new ArrayList<>();
-        List<Long> activeUsers = new ArrayList<>();
-        List<Long> onlineUsers = new ArrayList<>();
-
-        // 日期格式化器
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd");
-
-        // 从 days 天前开始统计到昨天
-        for (int i = days - 1; i >= 0; i--) {
-            LocalDateTime date = LocalDateTime.now().minusDays(i);
-            labels.add(date.format(formatter));
-
-            // 统计每日新增用户
-            newUsers.add(userService.countNewUsersByDate(date));
-
-            // 统计每日活跃用户
-            activeUsers.add(userService.countActiveUsersByDate(date));
-
-            // 在线用户使用当前实时数据（历史数据需要额外存储机制）
-            // 这里对于历史日期暂时使用活跃用户的比例估算
-            if (i == 0) {
-                onlineUsers.add((long) sessionService.countOnlineUsers());
-            } else {
-                // 历史在线用户估算：活跃用户的30%~50%
-                long estimated = (long) (userService.countActiveUsersByDate(date) * 0.4);
-                onlineUsers.add(estimated);
-            }
-        }
-
-        result.put("labels", labels);
-        result.put("newUsers", newUsers);
-        result.put("activeUsers", activeUsers);
-        result.put("onlineUsers", onlineUsers);
-
-        return Result.success(result);
     }
 
     /**

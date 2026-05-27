@@ -46,6 +46,7 @@ const slideDirection = ref('up') // 'up' 或 'down'
 
 const userInitialFilter = ref('all')
 const courseInitialFilter = ref('all')
+const courseSubjectFilter = ref('all')
 
 // 计算当前菜单项的索引（用于动效方向判断）
 const getMenuIndex = (menuId) => {
@@ -99,8 +100,13 @@ const refreshData = async () => {
     recentUsers.value = uData.recentUsers || []
     allUsers.value = uData.allUsers || []
 
-    // 课程数据
-    courses.value = courseRes.data || []
+    // 课程数据（防御性去重：防止后端返回重复数据导致 DOM 中卡片翻倍）
+    const rawCourses = courseRes.data || []
+    const seen = new Map()
+    for (const c of rawCourses) {
+      if (!seen.has(c.id)) seen.set(c.id, c)
+    }
+    courses.value = Array.from(seen.values())
 
     // 管理员仪表盘统计（后端真实数据）
     const adminStats = adminStatsRes.data
@@ -186,10 +192,17 @@ const handleLogout = async () => {
   router.push('/login')
 }
 
+const subjects = ['语文', '数学', '英语', '物理', '化学', '生物', '政治', '历史', '地理']
+
 const handleNavigate = ({ menu, filter }) => {
   activeMenu.value = menu
   if (menu === 'courses') {
-    courseInitialFilter.value = filter ?? 'all'
+    const f = filter ?? 'all'
+    if (subjects.includes(f)) {
+      courseSubjectFilter.value = f
+    } else {
+      courseInitialFilter.value = f
+    }
   }
   if (menu === 'users') {
     userInitialFilter.value = filter ?? 'all'
@@ -354,6 +367,7 @@ const disabledUsersCount = computed(() => allUsers.value.filter(u => u.status ==
               :courses="courses"
               :loading="loading"
               :initial-filter="courseInitialFilter"
+              :initial-subject="courseSubjectFilter"
               @refresh="refreshData"
             />
             <AdminLogs v-else-if="activeMenu === 'logs'" />

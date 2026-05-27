@@ -16,30 +16,9 @@ spring:
     nacos:
       discovery:
         server-addr: "${NACOS_ADDR:nacos:8848}"
-    sentinel:
-      transport:
-        dashboard: sentinel:8858  # Sentinel 控制台地址
-        port: 8719  # 与控制台通信的端口
-      datasource:
-        # 从 Nacos 读取流控规则
-        flow:
-          nacos:
-            server-addr: "${NACOS_ADDR:nacos:8848}"
-            dataId: ${spring.application.name}-flow-rules
-            groupId: SENTINEL_GROUP
-            rule-type: flow
-        # 从 Nacos 读取降级规则
-        degrade:
-          nacos:
-            server-addr: "${NACOS_ADDR:nacos:8848}"
-            dataId: ${spring.application.name}-degrade-rules
-            groupId: SENTINEL_GROUP
-            rule-type: degrade
-      eager: true  # 启动时立即初始化 Sentinel
-      web-context-unify: false  # 关闭 URL 路径聚合，保留完整路径
   datasource:
-    url: "${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/edu_platform?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8}"
-    username: postgres
+    url: "${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/edu_platform?characterEncoding=UTF-8}"
+    username: "${SPRING_DATASOURCE_USERNAME:postgres}"
     password: "${SPRING_DATASOURCE_PASSWORD}"
     driver-class-name: org.postgresql.Driver
     hikari:
@@ -53,7 +32,7 @@ spring:
   data:
     redis:
       host: "${SPRING_REDIS_HOST:redis}"
-      port: 6379   # Redis 端口
+      port: 6379  # Redis 端口
       password: "${SPRING_REDIS_PASSWORD}"
       database: 0  # 使用 0 号数据库
       timeout: 10s
@@ -89,7 +68,7 @@ session:
 
 websocket:
   # 支持多个来源，使用逗号分隔；生产环境请改为实际域名
-  allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost,http://localhost:80,http://localhost:3000}
+  allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost,http://localhost:80,http://localhost:3000,http://localhost:5173}
 
 bootstrap:
   admin:
@@ -100,35 +79,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info,metrics
   endpoint:
     health:
       show-details: when_authorized
-    prometheus:
-      enabled: true
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-    tags:
-      application: ${spring.application.name}
   info:
     env:
       enabled: true
-  tracing:
-    sampling:
-      probability: ${TRACING_SAMPLING_PROBABILITY:0.1}
-  otlp:
-    tracing:
-      endpoint: http://jaeger:4318/v1/traces  # Jaeger OTLP endpoint
-
-# OpenTelemetry 配置
-otel:
-  service:
-    name: ${spring.application.name}
-  exporter:
-    otlp:
-      endpoint: http://jaeger:4318
 
 security:
   # 服务间内部调用令牌（用于调用级联删除接口）
