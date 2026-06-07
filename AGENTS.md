@@ -100,7 +100,7 @@ Gateway URL: `http://localhost:8090`, 认证方式: `Authorization: Bearer <jwt_
 
 ### Hindsight 记忆系统配置
 
-- **服务地址**: `http://localhost:8888`
+- **服务地址**: `http://127.0.0.1:8888`（Docker 绑定 127.0.0.1，Windows localhost 可能解析到 IPv6）
 - **记忆库 ID**: `deepseek-v2`
 - **LLM 提供者**: Ollama (qwen2.5:3b)
 - **代理服务**: `ops/scripts/hindsight/json-ollama-proxy.py`
@@ -117,13 +117,14 @@ Reasonix 无 OpenCode 插件机制，Hindsight 操作需手动调用 MCP 工具�
 
 ### MCP 服务器配置
 
-Hindsight MCP 服务器配置文件位于 `.reasonix/mcp.json`，指向 Python 脚本：
+Hindsight MCP 服务器已注册到全局 `~/.reasonix/config.json`，指向 Python 脚本。
+
 ```json
 {
   "mcpServers": {
     "hindsight": {
       "command": "python",
-      "args": ["ops/scripts/hindsight/hindsight-mcp-server.py"],
+      "args": ["C:\\Users\\XuShuang\\Desktop\\demo\\ops\\scripts\\hindsight\\hindsight-mcp-server.py"],
       "transport": "stdio"
     }
   }
