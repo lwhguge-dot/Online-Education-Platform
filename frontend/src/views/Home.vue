@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth'
 import { courseAPI, authAPI } from '../services/api'
 import BaseButton from '../components/ui/BaseButton.vue'
 import BaseCourseCard from '../components/ui/BaseCourseCard.vue'
+import { getSubjectColor, getSubjectBtnStyle } from '../utils/subject'
 import { 
   Sparkles,
   GraduationCap,
@@ -65,24 +66,6 @@ const topCoursesBySubject = computed(() => {
 })
 
 // 课程数据按学科筛选与推荐
-
-const getSubjectBtnStyle = (subject) => {
-  const styles = {
-    // 无障碍：语文按钮改为更高对比度配色
-    '语文': 'bg-yanzhihong hover:bg-yanzhi text-white',
-    '数学': 'bg-qinghua hover:bg-halanzi text-white',
-    '英语': 'bg-danqing hover:bg-qingbai text-white',
-    '物理': 'bg-zijinghui hover:bg-qianniuzi text-white',
-    '化学': 'bg-tianlv hover:bg-qingsong text-white',
-    '生物': 'bg-danya hover:bg-tianlv text-text-main',
-    '政治': 'bg-yanzhihong hover:bg-yanzhi text-white',
-    '历史': 'bg-tanxiang hover:bg-zhizi text-white',
-    '地理': 'bg-qinghua hover:bg-danqing text-white'
-  }
-  return styles[subject] || 'bg-white text-shuimo hover:bg-gray-100'
-}
-
-// 课程按钮样式映射
 
 
 const startCarousel = () => {
@@ -238,21 +221,6 @@ const handleScroll = () => {
   })
 }
 
-const getSubjectColor = (subject) => {
-  const colors = {
-    '语文': 'from-yanzhi to-qianhong',
-    '数学': 'from-qinghua to-halanzi',
-    '英语': 'from-danqing to-qingbai',
-    '物理': 'from-zijinghui to-qianniuzi',
-    '化学': 'from-tianlv to-qingsong',
-    '生物': 'from-danya to-tianlv',
-    '政治': 'from-yanzhihong to-yanzhi',
-    '历史': 'from-tanxiang to-zhizi',
-    '地理': 'from-qinghua to-danqing'
-  }
-  return colors[subject] || 'from-danqing to-qinghua'
-}
-
 const handleLogout = async () => {
   try {
     // 调用后端API更新会话状态
@@ -293,6 +261,7 @@ const goToCenter = () => {
             <template v-if="authStore.isAuthenticated">
               <BaseButton 
                 variant="text" 
+                data-testid="nav-user"
                 @click="goToCenter"
               >
                 {{ authStore.user?.username }}
@@ -300,6 +269,7 @@ const goToCenter = () => {
               <BaseButton 
                 variant="danger" 
                 size="sm"
+                data-testid="nav-logout"
                 @click="handleLogout"
               >
                 退出
@@ -308,12 +278,14 @@ const goToCenter = () => {
             <template v-else>
               <BaseButton 
                 variant="text" 
+                data-testid="nav-login"
                 @click="$router.push('/login')"
               >
                 登录
               </BaseButton>
               <BaseButton 
                 variant="primary" 
+                data-testid="nav-register"
                 @click="$router.push('/login?register=true')"
               >
                 注册
@@ -399,6 +371,7 @@ const goToCenter = () => {
           <div class="absolute right-8 bottom-8 flex items-center gap-4 z-20">
             <button 
               @click.stop="prevSlide"
+              data-testid="carousel-prev"
               class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-105 transition-[background-color,transform,color] duration-300 text-white/50 hover:text-white"
               aria-label="上一张课程"
             >
@@ -406,6 +379,7 @@ const goToCenter = () => {
             </button>
             <button 
               @click.stop="nextSlide"
+              data-testid="carousel-next"
               class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/20 hover:scale-105 transition-[background-color,transform,color] duration-300 text-white/50 hover:text-white"
               aria-label="下一张课程"
             >
@@ -435,11 +409,12 @@ const goToCenter = () => {
       <div class="max-w-7xl mx-auto" aria-live="polite">
 
         <!-- Subject Filter -->
-        <div class="flex justify-center gap-3 mb-12 flex-wrap">
+        <div role="group" aria-label="学科筛选" class="flex justify-center gap-3 mb-12 flex-wrap">
           <button
             v-for="subject in subjectList"
             :key="subject.name"
             @click="selectedSubject = subject.name"
+            :data-testid="`subject-${subject.name}`"
             :class="[
               'flex items-center gap-2 px-5 py-2.5 rounded-full font-medium transition-[transform,box-shadow,color,border-color,background-color] duration-300 border',
               selectedSubject === subject.name
@@ -483,6 +458,7 @@ const goToCenter = () => {
             v-for="(course, index) in displayedCourses" 
             :key="course.id"
             :course="course"
+            :data-testid="`course-card-${course.id}`"
             class="animate-slide-up"
             :style="{ animationDelay: `${index * 0.05}s`, animationFillMode: 'both' }"
             @click="$router.push(`/course/${course.id}`)"
@@ -490,7 +466,7 @@ const goToCenter = () => {
         </div>
         
         <!-- Empty State -->
-        <div v-if="!loading && displayedCourses.length === 0" class="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
+        <div v-if="!loading && displayedCourses.length === 0" data-testid="courses-empty" class="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
           <div class="w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center mb-6">
             <BookOpen class="w-10 h-10 text-shuimo/20" aria-hidden="true" />
           </div>

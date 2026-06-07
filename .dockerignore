@@ -5,27 +5,42 @@
 # 版本控制
 .git
 .gitignore
+.gitattributes
 
 # IDE
 .idea
 .vscode
 *.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings
 
 # Node.js
 node_modules
 pnpm-lock.yaml
+yarn.lock
+package-lock.json
 
 # 文档
 *.md
 docs/
-CLAUDE.md
+AGENTS.md
+LICENSE
 
 # 构建产物
 **/target/
 **/dist/
+**/build/
+**/*.class
+**/*.jar
+**/*.war
+**/*.ear
 
 # 日志
 **/*.log
+**/logs/
 
 # 环境变量
 .env
@@ -38,3 +53,180 @@ monitoring/
 **/*.bat
 **/*.ps1
 **/*.sh
+**/tests/
+**/test/
+**/__tests__/
+**/*.test.*
+**/*.spec.*
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.Python
+**/*.egg-info/
+**/*.egg
+**/dist/
+**/build/
+**/eggs/
+**/*.whl
+**/.venv/
+**/venv/
+
+# 临时文件
+**/tmp/
+**/temp/
+**/*.tmp
+**/*.bak
+**/*.swp
+**/*.swo
+**/*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+nul
+
+# Docker 数据卷
+postgres-data/
+minio-data/
+hindsight-data/
+hindsight-cache/
+
+# 前端审计产物
+frontend/.audit-output/
+frontend/.audit-temp/
+frontend/stats.html
+
+# 测试覆盖率
+**/coverage/
+**/.nyc_output/
+**/htmlcov/
+**/.coverage
+**/coverage.xml
+
+# Maven
+**/.mvn/timing.properties
+**/.mvn/wrapper/maven-wrapper.jar
+
+# Gradle
+**/.gradle/
+
+# 密钥文件
+**/*.pem
+**/*.key
+**/*.crt
+**/*.p12
+**/*.jks
+
+# 调试配置
+.vscode/launch.json
+.vscode/tasks.json
+
+# 本地开发配置
+*.local.js
+*.local.ts
+*.local.json
+
+# 数据库备份
+*.sql.bak
+*.dump
+
+# 临时目录
+**/.tmp/
+**/.temp/
+
+# OpenCode 技能产物
+.opencode/skills/**/node_modules/
+.opencode/skills/**/__pycache__/
+.opencode/skills/**/.pytest_cache/
+.opencode/skills/**/.temp-execution-*.js
+.opencode/skills/**/design-system/
+.opencode/skills/**/output/
+.opencode/skills/**/.cache/
+
+# 规划产物
+task_plan.md
+findings.md
+progress.md
+docs/plans/
+
+# 前端 UI 审查运行产物
+artifacts/ui-audit/
+docs/reviews/frontend-ui-motion-audit-*.md
+
+# jqwik 测试数据库
+**/.jqwik-database
+
+# Claude Code 工具
+.claude/
+
+# Trae AI 工具
+.trae/
+
+# MCP 本地配置
+mcp.json
+
+# OMO 会话数据
+.omo/
+
+# Playwright MCP 浏览器会话
+.playwright-mcp/
+
+# 前端构建缓存
+frontend/.vite/
+
+# 前端审计产物
+frontend/.audit-output/
+frontend/.audit-temp/
+
+# Bundle 分析报告
+frontend/stats.html
+
+# UI 审计报告
+docs/ui-audit/
+
+# 审计工具
+tools/audit/
+
+# 依赖锁定文件
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# 环境配置文件
+.env.development
+.env.production
+.env.test
+.env.staging
+
+# 本地开发配置
+*.local.js
+*.local.ts
+*.local.json
+
+# 调试配置
+.vscode/launch.json
+.vscode/tasks.json
+
+# 文档构建产物
+docs/_build/
+docs/site/
+
+# 数据库备份
+*.sql.bak
+*.dump
+
+# 密钥文件
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+
+# 临时目录
+tmp/
+temp/
+.tmp/
+.temp/

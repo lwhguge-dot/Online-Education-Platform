@@ -152,6 +152,7 @@ onBeforeUnmount(() => {
           <!-- 关闭按钮 -->
           <button
             @click="handleCancel"
+            data-testid="confirm-close"
             aria-label="关闭确认弹窗"
             class="absolute top-4 right-4 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
           >
@@ -171,6 +172,7 @@ onBeforeUnmount(() => {
           <!-- 按钮区域 -->
           <div class="px-6 pb-6 flex gap-3">
             <button @click="handleCancel" :disabled="loading"
+              data-testid="confirm-cancel"
               class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-shuimo/70 hover:bg-slate-50 hover:border-slate-300 transition-[background-color,color,border-color,box-shadow,transform] duration-300 font-medium disabled:opacity-50">
               {{ cancelText }}
             </button>

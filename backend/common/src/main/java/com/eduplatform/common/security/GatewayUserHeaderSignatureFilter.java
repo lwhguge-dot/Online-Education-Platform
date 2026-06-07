@@ -6,6 +6,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -22,6 +23,7 @@ import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Base64;
 
+@Slf4j
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 5)
 public class GatewayUserHeaderSignatureFilter extends OncePerRequestFilter {
@@ -58,6 +60,7 @@ public class GatewayUserHeaderSignatureFilter extends OncePerRequestFilter {
 
         boolean hasUserHeaders = StringUtils.hasText(userId) || StringUtils.hasText(username) || StringUtils.hasText(role);
         if (!hasUserHeaders) {
+            log.debug("请求无用户身份头，放行: uri={}", uri);
             filterChain.doFilter(request, response);
             return;
         }
@@ -95,6 +98,7 @@ public class GatewayUserHeaderSignatureFilter extends OncePerRequestFilter {
 
         String expected = sign(internalToken, userId, username, role, ts);
         if (!MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8), sigHeader.getBytes(StandardCharsets.UTF_8))) {
+            log.warn("身份签名校验失败: uri={}, userId={}", uri, userId);
             writeResult(response, HttpStatus.UNAUTHORIZED, Result.failure(401, "身份信息校验失败"));
             return;
         }

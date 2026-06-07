@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
@@ -59,7 +60,13 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             "/api/auth/password-reset/request",
             "/api/auth/password-reset/confirm",
             "/api/auth/health",
-            "/api/courses/published"
+            "/api/courses/published",
+            "/api/courses/stats",
+            "/api/courses/stats/by-subject"
+    );
+
+    private static final Set<String> PUBLIC_PATH_PATTERNS = Set.of(
+            "/api/courses/*"
     );
 
     /**
@@ -94,6 +101,13 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     public JwtAuthFilter(ObjectMapper objectMapper, @LoadBalanced WebClient.Builder webClientBuilder) {
         this.objectMapper = objectMapper;
         this.userServiceWebClient = webClientBuilder.build();
+    }
+
+    @PostConstruct
+    public void validateSecret() {
+        if (jwtSecret == null || jwtSecret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("JWT_SECRET must be at least 32 bytes for HS256");
+        }
     }
 
     @Override
@@ -181,7 +195,16 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isPublicPath(String path) {
-        return PUBLIC_PATHS.contains(path);
+        if (PUBLIC_PATHS.contains(path)) {
+            return true;
+        }
+        AntPathMatcher matcher = new AntPathMatcher();
+        for (String pattern : PUBLIC_PATH_PATTERNS) {
+            if (matcher.match(pattern, path)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

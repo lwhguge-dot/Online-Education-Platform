@@ -177,10 +177,31 @@ public class HomeworkReadService {
 
             boolean submitted = submission != null && !"draft".equals(submission.getSubmitStatus());
 
+            // 查询实际的解锁状态
+            boolean unlocked = false;
+            try {
+                HomeworkUnlock unlock = unlockMapper.selectOne(
+                        new LambdaQueryWrapper<HomeworkUnlock>()
+                                .eq(HomeworkUnlock::getStudentId, studentId)
+                                .eq(HomeworkUnlock::getHomeworkId, hw.getId()));
+                unlocked = unlock != null && unlock.getUnlockStatus() != null && unlock.getUnlockStatus() == 1;
+            } catch (Exception e) {
+                log.error("查询解锁状态失败: studentId={}, homeworkId={}", studentId, hw.getId(), e);
+            }
+
+            // 获取题目数量
+            int questionCount = 0;
+            try {
+                List<HomeworkQuestion> questions = questionMapper.findByHomeworkId(hw.getId());
+                questionCount = questions != null ? questions.size() : 0;
+            } catch (Exception e) {
+                log.error("查询题目数量失败: homeworkId={}", hw.getId(), e);
+            }
+
             StudentHomeworkDTO item = new StudentHomeworkDTO();
             item.setHomework(convertToVO(hw));
-            item.setQuestionCount(1);
-            item.setUnlocked(true);
+            item.setQuestionCount(questionCount);
+            item.setUnlocked(unlocked);
             item.setSubmitted(submitted);
             item.setSubmission(convertToSubmissionVO(submission));
             result.add(item);
@@ -350,7 +371,7 @@ public class HomeworkReadService {
 
         List<HomeworkSubmission> pendingSubmissions = submissionMapper.selectList(
                 new LambdaQueryWrapper<HomeworkSubmission>()
-                        .eq(HomeworkSubmission::getSubmitStatus, "pending")
+                        .eq(HomeworkSubmission::getSubmitStatus, "submitted")
                         .orderByDesc(HomeworkSubmission::getSubmittedAt));
 
         if (!pendingSubmissions.isEmpty()) {
@@ -467,8 +488,15 @@ public class HomeworkReadService {
     public List<Map<String, Object>> getTeacherActivities(Long teacherId) {
         List<Map<String, Object>> activities = new ArrayList<>();
 
+        // 先获取该教师的所有作业ID
+        List<Long> teacherHomeworkIds = homeworkMapper.findIdsByTeacherId(teacherId);
+        if (teacherHomeworkIds == null || teacherHomeworkIds.isEmpty()) {
+            return activities;
+        }
+
         List<HomeworkSubmission> recentSubmissions = submissionMapper.selectList(
                 new LambdaQueryWrapper<HomeworkSubmission>()
+                        .in(HomeworkSubmission::getHomeworkId, teacherHomeworkIds)
                         .orderByDesc(HomeworkSubmission::getSubmittedAt)
                         .last("LIMIT 10"));
 

@@ -16,6 +16,8 @@ spring:
     nacos:
       discovery:
         server-addr: "${NACOS_ADDR:nacos:8848}"
+        username: "${NACOS_USERNAME:nacos}"
+        password: "${NACOS_PASSWORD:nacos}"
   datasource:
     url: "${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/edu_platform?characterEncoding=UTF-8}"
     username: "${SPRING_DATASOURCE_USERNAME:postgres}"
@@ -34,7 +36,7 @@ spring:
       host: "${SPRING_REDIS_HOST:redis}"
       port: 6379  # Redis 端口
       password: "${SPRING_REDIS_PASSWORD}"
-      database: 0  # 使用 0 号数据库
+      database: 1  # 用户服务 - 使用 1 号数据库
       timeout: 10s
       lettuce:
         pool:
@@ -42,6 +44,13 @@ spring:
           max-wait: 5s
           max-idle: 16
           min-idle: 4
+
+# Redisson 配置（用于分布式锁）
+redisson:
+  single-server-config:
+    address: "redis://${SPRING_REDIS_HOST:redis}:${SPRING_REDIS_PORT:6379}"
+    password: "${SPRING_REDIS_PASSWORD}"
+    database: 1
 
 mybatis-plus:
   configuration:

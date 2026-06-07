@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, readonly } from 'vue'
 import { statsAPI, badgeAPI } from '../services/api'
 import { Star, Flame, Award, Medal, GraduationCap } from 'lucide-vue-next'
 
@@ -162,10 +162,10 @@ export function useStudentStats() {
     }
 
     return {
-        dashboardStats,
-        quizzes,
-        badges,
-        loading, // shared loading state might be tricky if used for both
+        dashboardStats: readonly(dashboardStats),
+        quizzes: readonly(quizzes),
+        badges: readonly(badges),
+        loading: readonly(loading),
         loadStudentStats,
         loadBadges
     }

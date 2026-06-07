@@ -24,6 +24,9 @@ public class ChapterProgress {
     private Integer lastPosition;
     private LocalDateTime lastUpdateTime;
     
+    @Version
+    private Integer version;
+    
     @TableField("created_at")
     private LocalDateTime createdAt;
     

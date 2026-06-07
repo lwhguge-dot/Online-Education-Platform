@@ -52,6 +52,12 @@ public class Enrollment {
     private String status;
 
     /**
+     * 乐观锁版本号
+     */
+    @Version
+    private Integer version;
+
+    /**
      * 映射 created_at
      */
     @TableField("created_at")

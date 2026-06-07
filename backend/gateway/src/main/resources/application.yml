@@ -100,6 +100,8 @@ spring:
     nacos:
       discovery:
         server-addr: "${NACOS_ADDR:nacos:8848}"
+        username: "${NACOS_USERNAME:nacos}"
+        password: "${NACOS_PASSWORD:nacos}"
   data:
     redis:
       host: "${SPRING_REDIS_HOST:redis}"
@@ -129,6 +131,7 @@ management:
 
 gateway:
   rate-limit:
+    enabled: ${GATEWAY_RATE_LIMIT_ENABLED:true}
     redis-enabled: ${GATEWAY_RATE_LIMIT_REDIS_ENABLED:true}
     permits-per-second: ${GATEWAY_RATE_LIMIT_PERMITS_PER_SECOND:200}
     window-seconds: ${GATEWAY_RATE_LIMIT_WINDOW_SECONDS:1}

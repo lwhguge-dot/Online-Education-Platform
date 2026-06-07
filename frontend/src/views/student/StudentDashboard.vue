@@ -88,7 +88,7 @@ const greeting = computed(() => {
   <SkeletonDashboard v-if="loading" :stats-count="4" :show-charts="true" />
   <div v-else class="student-dashboard-root space-y-6 animate-fade-in">
     <!-- 个性化问候区域 -->
-    <div class="flex items-center justify-between animate-slide-up" style="animation-delay: 0s; animation-fill-mode: both;">
+    <div class="flex items-center justify-between animate-slide-up" style="--stagger-delay: 0s;">
       <div class="flex items-center gap-4">
         <div
           class="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg"
@@ -125,7 +125,7 @@ const greeting = computed(() => {
       <!-- 今日目标进度卡片 -->
       <GlassCard 
         class="p-6 card-hover-lift animate-slide-up"
-        style="animation-delay: 0s; animation-fill-mode: both;"
+        style="--stagger-delay: 0s;"
       >
         <DailyGoalProgress 
           :todayMinutes="stats.todayStudyMinutes"
@@ -135,7 +135,7 @@ const greeting = computed(() => {
 
       <GlassCard 
         class="p-6 card-hover-lift cursor-pointer group animate-slide-up"
-        style="animation-delay: 0.1s; animation-fill-mode: both;"
+        style="--stagger-delay: 0.1s;"
         @click="router.push('/student/courses')"
       >
         <div class="flex items-center justify-between mb-3">
@@ -151,7 +151,7 @@ const greeting = computed(() => {
       <GlassCard 
         class="p-6 card-hover-lift cursor-pointer group animate-slide-up"
         :class="{ 'urgent-pulse': stats.pendingHomework > 2 }"
-        style="animation-delay: 0.2s; animation-fill-mode: both;"
+        style="--stagger-delay: 0.2s;"
         @click="router.push('/student/homeworks')"
       >
         <div class="flex items-center justify-between mb-3">
@@ -169,7 +169,7 @@ const greeting = computed(() => {
 
       <GlassCard 
         class="p-6 card-hover-lift animate-slide-up"
-        style="animation-delay: 0.3s; animation-fill-mode: both;"
+        style="--stagger-delay: 0.3s;"
       >
         <div class="flex items-center justify-between mb-3">
           <span class="text-sm font-medium text-muted">累计学习</span>
@@ -193,7 +193,7 @@ const greeting = computed(() => {
       <!-- Left Column: Recent Tasks & Courses -->
       <div class="lg:col-span-2 space-y-6">
         <!-- Today Assignments -->
-        <GlassCard class="p-6 animate-slide-up" style="animation-delay: 0.4s; animation-fill-mode: both;">
+        <GlassCard class="p-6 animate-slide-up" style="--stagger-delay: 0.4s;">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-bold text-shuimo flex items-center gap-2">
               <Target class="w-5 h-5 text-qinghua" />
@@ -232,7 +232,7 @@ const greeting = computed(() => {
         </GlassCard>
 
         <!-- Recent Courses -->
-        <GlassCard class="p-6 animate-slide-up" style="animation-delay: 0.5s; animation-fill-mode: both;">
+        <GlassCard class="p-6 animate-slide-up" style="--stagger-delay: 0.5s;">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-bold text-shuimo flex items-center gap-2">
               <Play class="w-5 h-5 text-tianlv" />
@@ -278,7 +278,7 @@ const greeting = computed(() => {
       <!-- Right Column: Badges & Activity -->
       <div class="space-y-6">
         <!-- Badges -->
-        <GlassCard class="p-6 animate-slide-up" style="animation-delay: 0.6s; animation-fill-mode: both;">
+        <GlassCard class="p-6 animate-slide-up" style="--stagger-delay: 0.6s;">
            <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-bold text-shuimo flex items-center gap-2">
               <Award class="w-5 h-5 text-yanzhi" />
@@ -318,7 +318,7 @@ const greeting = computed(() => {
         </GlassCard>
 
         <!-- Activity Feed -->
-        <GlassCard class="p-6 animate-slide-up" style="animation-delay: 0.7s; animation-fill-mode: both;">
+        <GlassCard class="p-6 animate-slide-up" style="--stagger-delay: 0.7s;">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-bold text-shuimo flex items-center gap-2">
               <MessageSquare class="w-5 h-5 text-qiuxiang" />
@@ -356,6 +356,7 @@ const greeting = computed(() => {
 .animate-slide-up {
   opacity: 0;
   animation: slideUp var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+  animation-delay: var(--stagger-delay, 0s);
 }
 
 @keyframes fadeIn {

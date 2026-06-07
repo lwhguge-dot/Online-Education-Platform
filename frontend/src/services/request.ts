@@ -170,17 +170,17 @@ const createHandledError = (message: string, skipSentry = false): RequestError =
     return error
 }
 
-const parseResultFromResponse = async <T = any>(response: Response): Promise<Result<T>> => {
+const parseResultFromResponse = async <T = unknown>(response: Response): Promise<Result<T>> => {
     const rawText = await response.text()
     if (!rawText) {
         const normalizedCode = response.status === 204 ? 200 : response.status
-        return { code: normalizedCode, message: response.statusText || '', data: null as any }
+        return { code: normalizedCode, message: response.statusText || '', data: null as T }
     }
 
     try {
         return JSON.parse(rawText) as Result<T>
     } catch {
-        return { code: response.status, message: '响应解析失败', data: null as any }
+        return { code: response.status, message: '响应解析失败', data: null as T }
     }
 }
 

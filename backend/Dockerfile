@@ -14,6 +14,9 @@ COPY course-service/pom.xml course-service/pom.xml
 COPY homework-service/pom.xml homework-service/pom.xml
 COPY progress-service/pom.xml progress-service/pom.xml
 
+# 预下载依赖（仅 pom.xml 变更时才会重新执行此层）
+RUN mvn dependency:go-offline -pl ${MODULE_NAME} -am -B --no-transfer-progress -s settings.xml || true
+
 COPY . .
 RUN mvn -pl ${MODULE_NAME} -am clean package -DskipTests -Dmaven.test.skip=true -B --no-transfer-progress -s settings.xml
 

@@ -22,11 +22,12 @@ const styles = {
 </script>
 
 <template>
-  <div class="fixed top-24 right-4 z-[9999] flex flex-col gap-3 pointer-events-none" role="region" aria-label="系统消息通知">
+  <div data-testid="toast-container" class="fixed top-24 right-4 z-[9999] flex flex-col gap-3 pointer-events-none" role="region" aria-label="系统消息通知">
     <TransitionGroup name="toast">
       <div
         v-for="toast in toasts"
         :key="toast.id"
+        role="alert"
         class="pointer-events-auto flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-lg backdrop-blur-md border min-w-[300px] max-w-sm animate-toast-in cursor-pointer hover:scale-102 transition-transform"
         :class="styles[toast.type]"
         @click="store.remove(toast.id)"

@@ -41,7 +41,7 @@ const dropdownRef = ref(null)
 const optionRefs = ref([])
 const dropdownStyle = ref({})
 const activeIndex = ref(-1)
-const listboxId = `base-select-listbox-${Math.random().toString(36).slice(2, 9)}`
+const listboxId = computed(() => `select-${props.placeholder?.replace(/\s/g, '-') || 'listbox'}`)
 
 // 标准化选项格式
 const normalizedOptions = computed(() => {
@@ -68,7 +68,7 @@ const getSelectedIndex = () => {
   return normalizedOptions.value.findIndex(opt => opt.value === props.modelValue)
 }
 
-const getOptionId = (idx) => `${listboxId}-option-${idx}`
+const getOptionId = (idx) => `${listboxId.value}-option-${idx}`
 
 const activeOptionId = computed(() => {
   if (activeIndex.value < 0) return undefined
@@ -367,7 +367,7 @@ watch(() => normalizedOptions.value.length, () => {
           </div>
 
           <!-- 空状态 -->
-          <div v-if="normalizedOptions.length === 0" class="px-3 py-4 text-center text-shuimo/50 text-sm">
+          <div v-if="normalizedOptions.length === 0" class="px-3 py-4 text-center text-shuimo/50 text-sm" aria-live="polite">
             暂无选项
           </div>
         </div>

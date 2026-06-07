@@ -21,6 +21,9 @@ public class HomeworkSubmission {
     private Long gradedBy;
     private String feedback;
     
+    @Version
+    private Integer version;
+    
     @TableField("created_at")
     private LocalDateTime createdAt;
     

@@ -1,10 +1,12 @@
 package com.eduplatform.course.controller;
 
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.common.result.Result;
 import com.eduplatform.course.entity.Enrollment;
 import com.eduplatform.course.service.EnrollmentService;
 import com.eduplatform.course.vo.EnrollmentVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,6 +18,7 @@ import java.util.Map;
  * 课程报名控制器。
  * 设计意图：统一课程报名与学习进度维护入口，控制层仅输出 VO。
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/enrollments")
 @RequiredArgsConstructor
@@ -45,7 +48,10 @@ public class EnrollmentController {
         try {
             Enrollment enrollment = enrollmentService.enroll(studentId, courseId);
             return Result.success("报名成功", enrollmentService.convertToVO(enrollment));
+        } catch (BusinessException e) {
+            return Result.failure(e.getCode(), e.getMessage());
         } catch (Exception e) {
+            log.error("选课失败: studentId={}, courseId={}", studentId, courseId, e);
             return Result.error("操作失败，请稍后重试");
         }
     }
@@ -69,7 +75,10 @@ public class EnrollmentController {
         try {
             enrollmentService.drop(studentId, courseId);
             return Result.success("退课成功", null);
+        } catch (BusinessException e) {
+            return Result.failure(e.getCode(), e.getMessage());
         } catch (Exception e) {
+            log.error("退课失败: studentId={}, courseId={}", studentId, courseId, e);
             return Result.error("操作失败，请稍后重试");
         }
     }

@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, readonly } from 'vue'
 import { homeworkAPI } from '../services/api'
 import { formatDateCN } from '../utils/datetime'
 
@@ -126,12 +126,12 @@ export function useStudentHomeworks() {
     }
 
     return {
-        pendingHomeworks,
-        completedHomeworks,
-        urgentHomeworks, // Logic for urgentHomeworks was in stats in original, but here redundant?
-        todayTasks,
-        activities,
-        loading,
+        pendingHomeworks: readonly(pendingHomeworks),
+        completedHomeworks: readonly(completedHomeworks),
+        urgentHomeworks: readonly(urgentHomeworks),
+        todayTasks: readonly(todayTasks),
+        activities: readonly(activities),
+        loading: readonly(loading),
         loadHomeworks
     }
 }

@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, readonly } from 'vue'
 import { commentAPI, homeworkAPI, chapterCommentAPI } from '../services/api'
 import { useToastStore } from '../stores/toast'
 import { formatDateTimeCN } from '../utils/datetime'
@@ -161,8 +161,8 @@ export function useStudentQuestions() {
     }
 
     return {
-        questions,
-        loading,
+        questions: readonly(questions),
+        loading: readonly(loading),
         loadQuestions,
         submitQuestion
     }

@@ -57,7 +57,7 @@ defineProps({
         <div class="h-40 flex items-end justify-between gap-2 px-4">
           <div v-for="i in 7" :key="i"
                class="flex-1 bg-slate-200 rounded-t"
-               :style="{ height: Math.random() * 80 + 20 + '%', animationDelay: (i * 0.1) + 's' }">
+               :style="{ height: [45, 72, 58, 85, 35, 68, 52][i - 1] + '%', animationDelay: (i * 0.1) + 's' }">
           </div>
         </div>
         <div class="flex justify-between mt-2 px-4">

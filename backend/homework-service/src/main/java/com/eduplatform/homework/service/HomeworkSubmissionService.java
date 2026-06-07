@@ -100,6 +100,9 @@ public class HomeworkSubmissionService {
                         new LambdaQueryWrapper<HomeworkSubmission>()
                                 .eq(HomeworkSubmission::getStudentId, dto.getStudentId())
                                 .eq(HomeworkSubmission::getHomeworkId, dto.getHomeworkId()));
+                if (submission == null) {
+                    throw new BusinessException("提交记录创建失败");
+                }
             }
         }
 

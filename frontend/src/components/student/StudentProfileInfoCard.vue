@@ -384,7 +384,7 @@ const getGenderLabel = (value) => {
 
       <!-- 表单 -->
       <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="space-y-1.5 stagger-item" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.1s forwards; opacity: 0;">
+        <div class="space-y-1.5 stagger-item" style="--stagger-delay: 0.1s;">
           <label for="profile-username" class="text-xs font-bold text-shuimo/60">用户名/昵称</label>
           <input
             id="profile-username"
@@ -396,7 +396,7 @@ const getGenderLabel = (value) => {
           />
           <p v-if="isEditing" class="text-xs text-shuimo/40">用户名在系统内显示，可随意修改</p>
         </div>
-        <div class="space-y-1.5 stagger-item" style="animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) 0.15s forwards; opacity: 0;">
+        <div class="space-y-1.5 stagger-item" style="--stagger-delay: 0.15s;">
           <label for="profile-realname" class="text-xs font-bold text-shuimo/60">真实姓名（登录账号）</label>
           <input id="profile-realname" name="realName" v-model="formData.realName" disabled autocomplete="name" class="w-full bg-transparent border-transparent px-0 py-2.5 text-sm text-shuimo cursor-not-allowed" />
           <p class="text-xs text-shuimo/40">真实姓名为登录账号，不可修改</p>
@@ -618,6 +618,12 @@ const getGenderLabel = (value) => {
 </template>
 
 <style scoped>
+.stagger-item {
+  animation: fade-in-up var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+  animation-delay: var(--stagger-delay, 0s);
+  opacity: 0;
+}
+
 .dropdown-enter-active,
 .dropdown-leave-active {
   /* 下拉层仅过渡透明度与位移缩放 */

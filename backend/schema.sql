@@ -9,6 +9,8 @@
 -- 创建数据库（如果需要手动创建，请在psql中执行）
 -- CREATE DATABASE edu_platform WITH ENCODING 'UTF8' LC_COLLATE='zh_CN.UTF-8' LC_CTYPE='zh_CN.UTF-8' TEMPLATE=template0;
 -- \c edu_platform;
+BEGIN;
+
 -- =====================================================
 -- 1. 用户相关表
 -- =====================================================
@@ -978,3 +980,4 @@ WHERE NOT EXISTS (
             AND bw.course_id IS NULL
     );
 
+COMMIT;

@@ -229,17 +229,13 @@ public class UserSessionService {
         }
 
         LocalDateTime activeThreshold = LocalDateTime.now().minusSeconds(sessionTimeoutSeconds);
-        java.util.List<UserSession> activeSessions = sessionMapper.selectList(
+        // 使用 SQL 的 COUNT(DISTINCT user_id) 避免全表加载到内存
+        Long count = sessionMapper.selectCount(
                 new LambdaQueryWrapper<UserSession>()
                         .eq(UserSession::getStatus, UserSession.STATUS_ONLINE)
                         .ge(UserSession::getLastActiveTime, activeThreshold)
                         .select(UserSession::getUserId));
-
-        // 按用户ID去重后返回数量
-        return activeSessions.stream()
-                .map(UserSession::getUserId)
-                .distinct()
-                .count();
+        return count != null ? count : 0;
     }
 
     /**
@@ -260,21 +256,21 @@ public class UserSessionService {
         // 先清理过期会话
         cleanupAllExpiredSessions();
 
-        LambdaQueryWrapper<UserSession> wrapper = new LambdaQueryWrapper<UserSession>()
-                .eq(UserSession::getStatus, UserSession.STATUS_ONLINE)
-                .select(UserSession::getUserId);
-
-        // 如果配置了超时时间，增加活跃时间过滤条件
-        if (sessionTimeoutSeconds > 0) {
-            LocalDateTime activeThreshold = LocalDateTime.now().minusSeconds(sessionTimeoutSeconds);
-            wrapper.ge(UserSession::getLastActiveTime, activeThreshold);
+        if (sessionTimeoutSeconds <= 0) {
+            // 如果超时时间未配置，只按状态统计
+            return sessionMapper.selectList(
+                    new LambdaQueryWrapper<UserSession>()
+                            .eq(UserSession::getStatus, UserSession.STATUS_ONLINE)
+                            .select(UserSession::getUserId))
+                    .stream()
+                    .map(UserSession::getUserId)
+                    .distinct()
+                    .collect(java.util.stream.Collectors.toList());
         }
 
-        java.util.List<UserSession> onlineSessions = sessionMapper.selectList(wrapper);
-        return onlineSessions.stream()
-                .map(UserSession::getUserId)
-                .distinct()
-                .collect(java.util.stream.Collectors.toList());
+        LocalDateTime activeThreshold = LocalDateTime.now().minusSeconds(sessionTimeoutSeconds);
+        // 使用自定义 SQL 查询避免全表加载到内存
+        return sessionMapper.findOnlineUserIds(activeThreshold);
     }
 
     /**

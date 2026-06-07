@@ -1,0 +1,70 @@
+# Reasonix configuration.
+# Resolution order: flag > ./reasonix.toml > ~/.config/reasonix/config.toml > built-in defaults.
+# Secrets come from the environment via api_key_env; never put keys here.
+
+config_version = 2   # schema marker for diagnostics; old versions may ignore it
+default_model = "deepseek-flash"
+# language      = "zh"   # ui/model language; empty = auto-detect from $LANG / $REASONIX_LANG
+
+[agent]
+# system_prompt = """..."""   # omit to use the built-in prompt for this version
+# system_prompt_file = "prompts/system.md"   # overrides system_prompt when set
+max_steps   = 0
+temperature = 0.0
+auto_plan   = "off"   # off|on; off keeps plan mode manual
+# auto_plan_classifier = "deepseek-flash"   # optional; only used for borderline tasks
+soft_compact_ratio  = 0.5   # notice only; keeps cache-first prefix intact
+compact_ratio       = 0.8   # try compacting when prompt reaches this fraction
+compact_force_ratio = 0.9   # force compacting at this high-water mark
+# planner_model = "mimo"   # optional: enable two-model collaboration
+# subagent_model = "deepseek-pro"   # optional default for runAs=subagent skills
+# subagent_models = { review = "deepseek-pro", security_review = "deepseek-pro" }   # per-skill overrides
+# output_style = "explanatory"   # explanatory | learning | concise | custom; empty = default
+
+[tools]
+enabled = []   # empty = all built-in tools
+
+[codegraph]
+enabled      = true   # built-in MCP server; off by default for first-run sessions
+auto_install = true   # fetch the runtime when CodeGraph is enabled but missing
+# path       = ""   # empty = cache, then PATH, then a bundle beside reasonix
+# tier       = "lazy"   # lazy|background|eager
+
+[skills]
+# paths = ["~/my-skills", "../shared/skills"]   # extra custom skill roots
+# disabled_skills = ["review"]   # hide noisy or unwanted skills
+
+[permissions]
+# Per-call gating. mode = writer fallback when no rule matches: ask|allow|deny.
+# Readers always default to allow. Precedence: deny > ask > allow > fallback.
+# Rules are "ToolName" or "ToolName(glob)"; '*' matches any run, '?' one char.
+mode  = "ask"
+# deny = ["bash(rm -rf*)", "bash(git push*)"]   # hard-blocked in every mode
+allow = ["run_skill", "bash=# Check if Hindsight API service is running\n$response = $null\ntry {\n    $response = Invoke-WebRequest -Uri \"http://localhost:8888/health\" -TimeoutSec 5 -ErrorAction Stop\n    Write-Output \"Hindsight API: 在线 - Status $($response.StatusCode)\"\n} catch {\n    Write-Output \"Hindsight API: 未连接 - $_\"\n}\n\n# Check if port 8888 is listening\n$portCheck = netstat -ano | Select-String \":8888\"\nif ($portCheck) {\n    Write-Output \"端口 :8888 已被占用\"\n} else {\n    Write-Output \"端口 :8888 未监听\"\n}", "bash=# Check what's on port 8888\nnetstat -ano | Select-String \":8888\"", "bash=# 直接测试 Hindsight API 是否在线\ntry {\n    $resp = Invoke-WebRequest -Uri \"http://127.0.0.1:8888/health\" -TimeoutSec 10 -ErrorAction Stop\n    Write-Output \"Hindsight API: 在线 - HTTP $($resp.StatusCode)\"\n    Write-Output $resp.Content\n} catch {\n    Write-Output \"Hindsight API: 不可达 - $_\"\n}\n\n# 也试试 localhost\ntry {\n    $resp = Invoke-WebRequest -Uri \"http://localhost:8888/health\" -TimeoutSec 5 -ErrorAction Stop\n    Write-Output \"localhost:8888: 在线 - HTTP $($resp.StatusCode)\"\n} catch {\n    Write-Output \"localhost:8888: 不可达 - $_\"\n}", "edit_file=ops/scripts/hindsight/hindsight-mcp-server.py", "bash=# 先测试 Python 脚本能否直接调用 Hindsight API\npython -c \"\nimport urllib.request\nimport json\ntry:\n    req = urllib.request.Request('http://127.0.0.1:8888/health')\n    with urllib.request.urlopen(req, timeout=10) as resp:\n        print('Hindsight API:', json.loads(resp.read()))\nexcept Exception as e:\n    print('连接失败:', e)\n\"", "bash=# 测试 hindsight MCP 工具的可用性\npython -c \"\nimport urllib.request\nimport json\n\n# 用 hindsight_mcp_server.py 中的 _get 方式测试 bank stats\ntry:\n    req = urllib.request.Request('http://127.0.0.1:8888/v1/default/banks/deepseek-v2/stats')\n    with urllib.request.urlopen(req, timeout=10) as resp:\n        stats = json.loads(resp.read())\n        print('Bank stats:', json.dumps(stats, indent=2, ensure_ascii=False))\nexcept Exception as e:\n    print('获取失败:', e)\n\"", "bash=# 验证我能否直接调用 hindsight API (不通过MCP)\npython -c \"\nimport urllib.request\nimport json\n\n# 模拟 hindsight_healthcheck\nreq = urllib.request.Request('http://127.0.0.1:8888/v1/default/banks/deepseek-v2/stats')\nwith urllib.request.urlopen(req, timeout=10) as resp:\n    stats = json.loads(resp.read())\n    quality = min(stats['total_nodes'] / 100, 0.5) if stats['total_nodes'] > 0 else 0.0\n    print(f'记忆库状态: deepseek-v2')\n    print(f'  - 节点: {stats[\\\"total_nodes\\\"]}')\n    print(f'  - 链接: {stats[\\\"total_links\\\"]}')\n    print(f'  - 文档: {stats[\\\"total_documents\\\"]}')\n    print(f'  - 质量评分: {quality:.2f}')\n    print(f'  - Hindsight API: 健康')\n\"", "write_file=_test_hindsight.py", "bash=Remove-Item -Force \"_test_hindsight.py\" -ErrorAction SilentlyContinue; Write-Output \"cleaned\"", "bash=# 先确认 Hindsight API 仍在线\ntry {\n    $resp = Invoke-WebRequest -Uri \"http://127.0.0.1:8888/health\" -TimeoutSec 5 -ErrorAction Stop\n    Write-Output \"Hindsight API: 在线 - HTTP $($resp.StatusCode)\"\n} catch {\n    Write-Output \"Hindsight API: 不可达 - $_\"\n}", "bash=Get-Content \"$env:USERPROFILE\\.reasonix\\config.json\" | ConvertFrom-Json | Select-Object -ExpandProperty mcpServers -ErrorAction SilentlyContinue", "bash=Get-Content \"$env:USERPROFILE\\.reasonix\\config.json\" | ConvertFrom-Json", "bash=Get-Content \".reasonix/mcp.json\"", "bash=# 先将当前配置读出来，加上 mcpServers\n$configPath = \"$env:USERPROFILE\\.reasonix\\config.json\"\n$config = Get-Content $configPath -Raw | ConvertFrom-Json\n\n# 添加 mcpServers\n$mcpServers = @{\n    hindsight = @{\n        command = \"python\"\n        args = @(\"ops/scripts/hindsight/hindsight-mcp-server.py\")\n        transport = \"stdio\"\n    }\n}\n\n$config | Add-Member -MemberType NoteProperty -Name \"mcpServers\" -Value $mcpServers -Force\n\n$config | ConvertTo-Json -Depth 5 | Set-Content $configPath -Encoding UTF8\nWrite-Output \"已更新全局配置\"", "bash=Get-Content \"$env:USERPROFILE\\.reasonix\\config.json\" | ConvertFrom-Json | ConvertTo-Json -Depth 5", "bash=$projectRoot = (Get-Location).Path\n$configPath = \"$env:USERPROFILE\\.reasonix\\config.json\"\n$config = Get-Content $configPath -Raw | ConvertFrom-Json\n$config.mcpServers.hindsight.args = @(\"$projectRoot\\ops\\scripts\\hindsight\\hindsight-mcp-server.py\")\n$config | ConvertTo-Json -Depth 5 | Set-Content $configPath -Encoding UTF8\nWrite-Output \"已将路径改为绝对路径: $projectRoot\\ops\\scripts\\hindsight\\hindsight-mcp-server.py\"", "mcp__hindsight__connect", "bash=# 检查 Python 脚本能否直接运行\npython \"C:\\Users\\XuShuang\\Desktop\\demo\\ops\\scripts\\hindsight\\hindsight-mcp-server.py\" 2>&1 | Select-Object -First 20", "bash=Start-Sleep -Seconds 3; Write-Output \"waited\"", "bash=# Check if there's a Python MCP process running\nGet-Process -Name python* 2>$null | Select-Object Id, ProcessName, StartTime | Sort-Object StartTime -Descending | Select-Object -First 5", "mcp__hindsight__hindsight_healthcheck", "mcp__hindsight__hindsight_bank_stats", "mcp__hindsight__hindsight_recall", "mcp__hindsight__hindsight_retain"]
+# ask = ["write_file"]   # force a prompt even if otherwise allowed
+
+[sandbox]
+# Confine tool blast radius. File-writers (write_file/edit_file/multi_edit)
+# may only write under workspace_root (empty = current dir) + allow_write.
+# bash = "enforce" (default) jails each command in an OS sandbox (macOS now;
+# graceful fallback elsewhere); "off" disables it. network allows egress.
+# workspace_root = ""            # default: current working directory
+# allow_write = ["/tmp"]          # extra dirs writers may also modify
+bash    = "enforce"
+network = true
+
+[statusline]
+# A custom status line: a command whose first stdout line replaces the built-in
+# data row. It receives {"model","contextUsed","contextWindow","cwd"} as JSON on stdin.
+# command = "my-statusline.sh"
+
+# External MCP servers. type: "stdio" (default, a subprocess) | "http" | "sse".
+# ${VAR} / ${VAR:-default} are expanded from the environment in command/args/env/url/headers.
+# [[plugins]]
+# name    = "example"
+# command = "reasonix-plugin-example"
+# [[plugins]]                                  # a remote server over Streamable HTTP
+# name    = "stripe"
+# type    = "http"
+# url     = "https://mcp.stripe.com"
+# headers = { Authorization = "Bearer ${STRIPE_KEY}" }

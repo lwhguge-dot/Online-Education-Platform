@@ -115,6 +115,7 @@ onUnmounted(() => {
           v-for="item in menuItems"
           :key="item.id"
           @click="handleMenuClick(item.path)"
+          :data-testid="`nav-${item.id}`"
           class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-[background-color,color,box-shadow] duration-300 group relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qinghua"
           :class="route.path.startsWith(item.path) 
             ? 'bg-gradient-to-r from-qinghua to-halanzi text-white shadow-lg shadow-qinghua/30' 
@@ -128,11 +129,11 @@ onUnmounted(() => {
       </nav>
 
       <div class="p-4 border-t border-slate-100/50 space-y-2">
-        <button @click="router.push('/')" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-qinghua hover:bg-qinghua/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qinghua" aria-label="回到首页">
+        <button @click="router.push('/')" data-testid="nav-home" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-qinghua hover:bg-qinghua/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qinghua" aria-label="回到首页">
           <Home class="w-5 h-5" aria-hidden="true" />
           <span v-if="sidebarOpen" class="font-medium">回到首页</span>
         </button>
-        <button @click="handleLogout" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-yanzhi hover:bg-yanzhi/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yanzhi" aria-label="退出登录">
+        <button @click="handleLogout" data-testid="nav-logout" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-yanzhi hover:bg-yanzhi/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yanzhi" aria-label="退出登录">
           <LogOut class="w-5 h-5" aria-hidden="true" />
           <span v-if="sidebarOpen" class="font-medium">退出登录</span>
         </button>
@@ -150,6 +151,7 @@ onUnmounted(() => {
         <div class="flex items-center gap-4">
           <button 
             @click="sidebarOpen = !sidebarOpen"
+            data-testid="sidebar-toggle"
             class="p-2 rounded-xl hover:bg-slate-100 text-muted hover:text-shuimo transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-qinghua"
             :aria-label="sidebarOpen ? '收起侧边栏' : '展开侧边栏'"
           >

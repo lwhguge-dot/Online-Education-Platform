@@ -25,4 +25,7 @@ public interface HomeworkMapper extends BaseMapper<Homework> {
     
     @Select("SELECT id FROM homeworks WHERE chapter_id = #{chapterId}")
     List<Long> findIdsByChapterId(@Param("chapterId") Long chapterId);
+    
+    @Select("SELECT id FROM homeworks WHERE teacher_id = #{teacherId}")
+    List<Long> findIdsByTeacherId(@Param("teacherId") Long teacherId);
 }

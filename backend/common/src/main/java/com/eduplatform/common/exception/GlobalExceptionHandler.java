@@ -41,7 +41,8 @@ public class GlobalExceptionHandler {
             throw e;
         }
         // 安全要求：日志中不直接记录请求原始输入，避免日志注入和敏感信息泄露。
-        log.error("请求资源未找到", e);
+        // 404 是正常的客户端错误，不应该用 error 级别
+        log.warn("请求资源未找到: uri={}", uri);
         // 对于非 Actuator 路径，也重新抛出让 Spring 默认处理
         throw e;
     }
@@ -141,24 +142,16 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理运行时异常（未预期的系统级异常，对外屏蔽细节）。
-     */
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Result<String>> handleRuntimeException(
-            RuntimeException e, HttpServletRequest request) {
-        String traceId = resolveTraceId(request);
-        log.error("未预期的运行时异常", e);
-        return buildResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR, 500,
-                "请求处理失败，请稍后重试", traceId);
-    }
-
-    /**
-     * 处理所有未捕获的通用异常。
+     * 处理所有未捕获的异常（统一兜底策略）。
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Result<String>> handleException(Exception e, HttpServletRequest request) {
         String traceId = resolveTraceId(request);
-        log.error("发生系统异常", e);
+        if (e instanceof RuntimeException) {
+            log.error("未预期的运行时异常", e);
+        } else {
+            log.error("发生系统异常", e);
+        }
         return buildResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR, 500,
                 "系统繁忙，请稍后重试", traceId);
     }

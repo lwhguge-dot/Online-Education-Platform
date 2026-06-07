@@ -94,7 +94,7 @@ public class HomeworkController {
             List<HomeworkWithStatsDTO> homeworks = homeworkService.getHomeworksByChapterWithStats(chapterId);
             return Result.success(homeworks);
         } catch (Exception e) {
-            log.error("获取作业详情失败", e);
+            log.error("获取章节作业列表失败: chapterId={}", chapterId, e);
             return Result.error("获取作业失败，请稍后重试");
         }
     }
@@ -196,7 +196,7 @@ public class HomeworkController {
             }
             return Result.error("未找到提交记录");
         } catch (Exception e) {
-            log.error("获取作业详情失败", e);
+            log.error("获取提交详情失败: homeworkId={}, studentId={}", homeworkId, studentId, e);
             return Result.error("获取提交详情失败，请稍后重试");
         }
     }
@@ -264,7 +264,7 @@ public class HomeworkController {
             List<Map<String, Object>> submissions = homeworkService.getSubmissionsByHomework(homeworkId);
             return Result.success(submissions);
         } catch (Exception e) {
-            log.error("获取作业详情失败", e);
+            log.error("获取提交记录失败: homeworkId={}", homeworkId, e);
             return Result.error("获取提交记录失败，请稍后重试");
         }
     }
@@ -434,7 +434,7 @@ public class HomeworkController {
             homeworkService.gradeSubmission(submissionId, dto);
             return Result.success("批改成功", null);
         } catch (Exception e) {
-            log.error("获取作业详情失败", e);
+            log.error("批量批改失败: submissionId={}", submissionId, e);
             return Result.error("批改失败，请稍后重试");
         }
     }

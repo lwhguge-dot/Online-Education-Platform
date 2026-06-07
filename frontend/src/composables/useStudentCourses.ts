@@ -1,6 +1,7 @@
-import { ref } from 'vue'
+import { ref, readonly } from 'vue'
 import { enrollmentAPI, courseAPI, chapterAPI, progressAPI } from '../services/api'
 import { formatDateCN } from '../utils/datetime'
+import { getSubjectColor } from '../utils/subject'
 
 interface CourseChapter {
     id: number
@@ -74,22 +75,6 @@ interface EnrollmentRecord {
 interface ChapterRecord {
     id: number | string
     title?: string
-}
-
-// 辅助方法
-const getSubjectColor = (subject: string | null | undefined): string => {
-    const map: Record<string, string> = {
-        '语文': 'from-yanzhi to-zhizi',
-        '数学': 'from-qinghua to-halanzi',
-        '英语': 'from-zijinghui to-qianniuzi',
-        '物理': 'from-tianlv to-qingsong',
-        '化学': 'from-zhizi to-tianlv',
-        '生物': 'from-qingsong to-songshi',
-        '历史': 'from-yanzhi to-mudan',
-        '地理': 'from-qiuxiang to-ouhe',
-        '政治': 'from-red-500 to-orange-500',
-    }
-    return map[subject || ''] || 'from-qinghua to-halanzi'
 }
 
 const formatTime = (dateStr: string | null | undefined): string => {
@@ -292,11 +277,11 @@ export function useStudentCourses() {
     }
 
     return {
-        enrolledCourses,
-        recentCourses,
-        availableCourses,
-        timeline,
-        loading,
+        enrolledCourses: readonly(enrolledCourses),
+        recentCourses: readonly(recentCourses),
+        availableCourses: readonly(availableCourses),
+        timeline: readonly(timeline),
+        loading: readonly(loading),
         loadEnrolledCourses,
         loadAvailableCourses,
         enrollCourse,

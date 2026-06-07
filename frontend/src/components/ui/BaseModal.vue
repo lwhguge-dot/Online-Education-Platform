@@ -8,7 +8,8 @@ const props = defineProps({
   maxWidthClass: { type: String, default: 'max-w-lg' },
   closeOnMask: { type: Boolean, default: true },
   showClose: { type: Boolean, default: true },
-  closeOnEsc: { type: Boolean, default: true }
+  closeOnEsc: { type: Boolean, default: true },
+  loading: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['update:modelValue', 'close'])
@@ -143,6 +144,7 @@ onBeforeUnmount(() => {
         role="dialog"
         aria-modal="true"
         :aria-labelledby="title ? 'modal-title' : undefined"
+        :aria-busy="loading"
         @keydown="handleDialogKeydown"
       >
         <div class="absolute inset-0 bg-shuimo/20 backdrop-blur-[2px]" @click="onMaskClick" aria-hidden="true"></div>
@@ -162,6 +164,7 @@ onBeforeUnmount(() => {
               <button
                 v-if="showClose"
                 @click="close"
+                data-testid="modal-close"
                 class="p-2 rounded-lg hover:bg-slate-100 text-shuimo/40 hover:text-shuimo transition-colors"
                 aria-label="关闭弹窗"
               >

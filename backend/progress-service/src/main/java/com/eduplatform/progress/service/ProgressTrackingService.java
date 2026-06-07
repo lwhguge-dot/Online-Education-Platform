@@ -18,10 +18,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -59,7 +60,6 @@ public class ProgressTrackingService {
      * 上报视频进度，包含异常快进检测、缓存写入与定时落库。
      */
     @Transactional
-    @CacheEvict(value = "learning_track", key = "#dto.studentId")
     public Map<String, Object> reportVideoProgress(VideoProgressDTO dto) {
         String redisKey = PROGRESS_KEY_PREFIX + dto.getStudentId() + ":" + dto.getChapterId();
 
@@ -153,15 +153,22 @@ public class ProgressTrackingService {
             redisTemplate.opsForValue().set(redisKey + ":last_sync", String.valueOf(now));
             log.info("同步视频进度到数据库: studentId={}, chapterId={}", dto.getStudentId(), dto.getChapterId());
 
-            try {
-                Cache trackCache = cacheManager.getCache("learning_track");
-                if (trackCache != null) {
-                    trackCache.evict(dto.getStudentId());
-                    log.debug("失效学习轨迹缓存: studentId={}", dto.getStudentId());
+            // 在事务提交后手动 evict 缓存
+            Long studentId = dto.getStudentId();
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        Cache trackCache = cacheManager.getCache("learning_track");
+                        if (trackCache != null) {
+                            trackCache.evict(studentId);
+                            log.debug("失效学习轨迹缓存: studentId={}", studentId);
+                        }
+                    } catch (Exception e) {
+                        log.warn("失效缓存失败", e);
+                    }
                 }
-            } catch (Exception e) {
-                log.warn("失效缓存失败", e);
-            }
+            });
         }
 
         try {
@@ -187,7 +194,6 @@ public class ProgressTrackingService {
      * 提交章节测验并更新测验成绩。
      */
     @Transactional
-    @CacheEvict(value = "learning_track", key = "#dto.studentId")
     public Map<String, Object> submitQuiz(QuizSubmitDTO dto) {
         List<ChapterQuiz> quizzes = quizMapper.selectList(
                 new LambdaQueryWrapper<ChapterQuiz>()
@@ -234,6 +240,23 @@ public class ProgressTrackingService {
         progressMapper.updateById(progress);
 
         boolean unlockTriggered = checkAndTriggerUnlock(progress);
+
+        // 在事务提交后手动 evict 缓存
+        Long studentId = dto.getStudentId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    Cache trackCache = cacheManager.getCache("learning_track");
+                    if (trackCache != null) {
+                        trackCache.evict(studentId);
+                        log.debug("失效学习轨迹缓存: studentId={}", studentId);
+                    }
+                } catch (Exception e) {
+                    log.warn("失效缓存失败", e);
+                }
+            }
+        });
 
         Map<String, Object> result = new HashMap<>();
         result.put("score", earnedScore);

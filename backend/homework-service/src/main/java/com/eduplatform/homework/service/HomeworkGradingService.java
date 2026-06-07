@@ -15,6 +15,8 @@ import com.eduplatform.homework.mapper.HomeworkQuestionMapper;
 import com.eduplatform.homework.mapper.HomeworkSubmissionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -40,19 +42,21 @@ public class HomeworkGradingService {
     private final HomeworkAnswerMapper answerMapper;
     private final HomeworkQuestionMapper questionMapper;
     private final UserServiceClient userServiceClient;
+    private final RedissonClient redissonClient;
 
-    private final Map<Long, Object> submissionLocks = new ConcurrentHashMap<>();
-
-    private Object getLock(Long submissionId) {
-        return submissionLocks.computeIfAbsent(submissionId, k -> new Object());
-    }
+    private static final String SUBMISSION_LOCK_PREFIX = "homework:submission:lock:";
 
     /**
      * 教师批改单个主观题。
      */
     @Transactional
     public void gradeSubjective(Long submissionId, Long questionId, Integer score, String feedback) {
-        synchronized (getLock(submissionId)) {
+        RLock lock = redissonClient.getLock(SUBMISSION_LOCK_PREFIX + submissionId);
+        try {
+            if (!lock.tryLock(5, 30, TimeUnit.SECONDS)) {
+                throw new BusinessException("操作过于频繁，请稍后重试");
+            }
+
             HomeworkAnswer answer = answerMapper.selectOne(
                     new LambdaQueryWrapper<HomeworkAnswer>()
                             .eq(HomeworkAnswer::getSubmissionId, submissionId)
@@ -65,6 +69,13 @@ public class HomeworkGradingService {
 
                 updateSubmissionStatus(submissionId);
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BusinessException("操作被中断");
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
     }
 
@@ -73,7 +84,12 @@ public class HomeworkGradingService {
      */
     @Transactional
     public void gradeSubmission(Long submissionId, GradeSubmissionDTO dto) {
-        synchronized (getLock(submissionId)) {
+        RLock lock = redissonClient.getLock(SUBMISSION_LOCK_PREFIX + submissionId);
+        try {
+            if (!lock.tryLock(5, 30, TimeUnit.SECONDS)) {
+                throw new BusinessException("操作过于频繁，请稍后重试");
+            }
+
             HomeworkSubmission submission = submissionMapper.selectById(submissionId);
             if (submission == null) {
                 throw new BusinessException("提交记录不存在");
@@ -94,19 +110,18 @@ public class HomeworkGradingService {
                 }
             }
 
-            if (dto.getOverallFeedback() != null) {
-                submission.setFeedback(dto.getOverallFeedback());
-            }
-
-            if (dto.getGradedBy() != null) {
-                submission.setGradedBy(dto.getGradedBy());
-            }
-
-            updateSubmissionScoreAndStatus(submissionId);
+            updateSubmissionScoreAndStatus(submissionId, dto.getOverallFeedback(), dto.getGradedBy());
 
             HomeworkSubmission updatedSubmission = submissionMapper.selectById(submissionId);
-            if ("graded".equals(updatedSubmission.getSubmitStatus())) {
+            if (updatedSubmission != null && "graded".equals(updatedSubmission.getSubmitStatus())) {
                 sendGradingNotification(updatedSubmission);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BusinessException("操作被中断");
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
             }
         }
     }
@@ -148,7 +163,7 @@ public class HomeworkGradingService {
     /**
      * 更新提交分数与状态（批量批改路径）。
      */
-    private void updateSubmissionScoreAndStatus(Long submissionId) {
+    private void updateSubmissionScoreAndStatus(Long submissionId, String feedback, Long gradedBy) {
         HomeworkSubmission submission = submissionMapper.selectById(submissionId);
         if (submission == null) {
             return;
@@ -189,6 +204,14 @@ public class HomeworkGradingService {
         submission.setObjectiveScore(objectiveScore);
         submission.setSubjectiveScore(subjectiveScore);
         submission.setTotalScore(totalScore);
+
+        // 设置反馈和批改人
+        if (feedback != null) {
+            submission.setFeedback(feedback);
+        }
+        if (gradedBy != null) {
+            submission.setGradedBy(gradedBy);
+        }
 
         if (allGraded) {
             submission.setSubmitStatus("graded");
