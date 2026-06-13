@@ -34,7 +34,7 @@ public class GatewayUserHeaderSignatureFilter extends OncePerRequestFilter {
     private static final String HEADER_USER_TS = "X-User-Ts";
     private static final String HEADER_USER_SIGNATURE = "X-User-Signature";
 
-    private static final long MAX_SKEW_SECONDS = 600;
+    private static final long MAX_SKEW_SECONDS = 120;
 
     private final ObjectMapper objectMapper;
 

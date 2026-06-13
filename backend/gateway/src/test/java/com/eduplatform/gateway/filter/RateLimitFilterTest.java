@@ -2,8 +2,9 @@ package com.eduplatform.gateway.filter;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Range;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
-import org.springframework.data.redis.core.ReactiveValueOperations;
+import org.springframework.data.redis.core.ReactiveZSetOperations;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
@@ -19,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -133,13 +135,15 @@ class RateLimitFilterTest {
     }
 
     @Test
-    @DisplayName("Redis窗口限流-同一窗口超限时返回429")
+    @DisplayName("Redis滑动窗口限流-同一窗口超限时返回429")
     void shouldRejectWhenRedisCounterExceedsLimit() {
         ReactiveStringRedisTemplate redisTemplate = mock(ReactiveStringRedisTemplate.class);
         @SuppressWarnings("unchecked")
-        ReactiveValueOperations<String, String> valueOperations = mock(ReactiveValueOperations.class);
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.increment(anyString())).thenReturn(Mono.just(1L), Mono.just(2L));
+        ReactiveZSetOperations<String, String> zSetOperations = mock(ReactiveZSetOperations.class);
+        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        when(zSetOperations.removeRangeByScore(anyString(), any(Range.class))).thenReturn(Mono.just(0L));
+        when(zSetOperations.add(anyString(), anyString(), anyDouble())).thenReturn(Mono.just(true));
+        when(zSetOperations.size(anyString())).thenReturn(Mono.just(1L), Mono.just(2L));
         when(redisTemplate.expire(anyString(), any(Duration.class))).thenReturn(Mono.just(true));
 
         RateLimitFilter filter = new RateLimitFilter(redisTemplate, 1.0, 10, 1000, false, 1, true);
