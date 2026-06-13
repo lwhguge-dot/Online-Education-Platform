@@ -106,6 +106,33 @@ class RateLimitFilterTest {
     }
 
     @Test
+    @DisplayName("认证请求应使用userId作为限流键")
+    void shouldUseUserIdForAuthenticatedRequests() {
+        RateLimitFilter filter = new RateLimitFilter(100.0, 10, 1000, false);
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/test")
+                .header("X-User-Id", "user-123")
+                .remoteAddress(new InetSocketAddress("10.10.10.10", 12345))
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+
+        String clientKey = filter.resolveClientKey(exchange);
+
+        assertEquals("user:user-123", clientKey);
+    }
+
+    @Test
+    @DisplayName("unknown地址应使用受限的限流值")
+    void shouldUseRestrictedLimitForUnknownAddress() {
+        RateLimitFilter filter = new RateLimitFilter(100.0, 10, 1000, false);
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/test").build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+
+        String clientKey = filter.resolveClientKey(exchange);
+
+        assertEquals("unknown", clientKey);
+    }
+
+    @Test
     @DisplayName("Redis窗口限流-同一窗口超限时返回429")
     void shouldRejectWhenRedisCounterExceedsLimit() {
         ReactiveStringRedisTemplate redisTemplate = mock(ReactiveStringRedisTemplate.class);

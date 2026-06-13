@@ -118,7 +118,8 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
      * 本地令牌桶限流（降级兜底）。
      */
     private boolean allowByLocal(String clientIp) {
-        RateLimiter limiter = limiterCache.get(clientIp, key -> RateLimiter.create(permitsPerSecond));
+        double effectivePermits = "unknown".equals(clientIp) ? Math.min(permitsPerSecond, 10) : permitsPerSecond;
+        RateLimiter limiter = limiterCache.get(clientIp, key -> RateLimiter.create(effectivePermits));
         return limiter != null && limiter.tryAcquire();
     }
 
@@ -163,6 +164,11 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
      * 仅当来源地址命中受信代理列表时，才允许使用转发头中的客户端地址。
      */
     String resolveClientKey(ServerWebExchange exchange) {
+        String userId = exchange.getRequest().getHeaders().getFirst("X-User-Id");
+        if (StringUtils.hasText(userId)) {
+            return "user:" + userId;
+        }
+
         String remoteIp = resolveRemoteAddress(exchange);
         if (shouldUseForwardedHeaders(remoteIp)) {
             String xForwardedFor = exchange.getRequest().getHeaders().getFirst("X-Forwarded-For");
