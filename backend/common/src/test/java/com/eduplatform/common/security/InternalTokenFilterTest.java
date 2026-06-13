@@ -93,4 +93,39 @@ class InternalTokenFilterTest {
 
         verify(chain).doFilter(request, response);
     }
+
+    @Test
+    @DisplayName("/api/auth 路径 → 放行")
+    void shouldPassForAuthPaths() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/auth/login");
+        request.addHeader(HEADER_INTERNAL_TOKEN, "wrong-token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = mock(FilterChain.class);
+
+        filter.doFilterInternal(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+    }
+
+    @Test
+    @DisplayName("服务未配置 internalToken → 500 错误")
+    void shouldReturn500WhenInternalTokenNotConfigured() throws Exception {
+        ReflectionTestUtils.setField(filter, "internalToken", "");
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/user-service/internal/data");
+        request.addHeader(HEADER_INTERNAL_TOKEN, VALID_TOKEN);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = mock(FilterChain.class);
+
+        filter.doFilterInternal(request, response, chain);
+
+        verify(chain, never()).doFilter(request, response);
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.value(), response.getStatus());
+        assertTrue(response.getContentType().startsWith(MediaType.APPLICATION_JSON_VALUE));
+
+        Result<?> result = objectMapper.readValue(response.getContentAsString(), Result.class);
+        assertEquals(500, result.getCode());
+    }
 }
