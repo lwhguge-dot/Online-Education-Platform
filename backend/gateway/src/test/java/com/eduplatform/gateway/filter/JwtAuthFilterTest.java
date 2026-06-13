@@ -19,6 +19,7 @@ import reactor.core.publisher.Mono;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -138,6 +139,42 @@ class JwtAuthFilterTest {
         assertTrue(StringUtils.hasText(requestAfterFilter.getHeaders().getFirst("X-User-Signature")));
     }
 
+    @Test
+    @DisplayName("/api/courses/published 应该公开访问")
+    void publishedCoursesPathShouldBePublic() {
+        JwtAuthFilter filter = createFilterWithValidateTokenResponse("{\"code\":200,\"data\":true}");
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/courses/published").build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        AtomicBoolean chainInvoked = new AtomicBoolean(false);
+        GatewayFilterChain chain = ex -> {
+            chainInvoked.set(true);
+            return Mono.empty();
+        };
+
+        filter.filter(exchange, chain).block();
+
+        assertTrue(chainInvoked.get());
+        assertNull(exchange.getResponse().getStatusCode());
+    }
+
+    @Test
+    @DisplayName("/api/courses/123 应该公开访问（单层通配符）")
+    void singleLevelCoursesPathShouldBePublic() {
+        JwtAuthFilter filter = createFilterWithValidateTokenResponse("{\"code\":200,\"data\":true}");
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/courses/123").build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        AtomicBoolean chainInvoked = new AtomicBoolean(false);
+        GatewayFilterChain chain = ex -> {
+            chainInvoked.set(true);
+            return Mono.empty();
+        };
+
+        filter.filter(exchange, chain).block();
+
+        assertTrue(chainInvoked.get());
+        assertNull(exchange.getResponse().getStatusCode());
+    }
+
     /**
      * 构造带固定会话校验响应的过滤器，避免单测依赖真实 user-service。
      */
@@ -152,6 +189,22 @@ class JwtAuthFilterTest {
         JwtAuthFilter filter = new JwtAuthFilter(new ObjectMapper(), webClientBuilder);
         ReflectionTestUtils.setField(filter, "jwtSecret", JWT_SECRET);
         ReflectionTestUtils.setField(filter, "internalToken", INTERNAL_TOKEN);
+        // 初始化 adminPaths（默认值）
+        ReflectionTestUtils.setField(filter, "adminPaths", Set.of(
+                "/api/users/list",
+                "/api/users/*/status",
+                "/api/users/export",
+                "/api/users/stats",
+                "/api/users/online-status",
+                "/api/courses/reviewing",
+                "/api/courses/*/audit",
+                "/api/courses/*/offline",
+                "/api/courses/batch-status",
+                "/api/courses/export",
+                "/api/audit-logs/**",
+                "/api/announcements",
+                "/api/stats/admin/**"
+        ));
         return filter;
     }
 

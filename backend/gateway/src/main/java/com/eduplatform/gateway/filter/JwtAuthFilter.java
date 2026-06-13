@@ -24,12 +24,16 @@ import javax.crypto.SecretKey;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 网关 JWT 鉴权过滤器。
@@ -50,6 +54,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
     private static final String HEADER_USER_TS = "X-User-Ts";
     private static final String HEADER_USER_SIGNATURE = "X-User-Signature";
     private static final String HEADER_TRACE_ID = "X-Trace-Id";
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     /**
      * 白名单接口：无需登录即可访问。
@@ -71,23 +76,9 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     /**
      * 管理员专属路径：仅允许 role=admin 的请求通过。
-     * 使用 Ant 风格路径模式，支持通配符匹配。
+     * 从配置文件读取，支持动态更新，无需修改代码。
      */
-    private static final Set<String> ADMIN_PATHS = Set.of(
-            "/api/users/list",
-            "/api/users/*/status",
-            "/api/users/export",
-            "/api/users/stats",
-            "/api/users/online-status",
-            "/api/courses/reviewing",
-            "/api/courses/*/audit",
-            "/api/courses/*/offline",
-            "/api/courses/batch-status",
-            "/api/courses/export",
-            "/api/audit-logs/**",
-            "/api/announcements",
-            "/api/stats/admin/**"
-    );
+    private Set<String> adminPaths;
 
     private final ObjectMapper objectMapper;
     private final WebClient userServiceWebClient;
@@ -97,6 +88,9 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     @Value("${security.internal-token}")
     private String internalToken;
+
+    @Value("${gateway.security.admin-paths:}")
+    private String adminPathsConfig;
 
     public JwtAuthFilter(ObjectMapper objectMapper, @LoadBalanced WebClient.Builder webClientBuilder) {
         this.objectMapper = objectMapper;
@@ -108,6 +102,38 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         if (jwtSecret == null || jwtSecret.getBytes(StandardCharsets.UTF_8).length < 32) {
             throw new IllegalStateException("JWT_SECRET must be at least 32 bytes for HS256");
         }
+        // 从配置文件加载管理员路径
+        adminPaths = parseAdminPaths(adminPathsConfig);
+        log.info("网关管理员路径配置已加载，共 {} 条规则", adminPaths.size());
+    }
+
+    /**
+     * 解析管理员路径配置。
+     * 格式：逗号分隔的路径列表，支持 Ant 风格通配符。
+     */
+    private Set<String> parseAdminPaths(String config) {
+        if (!StringUtils.hasText(config)) {
+            // 默认管理员路径
+            return Set.of(
+                    "/api/users/list",
+                    "/api/users/*/status",
+                    "/api/users/export",
+                    "/api/users/stats",
+                    "/api/users/online-status",
+                    "/api/courses/reviewing",
+                    "/api/courses/*/audit",
+                    "/api/courses/*/offline",
+                    "/api/courses/batch-status",
+                    "/api/courses/export",
+                    "/api/audit-logs/**",
+                    "/api/announcements",
+                    "/api/stats/admin/**"
+            );
+        }
+        return Arrays.stream(config.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toSet());
     }
 
     @Override
@@ -198,9 +224,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         if (PUBLIC_PATHS.contains(path)) {
             return true;
         }
-        AntPathMatcher matcher = new AntPathMatcher();
         for (String pattern : PUBLIC_PATH_PATTERNS) {
-            if (matcher.match(pattern, path)) {
+            if (PATH_MATCHER.match(pattern, path)) {
                 return true;
             }
         }
@@ -211,9 +236,8 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
      * 管理员专属路径判定：使用 AntPathMatcher 进行通配符匹配。
      */
     private boolean isAdminPath(String path) {
-        AntPathMatcher matcher = new AntPathMatcher();
-        for (String pattern : ADMIN_PATHS) {
-            if (matcher.match(pattern, path)) {
+        for (String pattern : adminPaths) {
+            if (PATH_MATCHER.match(pattern, path)) {
                 return true;
             }
         }
@@ -238,16 +262,12 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
             return false;
         }
         String requestToken = exchange.getRequest().getHeaders().getFirst(HEADER_INTERNAL_TOKEN);
-        return StringUtils.hasText(requestToken) && internalToken.equals(requestToken);
-    }
-
-    private boolean validateToken(String token) {
-        try {
-            parseClaims(token);
-            return true;
-        } catch (Exception e) {
+        if (!StringUtils.hasText(requestToken)) {
             return false;
         }
+        return MessageDigest.isEqual(
+                internalToken.getBytes(StandardCharsets.UTF_8),
+                requestToken.getBytes(StandardCharsets.UTF_8));
     }
 
     private Claims parseClaims(String token) {
@@ -280,8 +300,9 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(this::isValidateTokenResponseSuccess)
+                .timeout(Duration.ofSeconds(3))
                 .onErrorResume(e -> {
-                    log.warn("网关会话校验失败: userId={}, error={}", userId, e.getMessage());
+                    log.warn("网关会话校验失败/超时: userId={}, error={}", userId, e.getMessage());
                     return Mono.just(false);
                 });
     }
