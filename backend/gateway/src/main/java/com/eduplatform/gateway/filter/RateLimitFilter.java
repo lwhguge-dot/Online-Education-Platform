@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
 public class RateLimitFilter implements GlobalFilter, Ordered {
 
     private static final String REDIS_RATE_LIMIT_KEY_PREFIX = "gateway:ratelimit:";
+    private static final String UNKNOWN_KEY = "unknown";
+    private static final int UNKNOWN_MAX_PERMITS = 10;
 
     private final Cache<String, RateLimiter> limiterCache;
     private final ReactiveStringRedisTemplate redisTemplate;
@@ -118,7 +120,7 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
      * 本地令牌桶限流（降级兜底）。
      */
     private boolean allowByLocal(String clientIp) {
-        double effectivePermits = "unknown".equals(clientIp) ? Math.min(permitsPerSecond, 10) : permitsPerSecond;
+        double effectivePermits = UNKNOWN_KEY.equals(clientIp) ? Math.min(permitsPerSecond, UNKNOWN_MAX_PERMITS) : permitsPerSecond;
         RateLimiter limiter = limiterCache.get(clientIp, key -> RateLimiter.create(effectivePermits));
         return limiter != null && limiter.tryAcquire();
     }
@@ -188,7 +190,7 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
         if (StringUtils.hasText(remoteIp)) {
             return remoteIp;
         }
-        return "unknown";
+        return UNKNOWN_KEY;
     }
 
     /**
@@ -215,6 +217,7 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        return Ordered.HIGHEST_PRECEDENCE;
+        // Runs after JwtAuthFilter (HIGHEST_PRECEDENCE + 10) to use validated X-User-Id
+        return Ordered.HIGHEST_PRECEDENCE + 20;
     }
 }
