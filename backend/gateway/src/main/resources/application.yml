@@ -80,10 +80,9 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins: 
-              - "http://localhost:3000"
-              - "http://localhost:5173"
-              - "http://localhost"
+            # CORS 配置：支持环境变量注入，生产环境请设置实际域名
+            # 格式：逗号分隔的域名列表，如 "https://app.example.com,https://admin.example.com"
+            allowedOrigins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
             allowedMethods:
               - GET
               - POST
@@ -95,7 +94,6 @@ spring:
               - "Authorization"
               - "X-Requested-With"
               - "X-Trace-Id"
-              - "X-Internal-Token"
             allowCredentials: true
     nacos:
       discovery:
@@ -121,7 +119,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,gateway
+        include: health,info,metrics
   endpoint:
     health:
       show-details: when_authorized
@@ -139,6 +137,10 @@ gateway:
     cache-max-size: ${GATEWAY_RATE_LIMIT_CACHE_MAX_SIZE:100000}
     trust-forwarded-headers: ${GATEWAY_RATE_LIMIT_TRUST_FORWARDED_HEADERS:false}
     trusted-proxies: ${GATEWAY_RATE_LIMIT_TRUSTED_PROXIES:}
+  security:
+    # 管理员专属路径配置（逗号分隔，支持 Ant 风格通配符）
+    # 新增管理员接口时只需在此添加路径，无需修改代码
+    admin-paths: ${GATEWAY_ADMIN_PATHS:}
 
 jwt:
   # 必须由环境变量注入，避免默认密钥导致鉴权被绕过
