@@ -1,0 +1,23 @@
+{
+  "name": "edu-platform",
+  "version": "1.0.0",
+  "description": "智慧课堂在线教育平台",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "install:all": "cd frontend && npm install",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "lint": "cd frontend && npm run lint",
+    "lint:fix": "cd frontend && npm run lint:fix",
+    "type-check": "cd frontend && npm run type-check",
+    "test": "cd frontend && npm run test",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:build": "docker compose build"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

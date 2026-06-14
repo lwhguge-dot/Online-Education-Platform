@@ -1,14 +1,16 @@
 package com.eduplatform.user.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
  * 审计日志实体类
  * 对应数据库表 audit_logs，记录系统中关键的管理操作行为，用于安全审计。
  */
-@Data
+@Getter
+@Setter
 @TableName("audit_logs")
 public class AuditLog {
     /**

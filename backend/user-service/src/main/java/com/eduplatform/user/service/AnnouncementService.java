@@ -314,16 +314,19 @@ public class AnnouncementService {
      * 设计原因：控制层返回 VO，避免直接暴露持久层实体。
      */
     public Map<String, Object> findByTeacher(Long teacherId, Long courseId, String status, int page, int size) {
-        int offset = (page - 1) * size;
-        List<Announcement> records = announcementMapper.findByTeacher(teacherId, courseId, status, offset, size);
+        // 边界保护：防止 page 为 0/负数导致 offset 负值，以及 page*size 整数溢出。
+        int safePage = Math.max(1, page);
+        int safeSize = Math.max(1, Math.min(size, 200));
+        long offset = (long) (safePage - 1) * safeSize;
+        List<Announcement> records = announcementMapper.findByTeacher(teacherId, courseId, status, (int) Math.min(offset, Integer.MAX_VALUE), safeSize);
         long total = announcementMapper.countByTeacher(teacherId, courseId, status);
 
         Map<String, Object> result = new HashMap<>();
         result.put("records", convertToVOList(records));
         result.put("total", total);
-        result.put("pages", (total + size - 1) / size);
-        result.put("current", page);
-        result.put("size", size);
+        result.put("pages", safeSize > 0 ? (total + safeSize - 1) / safeSize : 0);
+        result.put("current", safePage);
+        result.put("size", safeSize);
         return result;
     }
 

@@ -1,13 +1,15 @@
 package com.eduplatform.progress.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
  * 学生徽章获得记录实体
  */
-@Data
+@Getter
+@Setter
 @TableName("student_badges")
 public class StudentBadge {
     @TableId(type = IdType.AUTO)

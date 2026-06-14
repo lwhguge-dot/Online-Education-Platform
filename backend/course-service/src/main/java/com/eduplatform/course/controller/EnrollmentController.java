@@ -1,11 +1,14 @@
 package com.eduplatform.course.controller;
 
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.security.InternalTokenVerifier;
+import com.eduplatform.common.security.RequestContext;
 import com.eduplatform.course.entity.Enrollment;
 import com.eduplatform.course.service.EnrollmentService;
 import com.eduplatform.course.vo.EnrollmentVO;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -16,15 +19,15 @@ import java.util.Map;
  * 课程报名控制器。
  * 设计意图：统一课程报名与学习进度维护入口，控制层仅输出 VO。
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/enrollments")
 @RequiredArgsConstructor
 public class EnrollmentController {
 
-    @Value("${security.internal-token}")
-    private String internalToken;
-
     private final EnrollmentService enrollmentService;
+    private final InternalTokenVerifier internalTokenVerifier;
+    private final RequestContext requestContext;
 
     /**
      * 学生报名课程。
@@ -45,7 +48,10 @@ public class EnrollmentController {
         try {
             Enrollment enrollment = enrollmentService.enroll(studentId, courseId);
             return Result.success("报名成功", enrollmentService.convertToVO(enrollment));
+        } catch (BusinessException e) {
+            return Result.failure(e.getCode(), e.getMessage());
         } catch (Exception e) {
+            log.error("选课失败: studentId={}, courseId={}", studentId, courseId, e);
             return Result.error("操作失败，请稍后重试");
         }
     }
@@ -69,7 +75,10 @@ public class EnrollmentController {
         try {
             enrollmentService.drop(studentId, courseId);
             return Result.success("退课成功", null);
+        } catch (BusinessException e) {
+            return Result.failure(e.getCode(), e.getMessage());
         } catch (Exception e) {
+            log.error("退课失败: studentId={}, courseId={}", studentId, courseId, e);
             return Result.error("操作失败，请稍后重试");
         }
     }
@@ -404,6 +413,10 @@ public class EnrollmentController {
         if (value == null || "null".equals(value)) {
             return "";
         }
+        // 防止 CSV 注入：以 =, +, -, @, \t, \r 开头的单元格添加前缀
+        if (value.matches("^[=+\\-@\\t\\r].*")) {
+            value = "'" + value;
+        }
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
@@ -414,52 +427,38 @@ public class EnrollmentController {
      * 解析网关注入的用户ID，非法值返回 null。
      */
     private Long parseUserId(String currentUserIdHeader) {
-        if (currentUserIdHeader == null || currentUserIdHeader.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(currentUserIdHeader);
-        } catch (NumberFormatException exception) {
-            return null;
-        }
+        return requestContext.parseUserId(currentUserIdHeader);
     }
 
     /**
      * 判断是否具备教师管理权限（教师或管理员）。
+     * 委托到 RequestContext 统一实现。
      */
     private boolean hasTeacherManageRole(String currentUserRole) {
-        return currentUserRole != null
-                && ("teacher".equalsIgnoreCase(currentUserRole) || "admin".equalsIgnoreCase(currentUserRole));
+        return requestContext.isTeacherOrAdmin();
     }
 
     /**
      * 校验内部服务调用令牌。
      */
     private boolean hasValidInternalToken(String requestInternalToken) {
-        return requestInternalToken != null && requestInternalToken.equals(internalToken);
+        return internalTokenVerifier.isValid(requestInternalToken);
     }
 
     /**
      * 学生数据访问控制：学生仅可访问本人，教师和管理员可用于教学管理查询。
+     * 委托到 RequestContext 统一实现。
      */
     private boolean canAccessStudentData(Long targetStudentId, Long currentUserId, String currentUserRole) {
-        if (hasTeacherManageRole(currentUserRole)) {
-            return true;
-        }
-        return currentUserId != null && currentUserId.equals(targetStudentId);
+        return requestContext.canAccessStudentData(targetStudentId);
     }
 
     /**
      * 教师数据访问控制：管理员可跨账号访问，教师仅可访问本人数据。
+     * 委托到 RequestContext 统一实现。
      */
     private boolean canAccessTeacherData(Long targetTeacherId, Long currentUserId, String currentUserRole) {
-        if (currentUserRole != null && "admin".equalsIgnoreCase(currentUserRole)) {
-            return true;
-        }
-        return currentUserRole != null
-                && "teacher".equalsIgnoreCase(currentUserRole)
-                && currentUserId != null
-                && currentUserId.equals(targetTeacherId);
+        return requestContext.canAccessTeacherData(targetTeacherId);
     }
 }
 

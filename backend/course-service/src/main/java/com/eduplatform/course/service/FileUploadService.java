@@ -7,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -16,6 +15,7 @@ import java.io.ByteArrayInputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -101,15 +101,30 @@ public class FileUploadService {
 
     /**
      * 常见文件格式的 Magic Bytes 特征。
+     * 覆盖所有允许上传的文件类型。
      */
-    private static final Map<String, byte[]> MAGIC_BYTES = Map.of(
-            "video/mp4", new byte[]{0x00, 0x00, 0x00, (byte) 0x1C, 0x66, 0x74, 0x79, 0x70},
-            "image/jpeg", new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF},
-            "image/png", new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A},
-            "image/gif", new byte[]{0x47, 0x49, 0x46, 0x38},
-            "image/webp", new byte[]{0x52, 0x49, 0x46, 0x46},
-            "application/pdf", new byte[]{0x25, 0x50, 0x44, 0x46}
-    );
+    private static final Map<String, byte[]> MAGIC_BYTES;
+    static {
+        MAGIC_BYTES = new HashMap<>();
+        // 视频格式
+        MAGIC_BYTES.put("video/mp4", new byte[]{0x00, 0x00, 0x00, (byte) 0x1C, 0x66, 0x74, 0x79, 0x70});
+        MAGIC_BYTES.put("video/avi", new byte[]{0x52, 0x49, 0x46, 0x46});  // RIFF
+        MAGIC_BYTES.put("video/mkv", new byte[]{0x1A, 0x45, (byte) 0xDF, (byte) 0xA3});  // EBML
+        MAGIC_BYTES.put("video/mov", new byte[]{0x00, 0x00, 0x00, 0x14, 0x66, 0x74, 0x79, 0x70});  // ftyp
+        MAGIC_BYTES.put("video/wmv", new byte[]{0x30, 0x26, (byte) 0xB2, 0x75});  // ASF
+        MAGIC_BYTES.put("video/flv", new byte[]{0x46, 0x4C, 0x56, 0x01});  // FLV
+        // 图片格式
+        MAGIC_BYTES.put("image/jpeg", new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF});
+        MAGIC_BYTES.put("image/png", new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A});
+        MAGIC_BYTES.put("image/gif", new byte[]{0x47, 0x49, 0x46, 0x38});
+        MAGIC_BYTES.put("image/webp", new byte[]{0x52, 0x49, 0x46, 0x46});  // RIFF
+        // 文档格式
+        MAGIC_BYTES.put("application/pdf", new byte[]{0x25, 0x50, 0x44, 0x46});  // %PDF
+        MAGIC_BYTES.put("application/msword", new byte[]{(byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0});  // OLE
+        MAGIC_BYTES.put("application/vnd.openxmlformats-officedocument.wordprocessingml.document", new byte[]{0x50, 0x4B, 0x03, 0x04});  // ZIP
+        MAGIC_BYTES.put("application/vnd.ms-powerpoint", new byte[]{(byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0});  // OLE
+        MAGIC_BYTES.put("application/vnd.openxmlformats-officedocument.presentationml.presentation", new byte[]{0x50, 0x4B, 0x03, 0x04});  // ZIP
+    }
 
     /**
      * 资源合法性前置校验

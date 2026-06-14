@@ -1,6 +1,7 @@
 package com.eduplatform.homework.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.security.RequestContext;
 import com.eduplatform.homework.dto.DiscussionDTO;
 import com.eduplatform.homework.dto.DiscussionGroupDTO;
 import com.eduplatform.homework.dto.DiscussionReplyRequest;
@@ -24,6 +25,7 @@ import java.util.Map;
 public class DiscussionController {
 
     private final DiscussionService discussionService;
+    private final RequestContext requestContext;
 
     /**
      * 获取教师的所有讨论（按课程/章节分组）。
@@ -89,8 +91,19 @@ public class DiscussionController {
         if (!hasTeacherManageRole(currentUserRole)) {
             return Result.failure(403, "权限不足，仅教师或管理员可更新讨论状态");
         }
+        // 验证状态值是否合法
+        if (!isValidDiscussionStatus(status)) {
+            return Result.failure(400, "无效的状态值，允许的值为：pending, answered, follow_up");
+        }
         discussionService.updateAnswerStatus(id, status, answeredBy);
         return Result.success("状态更新成功", null);
+    }
+
+    /**
+     * 验证讨论状态是否合法
+     */
+    private boolean isValidDiscussionStatus(String status) {
+        return "pending".equals(status) || "answered".equals(status) || "follow_up".equals(status);
     }
 
     /**
@@ -150,33 +163,22 @@ public class DiscussionController {
      * 解析网关注入的用户ID。
      */
     private Long parseUserId(String userIdHeader) {
-        if (userIdHeader == null || userIdHeader.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(userIdHeader);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return requestContext.parseUserId(userIdHeader);
     }
 
     /**
      * 判断是否具备教师管理权限（教师或管理员）。
+     * 委托到 RequestContext 统一实现。
      */
     private boolean hasTeacherManageRole(String currentUserRole) {
-        return currentUserRole != null
-                && ("teacher".equalsIgnoreCase(currentUserRole) || "admin".equalsIgnoreCase(currentUserRole));
+        return requestContext.isTeacherOrAdmin();
     }
 
     /**
-     * 判断是否可访问指定教师维度数据（管理员或教师本人）。
+     * 是否可访问指定教师维度数据（管理员或教师本人）。
+     * 委托到 RequestContext 统一实现。
      */
     private boolean canAccessTeacherData(Long targetTeacherId, Long currentUserId, String currentUserRole) {
-        if ("admin".equalsIgnoreCase(currentUserRole)) {
-            return true;
-        }
-        return "teacher".equalsIgnoreCase(currentUserRole)
-                && currentUserId != null
-                && currentUserId.equals(targetTeacherId);
+        return requestContext.canAccessTeacherData(targetTeacherId);
     }
 }

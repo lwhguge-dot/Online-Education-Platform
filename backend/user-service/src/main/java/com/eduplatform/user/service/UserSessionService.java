@@ -155,7 +155,9 @@ public class UserSessionService {
     }
 
     /**
-     * 内部辅助：序列化并缓存会话对象
+     * 内部辅助：序列化并缓存会话对象。
+     * 缓存写入失败降级为告警而非抛异常，避免 Redis 抖动回滚 DB 事务导致登录/注册失败；
+     * DB 已落地的会话记录仍可被心跳/校验流程拉起 Redis 缓存。
      */
     private void cacheSession(UserSession session) {
         try {
@@ -163,7 +165,8 @@ public class UserSessionService {
             String value = objectMapper.writeValueAsString(session);
             redisTemplate.opsForValue().set(key, value, sessionTimeoutSeconds, TimeUnit.SECONDS);
         } catch (Exception e) {
-            throw new RuntimeException("Redis 会话缓存同步失败", e);
+            // Redis 不可用时仅告警，DB 会话记录仍然有效，由后续心跳触发续期或重建缓存。
+            log.warn("Redis 会话缓存同步失败，本次降级为仅 DB 生效: jti={}", session.getJti(), e);
         }
     }
 
@@ -229,17 +232,13 @@ public class UserSessionService {
         }
 
         LocalDateTime activeThreshold = LocalDateTime.now().minusSeconds(sessionTimeoutSeconds);
-        java.util.List<UserSession> activeSessions = sessionMapper.selectList(
+        // 使用 SQL 的 COUNT(DISTINCT user_id) 避免全表加载到内存
+        Long count = sessionMapper.selectCount(
                 new LambdaQueryWrapper<UserSession>()
                         .eq(UserSession::getStatus, UserSession.STATUS_ONLINE)
                         .ge(UserSession::getLastActiveTime, activeThreshold)
                         .select(UserSession::getUserId));
-
-        // 按用户ID去重后返回数量
-        return activeSessions.stream()
-                .map(UserSession::getUserId)
-                .distinct()
-                .count();
+        return count != null ? count : 0;
     }
 
     /**
@@ -260,21 +259,21 @@ public class UserSessionService {
         // 先清理过期会话
         cleanupAllExpiredSessions();
 
-        LambdaQueryWrapper<UserSession> wrapper = new LambdaQueryWrapper<UserSession>()
-                .eq(UserSession::getStatus, UserSession.STATUS_ONLINE)
-                .select(UserSession::getUserId);
-
-        // 如果配置了超时时间，增加活跃时间过滤条件
-        if (sessionTimeoutSeconds > 0) {
-            LocalDateTime activeThreshold = LocalDateTime.now().minusSeconds(sessionTimeoutSeconds);
-            wrapper.ge(UserSession::getLastActiveTime, activeThreshold);
+        if (sessionTimeoutSeconds <= 0) {
+            // 如果超时时间未配置，只按状态统计
+            return sessionMapper.selectList(
+                    new LambdaQueryWrapper<UserSession>()
+                            .eq(UserSession::getStatus, UserSession.STATUS_ONLINE)
+                            .select(UserSession::getUserId))
+                    .stream()
+                    .map(UserSession::getUserId)
+                    .distinct()
+                    .collect(java.util.stream.Collectors.toList());
         }
 
-        java.util.List<UserSession> onlineSessions = sessionMapper.selectList(wrapper);
-        return onlineSessions.stream()
-                .map(UserSession::getUserId)
-                .distinct()
-                .collect(java.util.stream.Collectors.toList());
+        LocalDateTime activeThreshold = LocalDateTime.now().minusSeconds(sessionTimeoutSeconds);
+        // 使用自定义 SQL 查询避免全表加载到内存
+        return sessionMapper.findOnlineUserIds(activeThreshold);
     }
 
     /**

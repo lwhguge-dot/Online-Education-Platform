@@ -1,11 +1,13 @@
 package com.eduplatform.progress.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 @TableName("chapter_progress")
 public class ChapterProgress {
     @TableId(type = IdType.AUTO)
@@ -23,6 +25,9 @@ public class ChapterProgress {
     private LocalDateTime completedAt;
     private Integer lastPosition;
     private LocalDateTime lastUpdateTime;
+    
+    @Version
+    private Integer version;
     
     @TableField("created_at")
     private LocalDateTime createdAt;

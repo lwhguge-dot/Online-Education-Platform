@@ -1,6 +1,7 @@
 package com.eduplatform.course.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.security.RequestContext;
 import com.eduplatform.course.service.FileUploadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class FileUploadController {
 
     private final FileUploadService fileUploadService;
+    private final RequestContext requestContext;
 
     /**
      * 上传课程视频。
@@ -114,9 +116,9 @@ public class FileUploadController {
 
     /**
      * 判断是否具备教师管理权限（教师或管理员）。
+     * 委托到 RequestContext 统一实现。
      */
     private boolean hasTeacherManageRole(String currentUserRole) {
-        return currentUserRole != null
-                && ("teacher".equalsIgnoreCase(currentUserRole) || "admin".equalsIgnoreCase(currentUserRole));
+        return requestContext.isTeacherOrAdmin();
     }
 }

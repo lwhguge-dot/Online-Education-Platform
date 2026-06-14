@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.data.domain.Range;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -23,10 +24,14 @@ import java.util.stream.Collectors;
 public class RateLimitFilter implements GlobalFilter, Ordered {
 
     private static final String REDIS_RATE_LIMIT_KEY_PREFIX = "gateway:ratelimit:";
+    private static final String UNKNOWN_KEY = "unknown";
+    private static final int UNKNOWN_MAX_PERMITS = 10;
+    private static final int AUTH_ENDPOINTS_MAX_PERMITS = 5;
+    private static final int AUTH_ENDPOINTS_WINDOW_SECONDS = 60;
 
     private final Cache<String, RateLimiter> limiterCache;
     private final ReactiveStringRedisTemplate redisTemplate;
-    private final int permitsPerSecond;
+    private final double permitsPerSecond;
     private final int windowSeconds;
     private final boolean trustForwardedHeaders;
     private final Set<String> trustedProxyIps;
@@ -58,7 +63,7 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
             boolean redisEnabled,
             Set<String> trustedProxyIps) {
         this.redisTemplate = redisTemplate;
-        this.permitsPerSecond = Math.max(1, (int) Math.floor(permitsPerSecond));
+        this.permitsPerSecond = Math.max(1.0, permitsPerSecond);
         this.windowSeconds = Math.max(1, windowSeconds);
         this.trustForwardedHeaders = trustForwardedHeaders;
         this.trustedProxyIps = trustedProxyIps == null
@@ -102,59 +107,56 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
      * 优先使用 Redis 分布式限流，失败时自动降级到本地限流，保障网关可用性。
      */
     private Mono<Boolean> allowRequest(String clientIp, ServerWebExchange exchange) {
+        boolean isAuth = isAuthEndpoint(exchange.getRequest().getPath().value());
         if (!redisEnabled) {
-            return Mono.just(allowByLocal(clientIp));
+            return Mono.just(allowByLocal(clientIp, isAuth));
         }
-        return allowByRedis(clientIp).onErrorResume(e -> {
+        return allowByRedis(clientIp, isAuth).onErrorResume(e -> {
             log.warn("Redis限流失败，降级为本地限流: ip={}, path={}, error={}",
                     clientIp,
                     exchange.getRequest().getPath(),
                     e.getMessage());
-            return Mono.just(allowByLocal(clientIp));
+            return Mono.just(allowByLocal(clientIp, isAuth));
         });
+    }
+
+    private boolean isAuthEndpoint(String path) {
+        return path.startsWith("/api/auth/login")
+            || path.startsWith("/api/auth/register")
+            || path.startsWith("/api/auth/password-reset");
     }
 
     /**
      * 本地令牌桶限流（降级兜底）。
      */
-    private boolean allowByLocal(String clientIp) {
-        RateLimiter limiter = limiterCache.get(clientIp, key -> RateLimiter.create(permitsPerSecond));
+    private boolean allowByLocal(String clientIp, boolean isAuth) {
+        double effectivePermits = isAuth ? AUTH_ENDPOINTS_MAX_PERMITS
+                : (UNKNOWN_KEY.equals(clientIp) ? Math.min(permitsPerSecond, UNKNOWN_MAX_PERMITS) : permitsPerSecond);
+        RateLimiter limiter = limiterCache.get(clientIp + (isAuth ? ":auth" : ""), key -> RateLimiter.create(effectivePermits));
         return limiter != null && limiter.tryAcquire();
     }
 
     /**
-     * Redis 固定时间窗限流（多实例共享）。
+     * Redis 滑动窗口限流（多实例共享）。
      */
-    private Mono<Boolean> allowByRedis(String clientIp) {
-        String redisKey = buildRedisWindowKey(clientIp);
-        return redisTemplate.opsForValue().increment(redisKey)
-                .flatMap(counter -> {
-                    if (counter == null) {
-                        return Mono.just(false);
-                    }
+    private Mono<Boolean> allowByRedis(String clientIp, boolean isAuth) {
+        long now = Instant.now().getEpochSecond();
+        long windowStart = now - (isAuth ? AUTH_ENDPOINTS_WINDOW_SECONDS : windowSeconds);
+        String redisKey = REDIS_RATE_LIMIT_KEY_PREFIX + clientIp + (isAuth ? ":auth" : "");
+        double limit = isAuth ? AUTH_ENDPOINTS_MAX_PERMITS : permitsPerSecond;
 
-                    Mono<Boolean> expireOperation = Mono.just(true);
-                    if (counter == 1L) {
-                        // 首次命中窗口时设置过期时间，避免 Redis Key 无限增长。
-                        expireOperation = redisTemplate.expire(redisKey, Duration.ofSeconds(windowSeconds + 1))
-                                .onErrorResume(e -> {
-                                    log.warn("设置Redis限流Key过期时间失败: key={}, error={}", redisKey, e.getMessage());
-                                    return Mono.just(false);
-                                });
+        Range<Double> scoreRange = Range.closed(0.0, (double) windowStart);
+        return redisTemplate.opsForZSet().removeRangeByScore(redisKey, scoreRange)
+                .then(redisTemplate.opsForZSet().add(redisKey, String.valueOf(now), (double) now))
+                .then(redisTemplate.opsForZSet().size(redisKey))
+                .flatMap(count -> {
+                    if (count == 1) {
+                        return redisTemplate.expire(redisKey, Duration.ofSeconds((isAuth ? AUTH_ENDPOINTS_WINDOW_SECONDS : windowSeconds) + 1))
+                                .thenReturn(count <= limit);
                     }
-
-                    long currentCounter = counter;
-                    return expireOperation.thenReturn(currentCounter <= permitsPerSecond);
+                    return Mono.just(count <= limit);
                 })
                 .defaultIfEmpty(false);
-    }
-
-    /**
-     * 构建 Redis 限流窗口键。
-     */
-    private String buildRedisWindowKey(String clientIp) {
-        long windowId = Instant.now().getEpochSecond() / windowSeconds;
-        return REDIS_RATE_LIMIT_KEY_PREFIX + clientIp + ":" + windowId;
     }
 
     /**
@@ -163,6 +165,11 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
      * 仅当来源地址命中受信代理列表时，才允许使用转发头中的客户端地址。
      */
     String resolveClientKey(ServerWebExchange exchange) {
+        String userId = exchange.getRequest().getHeaders().getFirst("X-User-Id");
+        if (StringUtils.hasText(userId)) {
+            return "user:" + userId;
+        }
+
         String remoteIp = resolveRemoteAddress(exchange);
         if (shouldUseForwardedHeaders(remoteIp)) {
             String xForwardedFor = exchange.getRequest().getHeaders().getFirst("X-Forwarded-For");
@@ -182,7 +189,7 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
         if (StringUtils.hasText(remoteIp)) {
             return remoteIp;
         }
-        return "unknown";
+        return UNKNOWN_KEY;
     }
 
     /**
@@ -209,6 +216,7 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        return Ordered.HIGHEST_PRECEDENCE;
+        // Runs after JwtAuthFilter (HIGHEST_PRECEDENCE + 10) to use validated X-User-Id
+        return Ordered.HIGHEST_PRECEDENCE + 20;
     }
 }

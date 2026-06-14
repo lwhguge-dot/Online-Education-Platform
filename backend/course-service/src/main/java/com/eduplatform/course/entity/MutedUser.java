@@ -3,7 +3,8 @@ package com.eduplatform.course.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -12,7 +13,8 @@ import java.time.LocalDateTime;
  * 对应数据库表 `muted_users`，记录因违规被限制交互权限的用户名单。
  * 禁言可针对特定的课程生效，支持设定自动解除时间。
  */
-@Data
+@Getter
+@Setter
 @TableName("muted_users")
 public class MutedUser {
 

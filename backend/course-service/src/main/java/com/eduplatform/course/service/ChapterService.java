@@ -1,6 +1,7 @@
 package com.eduplatform.course.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.eduplatform.course.config.ChapterDefaultsConfig;
 import com.eduplatform.course.entity.Chapter;
 import com.eduplatform.course.entity.ChapterQuiz;
 import com.eduplatform.course.entity.Course;
@@ -14,7 +15,6 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -39,6 +39,7 @@ public class ChapterService {
     private final ChapterMapper chapterMapper;
     private final ChapterQuizMapper quizMapper;
     private final CourseMapper courseMapper;
+    private final ChapterDefaultsConfig chapterDefaultsConfig;
 
     /**
      * 将章节实体转换为视图对象 (VO)
@@ -103,15 +104,15 @@ public class ChapterService {
      */
     @Transactional
     public Chapter createChapter(Chapter chapter) {
-        // 设置业务默认值
+        // 设置业务默认值（来自配置，便于运营调整而无需发版）
         if (chapter.getUnlockVideoRate() == null) {
-            chapter.setUnlockVideoRate(BigDecimal.valueOf(0.9)); // 默认观看 90% 视为通过
+            chapter.setUnlockVideoRate(chapterDefaultsConfig.getUnlockVideoRate());
         }
         if (chapter.getUnlockQuizScore() == null) {
-            chapter.setUnlockQuizScore(60); // 默认 60 分及格解锁下一关
+            chapter.setUnlockQuizScore(chapterDefaultsConfig.getUnlockQuizScore());
         }
         if (chapter.getStatus() == null) {
-            chapter.setStatus(1); // 默认启用状态
+            chapter.setStatus(chapterDefaultsConfig.getDefaultStatus());
         }
 
         // 自动计算排序权重
@@ -182,6 +183,13 @@ public class ChapterService {
     }
 
     /**
+     * 根据ID获取章节
+     */
+    public Chapter getChapterById(Long id) {
+        return chapterMapper.selectById(id);
+    }
+
+    /**
      * 获取指定课程的完整大纲
      */
     public List<Chapter> getChaptersByCourse(Long courseId) {
@@ -203,7 +211,7 @@ public class ChapterService {
             quiz.setSortOrder(count.intValue() + 1);
         }
         if (quiz.getScore() == null) {
-            quiz.setScore(10); // 默认每题 10 分
+            quiz.setScore(chapterDefaultsConfig.getDefaultQuizScore());
         }
         quizMapper.insert(quiz);
         return quiz;
@@ -220,7 +228,7 @@ public class ChapterService {
             quiz.setChapterId(chapterId);
             quiz.setSortOrder(order++);
             if (quiz.getScore() == null) {
-                quiz.setScore(10);
+                quiz.setScore(chapterDefaultsConfig.getDefaultQuizScore());
             }
             quizMapper.insert(quiz);
         }

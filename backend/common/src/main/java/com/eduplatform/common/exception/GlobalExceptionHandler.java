@@ -41,9 +41,23 @@ public class GlobalExceptionHandler {
             throw e;
         }
         // 安全要求：日志中不直接记录请求原始输入，避免日志注入和敏感信息泄露。
-        log.error("请求资源未找到", e);
+        // 对 uri 做净化，仅保留白名单字符，截断长度，避免日志注入。
+        String safeUri = sanitizeForLog(uri);
+        log.warn("请求资源未找到: uri={}", safeUri);
         // 对于非 Actuator 路径，也重新抛出让 Spring 默认处理
         throw e;
+    }
+
+    /**
+     * 净化用户可控字符串，防止日志注入（换行/控制字符伪造）。
+     */
+    private static String sanitizeForLog(String value) {
+        if (value == null) {
+            return "null";
+        }
+        // 去除换行/回车/制表符等控制字符，并截断长度
+        String cleaned = value.replaceAll("[\\r\\n\\t\\p{Cntrl}]", "_");
+        return cleaned.length() > 200 ? cleaned.substring(0, 200) + "..." : cleaned;
     }
 
     /**
@@ -141,24 +155,16 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理运行时异常（未预期的系统级异常，对外屏蔽细节）。
-     */
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Result<String>> handleRuntimeException(
-            RuntimeException e, HttpServletRequest request) {
-        String traceId = resolveTraceId(request);
-        log.error("未预期的运行时异常", e);
-        return buildResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR, 500,
-                "请求处理失败，请稍后重试", traceId);
-    }
-
-    /**
-     * 处理所有未捕获的通用异常。
+     * 处理所有未捕获的异常（统一兜底策略）。
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Result<String>> handleException(Exception e, HttpServletRequest request) {
         String traceId = resolveTraceId(request);
-        log.error("发生系统异常", e);
+        if (e instanceof RuntimeException) {
+            log.error("未预期的运行时异常", e);
+        } else {
+            log.error("发生系统异常", e);
+        }
         return buildResponseEntity(HttpStatus.INTERNAL_SERVER_ERROR, 500,
                 "系统繁忙，请稍后重试", traceId);
     }

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <Transition name="slide">
     <div v-if="!isOnline" class="offline-notice">
       <div class="offline-content">

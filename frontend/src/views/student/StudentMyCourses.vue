@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 /**
  * 学生课程页面
  * 展示已选课程和选课中心，支持搜索、筛选和学习入口
@@ -16,6 +16,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useStudentCourses } from '../../composables/useStudentCourses'
 import { useToastStore } from '../../stores/toast'
 import { useConfirmStore } from '../../stores/confirm'
+import { logger } from '../../utils/logger'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -114,7 +115,7 @@ const handleDrop = async (course) => {
      await dropCourse(course.id, studentId)
      toast.success('已退出课程')
    } catch(error) {
-     console.error('退课失败:', error)
+     logger.error('退课失败:', error)
      toast.error('退出失败')
    }
 }

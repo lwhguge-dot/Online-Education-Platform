@@ -1,10 +1,12 @@
 package com.eduplatform.progress.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 @TableName("chapter_quizzes")
 public class ChapterQuiz {
     @TableId(type = IdType.AUTO)

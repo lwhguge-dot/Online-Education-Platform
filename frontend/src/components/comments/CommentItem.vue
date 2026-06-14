@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, computed } from 'vue'
 import { ThumbsUp, MessageCircle, Pin, Trash2, VolumeX, MoreHorizontal, User } from 'lucide-vue-next'
 import CommentInput from './CommentInput.vue'

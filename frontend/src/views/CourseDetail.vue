@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="course-detail-root min-h-screen animate-fade-in">
     <div class="max-w-6xl mx-auto px-4 py-8">
       <!-- 返回按钮 -->
@@ -95,50 +95,7 @@
           </div>
         </div>
         
-        <div class="glass-card rounded-2xl p-8">
-          <h2 class="text-xl font-bold text-shuimo mb-6 flex items-center gap-2">
-            <div class="w-1 h-6 bg-qinghua rounded-full"></div>
-            课程章节
-            <span v-if="chapters.length > 0" class="ml-2 text-sm font-normal text-shuimo/50">共 {{ chapters.length }} 章</span>
-          </h2>
-          <div v-if="chapters.length === 0" class="text-center py-12">
-            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <BookOpen class="w-8 h-8 text-slate-400" />
-            </div>
-            <p class="text-shuimo/50">暂无章节内容</p>
-          </div>
-          <div v-else class="space-y-4">
-            <TransitionGroup name="chapter-list" appear>
-            <div v-for="(chapter, index) in chapters" :key="chapter.id"
-                 :class="[
-                   'chapter-item flex items-center justify-between p-5 border border-slate-100/50 bg-white/50 rounded-xl transition-[background-color,border-color,box-shadow,opacity] duration-300 group',
-                    (isEnrolled || isAdmin)
-                      ? 'hover:bg-white/80 hover:shadow-md hover:border-qinghua/30 cursor-pointer'
-                      : 'opacity-60 cursor-not-allowed'
-                  ]"
-                 :style="{ '--delay': index * 0.08 + 's' }"
-                 @click="handleChapterClick">
-              <!-- 左侧指示条 -->
-              <div class="absolute left-0 top-0 bottom-0 w-1 bg-qinghua rounded-l-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              
-              <div class="flex items-center gap-5">
-                <span class="course-chapter-number chapter-number w-10 h-10 flex items-center justify-center bg-qinghua/10 text-qinghua rounded-xl text-lg font-bold font-song relative overflow-hidden group-hover:bg-qinghua group-hover:text-white transition-[background-color,color,transform] duration-300">
-                  {{ index + 1 }}
-                  <div class="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent"></div>
-                </span>
-                <div>
-                  <h3 class="font-medium text-shuimo text-lg mb-1 group-hover:text-qinghua transition-colors">{{ chapter.title }}</h3>
-                  <p class="text-sm text-shuimo/60">{{ chapter.description }}</p>
-                </div>
-              </div>
-              <div class="text-sm font-medium text-shuimo/50 flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-lg group-hover:bg-qinghua/10 group-hover:text-qinghua transition-[background-color,color] duration-300">
-                <Clock class="w-4 h-4" />
-                {{ formatDuration(chapter.videoDuration) }}
-              </div>
-            </div>
-            </TransitionGroup>
-          </div>
-        </div>
+        <ChapterList :chapters="(chapters as unknown as Array<{ id: number; title: string; description: string; videoDuration: number }>)" :interactive="isEnrolled || isAdmin" @select="handleChapterClick" />
       </div>
       
       <div v-else class="text-center py-32">
@@ -187,8 +144,8 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useConfirmStore } from '../stores/confirm'
@@ -197,7 +154,10 @@ import BaseButton from '../components/ui/BaseButton.vue'
 import BaseTooltip from '../components/ui/BaseTooltip.vue'
 import SkeletonLoader from '../components/SkeletonLoader.vue'
 import AnimatedNumber from '../components/ui/AnimatedNumber.vue'
-import { ArrowLeft, Users, Star, User, Clock, BookOpen, Play, LogOut, Eye } from 'lucide-vue-next'
+import { ArrowLeft, Users, Star, User, Play, LogOut, Eye } from 'lucide-vue-next'
+import ChapterList from '../components/course/ChapterList.vue'
+import { logger } from '../utils/logger'
+import type { Course, Chapter } from '../types/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -205,8 +165,8 @@ const authStore = useAuthStore()
 const confirmStore = useConfirmStore()
 
 const loading = ref(true)
-const course = ref(null)
-const chapters = ref([])
+const course = ref<Course | null>(null) as Ref<Course | null>
+const chapters = ref<Chapter[]>([])
 const isEnrolled = ref(false)
 const enrolling = ref(false)
 const showToast = ref(false)
@@ -214,60 +174,56 @@ const toastType = ref('success')
 const toastTitle = ref('')
 const toastMessage = ref('')
 
-const showMessage = (type, title, message) => {
+// 安全读取错误消息
+const errorMessage = (e: unknown, fallback = '未知错误'): string => {
+  if (e instanceof Error) return e.message
+  return fallback
+}
+
+const showMessage = (type: string, title: string, message: string) => {
   toastType.value = type
   toastTitle.value = title
   toastMessage.value = message
   showToast.value = true
 }
 
-const formatDuration = (seconds) => {
-  if (!seconds) return '0分钟'
-  const totalSeconds = Math.floor(seconds)
-  const mins = Math.floor(totalSeconds / 60)
-  const secs = totalSeconds % 60
-  if (mins === 0) return `${secs}秒`
-  if (secs === 0) return `${mins}分钟`
-  return `${mins}分${secs}秒`
-}
-
 const statusClass = computed(() => {
-  const statusMap = {
+  const statusMap: Record<string, string> = {
     'PUBLISHED': 'px-3 py-1 bg-qingsong/10 text-qingsong rounded-lg text-sm font-medium',
     'DRAFT': 'px-3 py-1 bg-shuimo/10 text-shuimo rounded-lg text-sm font-medium',
     'REVIEWING': 'px-3 py-1 bg-zhizi/10 text-zhizi rounded-lg text-sm font-medium',
     'REJECTED': 'px-3 py-1 bg-yanzhi/10 text-yanzhi rounded-lg text-sm font-medium',
     'OFFLINE': 'px-3 py-1 bg-shuimo/10 text-shuimo rounded-lg text-sm font-medium',
   }
-  return statusMap[course.value?.status] || statusMap['DRAFT']
+  return statusMap[course.value?.status ?? ''] || statusMap['DRAFT']
 })
 
 const statusText = computed(() => {
-  const textMap = {
+  const textMap: Record<string, string> = {
     'PUBLISHED': '已发布',
     'DRAFT': '草稿',
     'REVIEWING': '审核中',
     'REJECTED': '已驳回',
     'OFFLINE': '已下架',
   }
-  return textMap[course.value?.status] || '未知'
+  return textMap[course.value?.status ?? ''] || '未知'
 })
 
 const statusTipText = computed(() => {
-  const tips = {
+  const tips: Record<string, string> = {
     PUBLISHED: '课程已发布，学生可访问并进行选课。',
     DRAFT: '课程为草稿状态，仅课程教师可见。',
     REVIEWING: '课程正在管理员审核中，暂不对学生开放。',
     REJECTED: '课程已被驳回，教师修改并保存后可再次提交审核。',
     OFFLINE: '课程已下架，学生暂不可访问。'
   }
-  return tips[course.value?.status] || '课程状态以管理员审核结果为准。'
+  return tips[course.value?.status ?? ''] || '课程状态以管理员审核结果为准。'
 })
 
 const canEnroll = computed(() => {
   const role = authStore.user?.role?.toLowerCase()
-  return role === 'student' && 
-         course.value?.status === 'PUBLISHED' && 
+  return role === 'student' &&
+         course.value?.status === 'PUBLISHED' &&
          !isEnrolled.value
 })
 
@@ -279,32 +235,36 @@ const isAdmin = computed(() => {
 const loadCourse = async () => {
   try {
     const courseId = route.params.id
-    const result = await courseAPI.getById(courseId)
+    if (!courseId || !/^\d+$/.test(courseId as string)) {
+      router.replace('/404')
+      return
+    }
+    const result = await courseAPI.getById(Number(courseId))
     if (result.code === 200 && result.data) {
       course.value = result.data
     }
-    
+
     try {
-      const chaptersResult = await chapterAPI.getByCourse(courseId)
+      const chaptersResult = await chapterAPI.getByCourse(Number(courseId))
       if (chaptersResult.code === 200 && chaptersResult.data) {
         chapters.value = chaptersResult.data || []
       }
     } catch (e) {
-      console.log('章节加载失败:', e)
+      logger.info('章节加载失败:', e)
     }
-    
+
     if (authStore.user?.id) {
       try {
-        const enrollResult = await enrollmentAPI.check(courseId, authStore.user.id)
+        const enrollResult = await enrollmentAPI.checkEnrollment(Number(courseId), authStore.user.id)
         if (enrollResult.code === 200 && enrollResult.data) {
           isEnrolled.value = enrollResult.data?.enrolled || false
         }
       } catch (e) {
-        console.log('报名状态检查失败:', e)
+        logger.info('报名状态检查失败:', e)
       }
     }
   } catch (e) {
-    console.error('加载课程失败:', e)
+    logger.error('加载课程失败:', e)
   } finally {
     loading.value = false
   }
@@ -315,19 +275,21 @@ const handleEnroll = async () => {
     router.push('/login')
     return
   }
-  
+
   enrolling.value = true
   try {
-    const result = await enrollmentAPI.enroll(course.value.id, authStore.user.id)
+    const result = await enrollmentAPI.enroll(course.value?.id ?? 0, authStore.user?.id ?? 0)
     if (result.code === 200) {
       isEnrolled.value = true
-      course.value.studentCount = (course.value.studentCount || 0) + 1
+      if (course.value) {
+        course.value.studentCount = (course.value.studentCount || 0) + 1
+      }
       showMessage('success', '报名成功', '恭喜您成功报名该课程，开始学习之旅吧！')
     } else {
       showMessage('error', '报名失败', result.message || '请稍后重试')
     }
   } catch (e) {
-    showMessage('error', '报名失败', e.message)
+    showMessage('error', '报名失败', errorMessage(e))
   } finally {
     enrolling.value = false
   }
@@ -342,18 +304,20 @@ const handleDrop = async () => {
     cancelText: '取消'
   })
   if (!confirmed) return
-  
+
   try {
-    const result = await enrollmentAPI.drop(course.value.id, authStore.user.id)
+    const result = await enrollmentAPI.drop(course.value?.id ?? 0, authStore.user?.id ?? 0)
     if (result.code === 200) {
       isEnrolled.value = false
-      course.value.studentCount = Math.max(0, (course.value.studentCount || 1) - 1)
+      if (course.value) {
+        course.value.studentCount = Math.max(0, (course.value.studentCount || 1) - 1)
+      }
       showMessage('success', '退出成功', '您已成功退出该课程')
     } else {
       showMessage('error', '退出失败', result.message || '请稍后重试')
     }
   } catch (e) {
-    showMessage('error', '退出失败', e.message)
+    showMessage('error', '退出失败', errorMessage(e))
   }
 }
 
@@ -366,7 +330,7 @@ const handleChapterClick = () => {
 }
 
 const goToStudy = () => {
-  router.push(`/study/${course.value.id}`)
+  router.push(`/study/${course.value?.id ?? 0}`)
 }
 
 const goBack = () => {

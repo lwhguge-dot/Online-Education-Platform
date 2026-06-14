@@ -1,6 +1,8 @@
-import { ref } from 'vue'
+import { ref, readonly } from 'vue'
 import { enrollmentAPI, courseAPI, chapterAPI, progressAPI } from '../services/api'
 import { formatDateCN } from '../utils/datetime'
+import { getSubjectColor } from '../utils/subject'
+import { logger } from '../utils/logger'
 
 interface CourseChapter {
     id: number
@@ -76,22 +78,6 @@ interface ChapterRecord {
     title?: string
 }
 
-// 辅助方法
-const getSubjectColor = (subject: string | null | undefined): string => {
-    const map: Record<string, string> = {
-        '语文': 'from-yanzhi to-zhizi',
-        '数学': 'from-qinghua to-halanzi',
-        '英语': 'from-zijinghui to-qianniuzi',
-        '物理': 'from-tianlv to-qingsong',
-        '化学': 'from-zhizi to-tianlv',
-        '生物': 'from-qingsong to-songshi',
-        '历史': 'from-yanzhi to-mudan',
-        '地理': 'from-qiuxiang to-ouhe',
-        '政治': 'from-red-500 to-orange-500',
-    }
-    return map[subject || ''] || 'from-qinghua to-halanzi'
-}
-
 const formatTime = (dateStr: string | null | undefined): string => {
     return formatDateCN(dateStr, '暂无')
 }
@@ -102,6 +88,7 @@ export function useStudentCourses() {
     const availableCourses = ref<AvailableCourse[]>([]) // New
     const timeline = ref<TimelineEntry[]>([])
     const loading = ref(false)
+    const actionLoading = ref(false)
 
     const loadEnrolledCourses = async (studentId: number | null | undefined): Promise<void> => {
         if (!studentId) return
@@ -115,20 +102,17 @@ export function useStudentCourses() {
                         try {
                             const courseRes = await courseAPI.getById(enrollment.courseId)
                             if (!courseRes.data) return null
-                            const courseData = courseRes.data as Record<string, any>
+                            const courseData = courseRes.data
 
                             // 检查新章节
                             let hasNewChapters = false
-                            // let newChaptersCount = 0 // Not using currently
                             try {
                                 const newChapterRes = await enrollmentAPI.checkNewChapters(enrollment.courseId, studentId)
                                 if (newChapterRes.data) {
-                                    const chapterData = newChapterRes.data as Record<string, any>
-                                    hasNewChapters = Boolean(chapterData.hasNewChapters)
-                                    // newChaptersCount = newChapterRes.data.newChaptersCount || 0
+                                    hasNewChapters = Boolean((newChapterRes.data as { hasNewChapters: boolean }).hasNewChapters)
                                 }
                             } catch (error) {
-                                console.error(`检查新章节失败(courseId=${enrollment.courseId}):`, error)
+                                logger.error(`检查新章节失败(courseId=${enrollment.courseId}):`, error)
                             }
 
                             return {
@@ -152,7 +136,7 @@ export function useStudentCourses() {
                                 // newChaptersCount
                             }
                         } catch (err) {
-                            console.error(`加载课程详情失败(courseId=${enrollment.courseId}):`, err)
+                            logger.error(`加载课程详情失败(courseId=${enrollment.courseId}):`, err)
                             return null
                         }
                     })
@@ -206,7 +190,7 @@ export function useStudentCourses() {
                                 course.lastChapterTitle = chapterInfo?.title || '未知章节'
                             }
                         } catch (err) {
-                            console.error(`加载课程章节进度失败(courseId=${course.id}):`, err)
+                            logger.error(`加载课程章节进度失败(courseId=${course.id}):`, err)
                         }
                     })
                 )
@@ -246,7 +230,7 @@ export function useStudentCourses() {
                 timeline.value = []
             }
         } catch (e) {
-            console.error('List enrollments failed', e)
+            logger.error('List enrollments failed', e)
         } finally {
             loading.value = false
         }
@@ -260,43 +244,52 @@ export function useStudentCourses() {
                 const enrolledIds = new Set<number>(enrolledCourses.value.map((c) => c.id))
                 const courseList = Array.isArray(res.data) ? res.data : []
                 availableCourses.value = courseList
-                    .filter((c: any) => !enrolledIds.has(Number(c.id)))
-                    .map((c: any): AvailableCourse => ({
+                    .filter((c) => !enrolledIds.has(Number(c.id)))
+                    .map((c): AvailableCourse => ({
                         id: Number(c.id),
                         title: c.title || '未知课程',
                         teacher: c.teacherName || '未知教师',
                         subject: c.subject || '',
                         color: getSubjectColor(c.subject),
-                        coverImage: c.coverImage || c.cover || '',
-                        rating: Number(c.rating || 4.5),
-                        students: Number(c.studentCount || 0)
+                        coverImage: c.coverImage || '',
+                        rating: 4.5,
+                        students: 0
                     }))
             }
         } catch (e) {
-            console.error('Load available courses failed', e)
+            logger.error('Load available courses failed', e)
         }
     }
 
     const enrollCourse = async (courseId: number, studentId: number): Promise<void> => {
-        await enrollmentAPI.enroll(courseId, studentId)
-        // Reload to update lists
-        await loadEnrolledCourses(studentId)
-        await loadAvailableCourses()
+        actionLoading.value = true
+        try {
+            await enrollmentAPI.enroll(courseId, studentId)
+            await loadEnrolledCourses(studentId)
+            await loadAvailableCourses()
+        } finally {
+            actionLoading.value = false
+        }
     }
 
     const dropCourse = async (courseId: number, studentId: number): Promise<void> => {
-        await enrollmentAPI.drop(courseId, studentId)
-        // Reload to update lists
-        await loadEnrolledCourses(studentId)
-        await loadAvailableCourses()
+        actionLoading.value = true
+        try {
+            await enrollmentAPI.drop(courseId, studentId)
+            await loadEnrolledCourses(studentId)
+            await loadAvailableCourses()
+        } finally {
+            actionLoading.value = false
+        }
     }
 
     return {
-        enrolledCourses,
-        recentCourses,
-        availableCourses,
-        timeline,
-        loading,
+        enrolledCourses: readonly(enrolledCourses),
+        recentCourses: readonly(recentCourses),
+        availableCourses: readonly(availableCourses),
+        timeline: readonly(timeline),
+        loading: readonly(loading),
+        actionLoading: readonly(actionLoading),
         loadEnrolledCourses,
         loadAvailableCourses,
         enrollCourse,

@@ -1,10 +1,12 @@
 package com.eduplatform.homework.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 @TableName("homework_submissions")
 public class HomeworkSubmission {
     @TableId(type = IdType.AUTO)
@@ -20,6 +22,9 @@ public class HomeworkSubmission {
     private LocalDateTime gradedAt;
     private Long gradedBy;
     private String feedback;
+    
+    @Version
+    private Integer version;
     
     @TableField("created_at")
     private LocalDateTime createdAt;

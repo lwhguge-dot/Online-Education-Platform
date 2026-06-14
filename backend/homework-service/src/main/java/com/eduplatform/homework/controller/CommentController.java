@@ -1,6 +1,7 @@
 package com.eduplatform.homework.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.security.RequestContext;
 import com.eduplatform.homework.dto.PostCommentRequest;
 import com.eduplatform.homework.dto.PostQuestionRequest;
 import com.eduplatform.homework.dto.PublishAnswerRequest;
@@ -30,6 +31,7 @@ public class CommentController {
 
     private final CommentService commentService;
     private final HomeworkService homeworkService;
+    private final RequestContext requestContext;
 
     /**
      * 发布学生答案（解锁评论区）。
@@ -236,38 +238,27 @@ public class CommentController {
      * 解析网关注入用户ID。
      */
     private Long parseUserId(String userIdHeader) {
-        if (userIdHeader == null || userIdHeader.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(userIdHeader);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return requestContext.parseUserId(userIdHeader);
     }
 
     /**
      * 判断是否管理员。
      */
     private boolean isAdmin(String role) {
-        return role != null && "admin".equalsIgnoreCase(role);
+        return "admin".equalsIgnoreCase(role);
     }
 
     /**
      * 判断是否教师或管理员。
      */
     private boolean isTeacherOrAdmin(String role) {
-        return role != null && ("teacher".equalsIgnoreCase(role) || "admin".equalsIgnoreCase(role));
+        return "teacher".equalsIgnoreCase(role) || "admin".equalsIgnoreCase(role);
     }
 
     /**
      * 判断是否本人或管理员。
      */
     private boolean hasSelfOrAdminAccess(Long targetUserId, String currentUserIdHeader, String currentUserRole) {
-        if (isAdmin(currentUserRole)) {
-            return true;
-        }
-        Long currentUserId = parseUserId(currentUserIdHeader);
-        return currentUserId != null && currentUserId.equals(targetUserId);
+        return requestContext.canAccessSelfOrAdmin(targetUserId);
     }
 }

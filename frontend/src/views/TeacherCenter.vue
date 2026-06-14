@@ -1,7 +1,8 @@
-<script setup>
+﻿<script setup>
 import { ref, onMounted, onUnmounted, watch, defineAsyncComponent, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { logger } from '../utils/logger'
 import {
   courseAPI, statsAPI, enrollmentAPI, teacherProfileAPI, getImageUrl,
   startStatusCheck, stopStatusCheck, authAPI
@@ -191,7 +192,7 @@ const loadTeacherProfile = async () => {
       }
     }
   } catch (e) {
-    console.error('Failed to load teacher profile', e)
+    logger.error('Failed to load teacher profile', e)
   }
 }
 
@@ -225,7 +226,7 @@ const loadCourses = async () => {
       dashboardStats.value.totalStudents = courses.value.reduce((sum, c) => sum + (c.students || 0), 0)
     }
   } catch (e) {
-    console.error('Failed to load courses', e)
+    logger.error('Failed to load courses', e)
   }
 }
 
@@ -262,7 +263,7 @@ const loadStats = async () => {
     if (activitiesRes.code === 200 && activitiesRes.data) recentActivities.value = activitiesRes.data
 
   } catch (e) {
-    console.error('Failed to load stats', e)
+    logger.error('Failed to load stats', e)
   }
 }
 
@@ -277,7 +278,7 @@ const loadStudents = async () => {
       students.value = res.data.students || []
     }
   } catch (e) {
-    console.error('Failed to load students', e)
+    logger.error('Failed to load students', e)
   }
 }
 
@@ -308,7 +309,7 @@ const handleLogout = async () => {
     await authAPI.logout()
   } catch (e) {
     // 即使 API 调用失败也继续登出
-    console.error('登出 API 调用失败:', e)
+    logger.error('登出 API 调用失败:', e)
   }
   authStore.logout()
   router.push('/login')

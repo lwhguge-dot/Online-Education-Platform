@@ -5,7 +5,10 @@ import com.eduplatform.user.entity.UserSession;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
+
+import java.util.List;
 
 @Mapper
 public interface UserSessionMapper extends BaseMapper<UserSession> {
@@ -22,4 +25,8 @@ public interface UserSessionMapper extends BaseMapper<UserSession> {
     
     @Delete("DELETE FROM user_session WHERE user_id = #{userId}")
     int deleteByUserId(@Param("userId") Long userId);
+    
+    @Select("SELECT DISTINCT user_id FROM user_session WHERE status = 'ONLINE' " +
+            "AND last_active_time >= #{activeThreshold}")
+    List<Long> findOnlineUserIds(@Param("activeThreshold") java.time.LocalDateTime activeThreshold);
 }

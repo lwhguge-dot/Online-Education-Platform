@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { MessageSquare, Loader2 } from 'lucide-vue-next'
 import CommentSortSelector from './CommentSortSelector.vue'
@@ -6,6 +6,7 @@ import CommentInput from './CommentInput.vue'
 import CommentItem from './CommentItem.vue'
 import { chapterCommentAPI as commentAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
+import { logger } from '../../utils/logger'
 
 const props = defineProps({
   chapterId: {
@@ -73,7 +74,7 @@ const loadComments = async (reset = false) => {
       hasMore.value = comments.value.length < total.value
     }
   } catch (e) {
-    console.error('加载评论失败:', e)
+    logger.error('加载评论失败:', e)
   } finally {
     loading.value = false
   }
@@ -90,7 +91,7 @@ const checkMuteStatus = async () => {
       muteReason.value = res.data.reason || ''
     }
   } catch (e) {
-    console.error('检查禁言状态失败:', e)
+    logger.error('检查禁言状态失败:', e)
   }
 }
 
@@ -130,7 +131,7 @@ const submitComment = async (content) => {
       toast.warning(res.message || '评论内容包含敏感词')
     }
   } catch (e) {
-    console.error('发表评论失败:', e)
+    logger.error('发表评论失败:', e)
     toast.error('发表评论失败，请稍后重试')
   } finally {
     submitting.value = false
@@ -175,7 +176,7 @@ const submitReply = async ({ parentId, content }) => {
       toast.warning(res.message || '评论内容包含敏感词')
     }
   } catch (e) {
-    console.error('发表回复失败:', e)
+    logger.error('发表回复失败:', e)
     toast.error('发表回复失败，请稍后重试')
   } finally {
     replyLoading.value = false
@@ -209,7 +210,7 @@ const handleLike = async (commentId) => {
       updateLikeStatus(comments.value)
     }
   } catch (e) {
-    console.error('点赞失败:', e)
+    logger.error('点赞失败:', e)
   }
 }
 
@@ -222,7 +223,7 @@ const handlePin = async (commentId) => {
       await loadComments(true)
     }
   } catch (e) {
-    console.error('置顶操作失败:', e)
+    logger.error('置顶操作失败:', e)
   }
 }
 
@@ -251,7 +252,7 @@ const handleDelete = async (commentId) => {
       emit('comment-deleted', commentId)
     }
   } catch (e) {
-    console.error('删除评论失败:', e)
+    logger.error('删除评论失败:', e)
     toast.error('删除失败，请稍后重试')
   }
 }
@@ -271,7 +272,7 @@ const handleMute = async (userId) => {
       toast.error(res.message || '禁言失败')
     }
   } catch (e) {
-    console.error('禁言失败:', e)
+    logger.error('禁言失败:', e)
     toast.error('禁言失败，请稍后重试')
   }
 }

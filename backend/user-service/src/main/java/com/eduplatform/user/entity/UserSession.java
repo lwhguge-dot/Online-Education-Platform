@@ -1,14 +1,16 @@
 package com.eduplatform.user.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
  * 用户会话实体类
  * 对应数据库表 user_session，用于记录用户的登录状态、JWT 标识及活跃时间，支持强制下线功能。
  */
-@Data
+@Getter
+@Setter
 @TableName("user_session")
 public class UserSession {
     /**

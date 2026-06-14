@@ -25,6 +25,7 @@ frontend/dist-ssr/
 .env
 .env.local
 .env.*.local
+.env.vscode
 
 # ==================== IDE ====================
 .idea/
@@ -47,7 +48,8 @@ logs/
 # ==================== Docker 数据卷 ====================
 postgres-data/
 minio-data/
-prometheus-data/
+hindsight-data/
+hindsight-cache/
 
 # ==================== 临时文件 ====================
 tmp/
@@ -65,6 +67,15 @@ temp/
 venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+*.egg
+dist/
+build/
+eggs/
+*.whl
 
 # ==================== Claude Code 工具 ====================
 .claude/
@@ -74,6 +85,9 @@ __pycache__/
 
 # ==================== MCP 本地配置 ====================
 mcp.json
+
+# ==================== OMO 会话数据 ====================
+.omo/
 
 # ==================== Playwright MCP 浏览器会话 ====================
 .playwright-mcp/
@@ -105,7 +119,7 @@ tools/audit/
 .opencode/skills/**/output/
 .opencode/skills/**/.cache/
 
-# ==================== Codex 规划产物（临时文件） ====================
+# ==================== 规划产物（临时文件） ====================
 task_plan.md
 findings.md
 progress.md
@@ -115,30 +129,90 @@ docs/plans/
 artifacts/ui-audit/
 docs/reviews/frontend-ui-motion-audit-*.md
 
-# ==================== 以下为上传 GitHub 最小集排除项（不影响构建运行） ====================
+# ==================== 测试覆盖率报告 ====================
+coverage/
+.nyc_output/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
 
-# AI 工具配置
-.opencode/
-.codex/
-AGENTS.md
+# ==================== 构建产物 ====================
+*.o
+*.so
+*.dylib
+*.dll
+*.exe
 
-# CI/CD 工作流（非本地运行必需）
-.github/
+# ==================== 编辑器临时文件 ====================
+*~
+*.swp
+*.swo
+.vscode/settings.json
 
-# 非必需运维脚本
-ops/scripts/hindsight/
-ops/scripts/ollama/
-ops/scripts/skills/
-ops/scripts/upload/
-ops/skills/
-ops/monitoring/
+# ==================== JetBrains IDE ====================
+.idea/
+*.iml
+*.iws
+*.ipr
 
-# 测试设计文档
-test/
+# ==================== Eclipse ====================
+.classpath
+.project
+.settings/
 
-# 测试代码
-**/src/test/
-**/*.test.ts
-**/*.spec.ts
-**/*.spec.js
-**/*.spec.mjs
+# ==================== Maven ====================
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# ==================== Gradle ====================
+.gradle/
+build/
+
+# ==================== 依赖锁定文件 ====================
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ==================== 环境配置文件 ====================
+.env.development
+.env.production
+.env.test
+.env.staging
+
+# ==================== 本地开发配置 ====================
+*.local.js
+*.local.ts
+*.local.json
+
+# ==================== 调试配置 ====================
+.vscode/launch.json
+.vscode/tasks.json
+
+# ==================== 文档构建产物 ====================
+docs/_build/
+docs/site/
+
+# ==================== 数据库备份 ====================
+*.sql.bak
+*.dump
+
+# ==================== 密钥文件 ====================
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+
+# ==================== 临时目录 ====================
+tmp/
+temp/
+.tmp/
+.temp/
+
+# ==================== 代码分析工具 ====================
+.codegraph/
+
+# ==================== ZCode 工作区配置 (含敏感凭据) ====================
+.zcode/
+

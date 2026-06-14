@@ -1,13 +1,14 @@
 package com.eduplatform.user.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.security.InternalTokenVerifier;
+import com.eduplatform.common.security.RequestContext;
 import com.eduplatform.user.dto.BatchNotificationRequest;
 import com.eduplatform.user.dto.SendNotificationRequest;
 import com.eduplatform.user.websocket.NotificationWebSocketHandler;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,10 +26,9 @@ public class NotificationController {
 
     private static final String HEADER_INTERNAL_TOKEN = "X-Internal-Token";
 
-    @Value("${security.internal-token}")
-    private String internalToken;
-
     private final NotificationWebSocketHandler notificationHandler;
+    private final InternalTokenVerifier internalTokenVerifier;
+    private final RequestContext requestContext;
 
     /**
      * 发送通知给指定用户。
@@ -128,14 +128,7 @@ public class NotificationController {
      * 解析网关注入的用户ID，非法值返回 null。
      */
     private Long parseUserId(String currentUserIdHeader) {
-        if (currentUserIdHeader == null || currentUserIdHeader.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(currentUserIdHeader);
-        } catch (NumberFormatException exception) {
-            return null;
-        }
+        return requestContext.parseUserId(currentUserIdHeader);
     }
 
     /**
@@ -152,8 +145,6 @@ public class NotificationController {
      * 校验内部调用令牌，支持服务间可信调用场景。
      */
     private boolean hasValidInternalToken(String requestInternalToken) {
-        return StringUtils.hasText(internalToken)
-                && StringUtils.hasText(requestInternalToken)
-                && internalToken.equals(requestInternalToken);
+        return internalTokenVerifier.isValid(requestInternalToken);
     }
 }

@@ -1,15 +1,15 @@
 import { request, requestBlob, resolveUserId } from '../request'
-import type { Result, User } from '../../types/api'
+import type { Result, User, UserProfileDTO, UserSettingsDTO } from '../../types/api'
 
 export const userAPI = {
-    getList: (params: Record<string, any> = {}): Promise<Result<any>> => {
+    getList: (params: Record<string, string> = {}): Promise<Result<User[]>> => {
         const query = new URLSearchParams(params).toString()
-        return request(`/users/list?${query}`)
+        return request<User[]>(`/users/list?${query}`)
     },
 
-    getStats: (): Promise<Result<any>> => request('/users/stats'),
+    getStats: (): Promise<Result<{ totalUsers: number; activeUsers: number }>> => request('/users/stats'),
 
-    updateStatus: (id: number, status: number, operatorId?: number | null, _operatorName?: string): Promise<Result<any>> => {
+    updateStatus: (id: number, status: number, operatorId?: number | null, _operatorName?: string): Promise<Result<void>> => {
         const headers: Record<string, string> = {}
         if (operatorId !== null && operatorId !== undefined) {
             headers['X-User-Id'] = operatorId.toString()
@@ -21,7 +21,7 @@ export const userAPI = {
         })
     },
 
-    deleteUser: (id: number, operatorId?: number | null, _operatorName?: string): Promise<Result<any>> => {
+    deleteUser: (id: number, operatorId?: number | null, _operatorName?: string): Promise<Result<void>> => {
         const headers: Record<string, string> = {}
         if (operatorId !== null && operatorId !== undefined) {
             headers['X-User-Id'] = operatorId.toString()
@@ -32,7 +32,7 @@ export const userAPI = {
         })
     },
 
-    updateProfile: (id: number, profileData: any): Promise<Result<any>> =>
+    updateProfile: (id: number, profileData: UserProfileDTO): Promise<Result<void>> =>
         request(`/users/${id}/profile`, {
             method: 'PUT',
             body: JSON.stringify(profileData),
@@ -40,9 +40,9 @@ export const userAPI = {
 
     getById: (id: number): Promise<Result<User>> => request<User>(`/users/${id}`),
 
-    getSettings: (id: number): Promise<Result<any>> => request(`/users/${id}/settings`),
+    getSettings: (id: number): Promise<Result<UserSettingsDTO>> => request(`/users/${id}/settings`),
 
-    updateSettings: (id: number, settings: any): Promise<Result<any>> =>
+    updateSettings: (id: number, settings: UserSettingsDTO): Promise<Result<void>> =>
         request(`/users/${id}/settings`, {
             method: 'PUT',
             body: JSON.stringify(settings),
@@ -57,9 +57,9 @@ export const userAPI = {
         })
     },
 
-    getOnlineStatus: () => request('/users/online-status'),
+    getOnlineStatus: (): Promise<Result<Record<string, number>>> => request('/users/online-status'),
 
-    getSessions: (id: number): Promise<Result<any>> => request(`/users/${id}/sessions`),
+    getSessions: (id: number): Promise<Result<Array<{ id: number; ipAddress: string; loginTime: string; lastActiveAt: string }>>> => request(`/users/${id}/sessions`),
 
     exportCSV: async () => {
         // 统一走请求层，复用鉴权、错误处理与日志采集
@@ -76,18 +76,18 @@ export const userAPI = {
 }
 
 export const teacherProfileAPI = {
-    getProfile: (userId = null) => {
+    getProfile: (userId: number | null = null) => {
         const resolvedTeacherId = resolveUserId(userId, '教师')
         return request(`/teachers/${resolvedTeacherId}/profile`)
     },
-    updateProfile: (userId = null, data: any) => {
+    updateProfile: (userId: number | null = null, data: Record<string, unknown>) => {
         const resolvedTeacherId = resolveUserId(userId, '教师')
         return request(`/teachers/${resolvedTeacherId}/profile`, {
             method: 'PUT',
             body: JSON.stringify(data)
         })
     },
-    uploadAvatar: async (userId = null, file: File) => {
+    uploadAvatar: async (userId: number | null = null, file: File) => {
         const resolvedTeacherId = resolveUserId(userId, '教师')
         const formData = new FormData()
         formData.append('file', file)
@@ -96,21 +96,21 @@ export const teacherProfileAPI = {
             body: formData,
         })
     },
-    updateNotificationSettings: (userId = null, settings: any) => {
+    updateNotificationSettings: (userId: number | null = null, settings: Record<string, boolean>) => {
         const resolvedTeacherId = resolveUserId(userId, '教师')
         return request(`/teachers/${resolvedTeacherId}/notification-settings`, {
             method: 'PUT',
             body: JSON.stringify(settings)
         })
     },
-    updateGradingCriteria: (userId = null, criteria: any) => {
+    updateGradingCriteria: (userId: number | null = null, criteria: Record<string, unknown>) => {
         const resolvedTeacherId = resolveUserId(userId, '教师')
         return request(`/teachers/${resolvedTeacherId}/grading-criteria`, {
             method: 'PUT',
             body: JSON.stringify(criteria)
         })
     },
-    updateDashboardLayout: (userId = null, layout: any) => {
+    updateDashboardLayout: (userId: number | null = null, layout: Record<string, unknown>) => {
         const resolvedTeacherId = resolveUserId(userId, '教师')
         return request(`/teachers/${resolvedTeacherId}/dashboard-layout`, {
             method: 'PUT',

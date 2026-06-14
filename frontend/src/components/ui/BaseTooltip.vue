@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 /**
@@ -126,7 +126,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .tooltip-fade-enter-active,
 .tooltip-fade-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity var(--motion-duration-fast) var(--motion-ease-standard), transform var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .tooltip-fade-enter-from,

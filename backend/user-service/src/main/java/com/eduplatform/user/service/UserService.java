@@ -11,7 +11,6 @@ import com.eduplatform.user.util.JwtUtil;
 import com.eduplatform.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,9 +34,7 @@ public class UserService {
     private final JwtUtil jwtUtil;
     private final UserSessionService sessionService;
     private final AuditLogService auditLogService;
-
-    @Autowired
-    private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder;
 
     /**
      * 将用户实体转换为视图对象
@@ -74,10 +71,15 @@ public class UserService {
      * 4. 更新最后登录时间并创建新的 Redis/数据库会话
      * 5. 生成 JWT Token 并返回用户信息
      *
+     * 事务说明：DB 行更新（last_login_at、user_session）在同一事务内原子提交，
+     * 保证 user 表与会话表不会出现"幽灵会话"。Redis 缓存由 UserSessionService
+     * 内部独立写入，缓存写入失败会降级为告警而不阻断事务，由心跳/校验流程兜底。
+     *
      * @param request 登录请求参数 (email, password)
      * @return 包含 Token 和用户信息的结果
      * @throws RuntimeException 当密码错误、用户不存在或被禁用时抛出
      */
+    @Transactional
     public LoginResponse login(LoginRequest request, String deviceInfo, String ipAddress) {
         // 1. 根据邮箱查询用户
         User user = userMapper.selectOne(
@@ -132,12 +134,19 @@ public class UserService {
      * 3. 初始实体封装与加密密码
      * 4. 自动登录流程
      *
+     * 事务说明：与 {@link #login} 一致，user 表插入与 user_session 创建在同一事务内，
+     * 任一失败整体回滚，避免出现"幽灵用户"。
+     *
      * @param request 注册请求参数
      * @return 登录成功后的响应（同登录接口）
      */
+    @Transactional
     public LoginResponse register(RegisterRequest request, String deviceInfo, String ipAddress) {
         if ("admin".equals(request.getRole())) {
             throw new BusinessException(403, "不允许注册管理员账号");
+        }
+        if ("teacher".equals(request.getRole())) {
+            throw new BusinessException(403, "不允许自行注册教师账号，请联系管理员开通");
         }
 
         // 1. 检查邮箱唯一性
@@ -185,7 +194,7 @@ public class UserService {
     }
 
     /**
-     * 密码重置 - 通过邮箱和真实姓名验证
+     * 管理员密码重置 - 仅验证管理员权限（已通过 @PreAuthorize 校验）
      */
     public void resetPassword(ResetPasswordRequest request) {
         // 查找用户
@@ -194,11 +203,6 @@ public class UserService {
 
         if (user == null) {
             throw new BusinessException("该邮箱未注册");
-        }
-
-        // 验证真实姓名（防止空指针）
-        if (user.getName() == null || !user.getName().equals(request.getRealName())) {
-            throw new BusinessException("真实姓名验证失败");
         }
 
         // 更新密码

@@ -58,37 +58,37 @@ const routes: RouteRecordRaw[] = [
         path: 'dashboard',
         name: 'StudentDashboard',
         component: () => import('../views/student/StudentDashboard.vue'),
-        meta: { title: '学习概览' }
+        meta: { requiresAuth: true, allowedRoles: ['student', 'admin'], title: '学习概览' }
       },
       {
         path: 'courses',
         name: 'StudentCourses',
         component: () => import('../views/student/StudentMyCourses.vue'),
-        meta: { title: '我的课程' }
+        meta: { requiresAuth: true, allowedRoles: ['student', 'admin'], title: '我的课程' }
       },
       {
         path: 'homeworks',
         name: 'StudentHomeworks',
         component: () => import('../views/student/StudentHomeworks.vue'),
-        meta: { title: '作业中心' }
+        meta: { requiresAuth: true, allowedRoles: ['student', 'admin'], title: '作业中心' }
       },
       {
         path: 'records',
         name: 'StudentRecords',
         component: () => import('../views/student/StudentRecords.vue'),
-        meta: { title: '学习记录' }
+        meta: { requiresAuth: true, allowedRoles: ['student', 'admin'], title: '学习记录' }
       },
       {
         path: 'questions',
         name: 'StudentQuestions',
         component: () => import('../views/student/StudentQuestions.vue'),
-        meta: { title: '问答互动' }
+        meta: { requiresAuth: true, allowedRoles: ['student', 'admin'], title: '问答互动' }
       },
       {
         path: 'profile',
         name: 'StudentProfile',
         component: () => import('../views/student/StudentProfile.vue'),
-        meta: { title: '个人设置' }
+        meta: { requiresAuth: true, allowedRoles: ['student', 'admin'], title: '个人设置' }
       }
     ]
   },
@@ -103,6 +103,12 @@ const routes: RouteRecordRaw[] = [
     name: 'DoHomework',
     component: () => import('../views/DoHomework.vue'),
     meta: { requiresAuth: true, allowedRoles: ['student'], title: '作业' }
+  },
+  {
+    path: '/403',
+    name: 'Forbidden',
+    component: () => import('../views/Forbidden.vue'),
+    meta: { title: '无权访问' }
   },
   {
     path: '/:pathMatch(.*)*',
@@ -121,19 +127,43 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
 
-  if (to.meta.requiresAuth) {
-    if (!authStore.isAuthenticated) {
-      next('/login')
-      return
-    }
-
-    if (to.meta.allowedRoles && authStore.user && !to.meta.allowedRoles.includes(authStore.user.role)) {
-      next('/')
-      return
-    }
+  // 等待 authStore 初始化完成（防止 init() 异步时的竞态）
+  if (authStore.loading) {
+    const unwatch = authStore.$subscribe(() => {
+      if (!authStore.loading) {
+        unwatch()
+        guardNext()
+      }
+    })
+    return
   }
 
-  next()
+  guardNext()
+
+  function guardNext() {
+    if (to.meta.requiresAuth) {
+      if (!authStore.isAuthenticated) {
+        next('/login')
+        return
+      }
+
+      if (to.meta.allowedRoles && authStore.user && !to.meta.allowedRoles.includes(authStore.user.role)) {
+        next('/403')
+        return
+      }
+    }
+
+    // 已登录用户访问 /login 时重定向到对应角色主页
+    if (to.path === '/login' && authStore.isAuthenticated) {
+      const role = authStore.user?.role
+      if (role === 'admin') next('/admin')
+      else if (role === 'teacher') next('/teacher')
+      else next('/student')
+      return
+    }
+
+    next()
+  }
 })
 
 // Dynamic title guard

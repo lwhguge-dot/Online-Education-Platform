@@ -2,6 +2,7 @@ package com.eduplatform.user.controller;
 
 import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.security.RequestContext;
 import com.eduplatform.user.dto.LoginRequest;
 import com.eduplatform.user.dto.LoginResponse;
 import com.eduplatform.user.dto.PasswordResetConfirmRequest;
@@ -37,6 +38,7 @@ public class AuthController {
     private final UserSessionService sessionService;
     private final PasswordResetService passwordResetService;
     private final JwtUtil jwtUtil;
+    private final RequestContext requestContext;
 
     /**
      * 用户登录接口
@@ -220,11 +222,9 @@ public class AuthController {
      * @param userId 待强制下线的用户 ID
      */
     @PostMapping("/force-logout/{userId}")
-    public Result<Boolean> forceLogout(
-            @PathVariable("userId") Long userId,
-            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
-        if (!isAdminRole(currentUserRole)) {
-            throw new BusinessException(403, "权限不足，仅管理员可强制下线用户");
+    public Result<Boolean> forceLogout(@PathVariable("userId") Long userId) {
+        if (!requestContext.isAdmin()) {
+            return Result.failure(403, "权限不足，仅管理员可强制下线");
         }
         sessionService.forceOfflineUser(userId);
         return Result.success("已强制剔除该用户的所有活动会话", true);
@@ -235,11 +235,9 @@ public class AuthController {
      * 说明：普通用户必须使用公开的两步重置流程。
      */
     @PostMapping("/reset-password")
-    public Result<Boolean> resetPassword(
-            @Valid @RequestBody ResetPasswordRequest request,
-            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
-        if (!isAdminRole(currentUserRole)) {
-            throw new BusinessException(403, "权限不足，仅管理员可重置密码");
+    public Result<Boolean> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        if (!requestContext.isAdmin()) {
+            return Result.failure(403, "权限不足，仅管理员可重置密码");
         }
         userService.resetPassword(request);
         return Result.success("管理员已重置您的登录密码", true);
@@ -288,14 +286,7 @@ public class AuthController {
      * 解析网关注入的用户ID。
      */
     private Long parseUserId(String userIdHeader) {
-        if (userIdHeader == null || userIdHeader.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(userIdHeader);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return requestContext.parseUserId(userIdHeader);
     }
 
     /**
@@ -319,21 +310,6 @@ public class AuthController {
      * 解析来源 IP，用于限流键构建。
      */
     private String resolveClientIp(HttpServletRequest request) {
-        if (request == null) {
-            return "unknown";
-        }
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isBlank()) {
-            return xRealIp.trim();
-        }
-        String remoteAddr = request.getRemoteAddr();
-        if (remoteAddr == null || remoteAddr.isBlank()) {
-            return "unknown";
-        }
-        return remoteAddr;
+        return requestContext.currentIp();
     }
 }

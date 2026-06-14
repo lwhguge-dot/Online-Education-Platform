@@ -1,5 +1,6 @@
 package com.eduplatform.homework.service;
 
+import com.eduplatform.homework.config.DiscussionConfig;
 import com.eduplatform.homework.dto.DiscussionDTO;
 import com.eduplatform.homework.dto.DiscussionGroupDTO;
 import com.eduplatform.homework.dto.DiscussionStatsDTO;
@@ -22,89 +23,75 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class DiscussionService {
-    
+
     private final SubjectiveCommentMapper commentMapper;
+    private final DiscussionConfig discussionConfig;
     
     /**
      * 获取教师的所有讨论（按课程/章节分组）
      */
     public List<DiscussionGroupDTO> getGroupedDiscussions(Long teacherId) {
-        try {
-            List<Map<String, Object>> rawData = commentMapper.findByTeacher(teacherId);
-            
-            // 转换为DTO
-            List<DiscussionDTO> discussions = rawData.stream()
-                .map(this::mapToDiscussionDTO)
-                .collect(Collectors.toList());
-            
-            // 按课程和章节分组
-            Map<String, List<DiscussionDTO>> grouped = discussions.stream()
-                .collect(Collectors.groupingBy(d -> d.getCourseId() + "_" + (d.getChapterId() != null ? d.getChapterId() : 0)));
-            
-            List<DiscussionGroupDTO> result = new ArrayList<>();
-            for (Map.Entry<String, List<DiscussionDTO>> entry : grouped.entrySet()) {
-                List<DiscussionDTO> groupDiscussions = entry.getValue();
-                if (groupDiscussions.isEmpty()) continue;
-                
-                DiscussionDTO first = groupDiscussions.get(0);
-                DiscussionGroupDTO group = new DiscussionGroupDTO();
-                group.setCourseId(first.getCourseId());
-                group.setCourseTitle(first.getCourseTitle());
-                group.setChapterId(first.getChapterId());
-                group.setChapterTitle(first.getChapterTitle());
-                group.setTotalCount(groupDiscussions.size());
-                group.setPendingCount((int) groupDiscussions.stream().filter(d -> "pending".equals(d.getAnswerStatus())).count());
-                group.setAnsweredCount((int) groupDiscussions.stream().filter(d -> "answered".equals(d.getAnswerStatus())).count());
-                group.setFollowUpCount((int) groupDiscussions.stream().filter(d -> "follow_up".equals(d.getAnswerStatus())).count());
-                group.setOverdueCount((int) groupDiscussions.stream().filter(d -> Boolean.TRUE.equals(d.getIsOverdue())).count());
-                group.setDiscussions(groupDiscussions);
-                result.add(group);
-            }
-            
-            // 按待处理数量排序
-            result.sort((a, b) -> b.getPendingCount() - a.getPendingCount());
-            return result;
-        } catch (Exception e) {
-            log.warn("获取讨论列表失败（表可能不存在）: {}", e.getMessage());
-            return new ArrayList<>();
+        List<Map<String, Object>> rawData = commentMapper.findByTeacher(teacherId);
+
+        // 转换为DTO
+        List<DiscussionDTO> discussions = rawData.stream()
+            .map(this::mapToDiscussionDTO)
+            .collect(Collectors.toList());
+
+        // 按课程和章节分组
+        Map<String, List<DiscussionDTO>> grouped = discussions.stream()
+            .collect(Collectors.groupingBy(d -> d.getCourseId() + "_" + (d.getChapterId() != null ? d.getChapterId() : 0)));
+
+        List<DiscussionGroupDTO> result = new ArrayList<>();
+        for (Map.Entry<String, List<DiscussionDTO>> entry : grouped.entrySet()) {
+            List<DiscussionDTO> groupDiscussions = entry.getValue();
+            if (groupDiscussions.isEmpty()) continue;
+
+            DiscussionDTO first = groupDiscussions.get(0);
+            DiscussionGroupDTO group = new DiscussionGroupDTO();
+            group.setCourseId(first.getCourseId());
+            group.setCourseTitle(first.getCourseTitle());
+            group.setChapterId(first.getChapterId());
+            group.setChapterTitle(first.getChapterTitle());
+            group.setTotalCount(groupDiscussions.size());
+            group.setPendingCount((int) groupDiscussions.stream().filter(d -> "pending".equals(d.getAnswerStatus())).count());
+            group.setAnsweredCount((int) groupDiscussions.stream().filter(d -> "answered".equals(d.getAnswerStatus())).count());
+            group.setFollowUpCount((int) groupDiscussions.stream().filter(d -> "follow_up".equals(d.getAnswerStatus())).count());
+            group.setOverdueCount((int) groupDiscussions.stream().filter(d -> Boolean.TRUE.equals(d.getIsOverdue())).count());
+            group.setDiscussions(groupDiscussions);
+            result.add(group);
         }
+
+        // 按待处理数量排序
+        result.sort((a, b) -> b.getPendingCount() - a.getPendingCount());
+        return result;
     }
-    
+
     /**
      * 获取讨论统计
      */
     public DiscussionStatsDTO getStats(Long teacherId) {
-        try {
-            Map<String, Object> stats = commentMapper.getStats(teacherId);
-            DiscussionStatsDTO dto = new DiscussionStatsDTO();
-            if (stats != null) {
-                // MyBatis 使用驼峰命名转换
-                dto.setTotalQuestions(getIntValue(stats, "totalQuestions"));
-                dto.setPendingCount(getIntValue(stats, "pendingCount"));
-                dto.setAnsweredCount(getIntValue(stats, "answeredCount"));
-                dto.setFollowUpCount(getIntValue(stats, "followUpCount"));
-                dto.setOverdueCount(getIntValue(stats, "overdueCount"));
-            }
-            return dto;
-        } catch (Exception e) {
-            log.warn("获取讨论统计失败（表可能不存在）: {}", e.getMessage());
-            return new DiscussionStatsDTO();
+        Map<String, Object> stats = commentMapper.getStats(teacherId);
+        DiscussionStatsDTO dto = new DiscussionStatsDTO();
+        if (stats != null) {
+            // MyBatis 使用驼峰命名转换
+            dto.setTotalQuestions(getIntValue(stats, "totalQuestions"));
+            dto.setPendingCount(getIntValue(stats, "pendingCount"));
+            dto.setAnsweredCount(getIntValue(stats, "answeredCount"));
+            dto.setFollowUpCount(getIntValue(stats, "followUpCount"));
+            dto.setOverdueCount(getIntValue(stats, "overdueCount"));
         }
+        return dto;
     }
-    
+
     /**
      * 按课程获取讨论
      */
     public List<DiscussionDTO> getByCourse(Long courseId) {
-        try {
-            List<Map<String, Object>> rawData = commentMapper.findByCourse(courseId);
-            return rawData.stream()
-                .map(this::mapToDiscussionDTO)
-                .collect(Collectors.toList());
-        } catch (Exception e) {
-            log.warn("获取课程讨论失败（表可能不存在）: {}", e.getMessage());
-            return new ArrayList<>();
-        }
+        List<Map<String, Object>> rawData = commentMapper.findByCourse(courseId);
+        return rawData.stream()
+            .map(this::mapToDiscussionDTO)
+            .collect(Collectors.toList());
     }
     
     /**
@@ -189,10 +176,11 @@ public class DiscussionService {
         dto.setCreatedAt(getDateTimeValue(data, "createdAt"));
         dto.setReplyCount(getIntValue(data, "replyCount"));
         
-        // 计算是否超过48小时未回复
+        // 计算是否超过配置的回复超时阈值未回复
+        long overdueThresholdHours = discussionConfig.getOverdueThresholdHours();
         if ("pending".equals(dto.getAnswerStatus()) && dto.getCreatedAt() != null) {
             long hours = ChronoUnit.HOURS.between(dto.getCreatedAt(), LocalDateTime.now());
-            dto.setIsOverdue(hours > 48);
+            dto.setIsOverdue(hours > overdueThresholdHours);
             dto.setResponseTimeHours(hours);
         } else {
             dto.setIsOverdue(false);

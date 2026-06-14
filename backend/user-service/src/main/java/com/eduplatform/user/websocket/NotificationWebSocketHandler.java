@@ -13,9 +13,6 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -23,7 +20,6 @@ import java.util.concurrent.TimeUnit;
 public class NotificationWebSocketHandler extends TextWebSocketHandler {
     
     private static final Map<Long, WebSocketSession> userSessions = new ConcurrentHashMap<>();
-    private static final ScheduledExecutorService authTimeoutExecutor = Executors.newSingleThreadScheduledExecutor();
 
     private final ObjectMapper objectMapper;
     private final JwtUtil jwtUtil;
@@ -37,19 +33,11 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        authTimeoutExecutor.schedule(() -> {
-            if (!session.isOpen()) {
-                return;
-            }
-            Long currentUserId = getUserIdFromSession(session);
-            if (currentUserId != null) {
-                return;
-            }
-            try {
-                session.close(CloseStatus.POLICY_VIOLATION);
-            } catch (IOException ignored) {
-            }
-        }, 5, TimeUnit.SECONDS);
+        // 如果握手时未认证，关闭连接
+        try {
+            session.close(CloseStatus.POLICY_VIOLATION);
+        } catch (IOException ignored) {
+        }
     }
     
     @Override

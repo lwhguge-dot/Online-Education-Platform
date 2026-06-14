@@ -1,59 +1,71 @@
-<script setup>
+﻿<script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   BookOpen, Clock, FileText, Flame,
   Target, Play, Award,
   MessageSquare, CheckCircle,
-  Sun, Sunrise, Moon, Rocket, Sparkles
+  Sun, Sunrise, Moon, Rocket, Sparkles,
+  Star, Medal, GraduationCap
 } from 'lucide-vue-next'
+import type { Component } from 'vue'
 import GlassCard from '../../components/ui/GlassCard.vue'
 import DailyGoalProgress from '../../components/student/DailyGoalProgress.vue'
 import UrgentHomeworkBanner from '../../components/student/UrgentHomeworkBanner.vue'
 import SkeletonDashboard from '../../components/ui/SkeletonDashboard.vue'
 import { useAuthStore } from '../../stores/auth'
-import { useStudentCourses } from '../../composables/useStudentCourses'
-import { useStudentHomeworks } from '../../composables/useStudentHomeworks'
-import { useStudentStats } from '../../composables/useStudentStats'
+import { useStudentCourseStore, type EnrolledCourse } from '../../stores/student-courses'
+import { useStudentHomeworkStore } from '../../stores/student-homeworks'
+import { useStudentStatsStore } from '../../stores/student-stats'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const courseStore = useStudentCourseStore()
+const homeworkStore = useStudentHomeworkStore()
+const statsStore = useStudentStatsStore()
 
-// Composables
-const { enrolledCourses, recentCourses, loadEnrolledCourses, loading: coursesLoading } = useStudentCourses()
-const { todayTasks, activities, loadHomeworks, loading: homeworkLoading } = useStudentHomeworks()
-const { dashboardStats: stats, badges, loadStudentStats, loadBadges, loading: statsLoading } = useStudentStats()
-
-const loading = computed(() => coursesLoading.value || homeworkLoading.value || statsLoading.value)
-const urgentHomeworks = computed(() => todayTasks.value.filter(t => t.urgent))
+const loading = computed(() => courseStore.loading || homeworkStore.loading || statsStore.loading)
+const urgentHomeworks = computed(() => homeworkStore.todayTasks.filter(t => t.urgent))
 const displayName = computed(() => authStore.user?.username || '同学')
+
+// 模板引用别名
+const stats = computed(() => statsStore.dashboardStats)
+const todayTasks = computed(() => homeworkStore.todayTasks)
+const activities = computed(() => homeworkStore.activities)
+const recentCourses = computed(() => courseStore.recentCourses)
+const badges = computed(() => statsStore.badges)
+
+const badgeIconMap: Record<string, Component> = {
+  Star, Flame, Award, Medal, GraduationCap
+}
+const resolveBadgeIcon = (code: string): Component => badgeIconMap[code] || Award
 
 // Load Data
 onMounted(async () => {
    const userId = authStore.user?.id
    if (userId) {
       await Promise.all([
-         loadEnrolledCourses(userId),
-         loadStudentStats(userId),
-         loadBadges(userId)
+         courseStore.loadEnrolledCourses(userId),
+         statsStore.loadStudentStats(userId),
+         statsStore.loadBadges(userId)
       ])
-      if (enrolledCourses.value.length > 0) {
-         await loadHomeworks(userId, enrolledCourses.value)
+      if (courseStore.enrolledCourses.length > 0) {
+         await homeworkStore.loadHomeworks(userId, [...courseStore.enrolledCourses] as EnrolledCourse[])
       }
    }
 })
 
 // UI Helpers
-const hoveredBadgeId = ref(null)
+const hoveredBadgeId = ref<number | null>(null)
 // 中文注释：统一约束课程进度范围，避免异常值导致动画抖动
-const clampProgress = (value) => {
+const clampProgress = (value: unknown) => {
   const num = Number(value)
   if (!Number.isFinite(num)) return 0
   return Math.max(0, Math.min(100, num))
 }
 
 // 中文注释：进度条使用 transform 缩放，减少 width 动画触发布局计算
-const getProgressScaleStyle = (value) => ({
+const getProgressScaleStyle = (value: unknown) => ({
   transform: `scaleX(${clampProgress(value) / 100})`
 })
 
@@ -88,7 +100,7 @@ const greeting = computed(() => {
   <SkeletonDashboard v-if="loading" :stats-count="4" :show-charts="true" />
   <div v-else class="student-dashboard-root space-y-6 animate-fade-in">
     <!-- 个性化问候区域 -->
-    <div class="flex items-center justify-between animate-slide-up" style="animation-delay: 0s; animation-fill-mode: both;">
+    <div class="flex items-center justify-between animate-slide-up" style="--stagger-delay: 0s;">
       <div class="flex items-center gap-4">
         <div
           class="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg"
@@ -125,7 +137,7 @@ const greeting = computed(() => {
       <!-- 今日目标进度卡片 -->
       <GlassCard 
         class="p-6 card-hover-lift animate-slide-up"
-        style="animation-delay: 0s; animation-fill-mode: both;"
+        style="--stagger-delay: 0s;"
       >
         <DailyGoalProgress 
           :todayMinutes="stats.todayStudyMinutes"
@@ -135,7 +147,7 @@ const greeting = computed(() => {
 
       <GlassCard 
         class="p-6 card-hover-lift cursor-pointer group animate-slide-up"
-        style="animation-delay: 0.1s; animation-fill-mode: both;"
+        style="--stagger-delay: 0.1s;"
         @click="router.push('/student/courses')"
       >
         <div class="flex items-center justify-between mb-3">
@@ -151,7 +163,7 @@ const greeting = computed(() => {
       <GlassCard 
         class="p-6 card-hover-lift cursor-pointer group animate-slide-up"
         :class="{ 'urgent-pulse': stats.pendingHomework > 2 }"
-        style="animation-delay: 0.2s; animation-fill-mode: both;"
+        style="--stagger-delay: 0.2s;"
         @click="router.push('/student/homeworks')"
       >
         <div class="flex items-center justify-between mb-3">
@@ -169,7 +181,7 @@ const greeting = computed(() => {
 
       <GlassCard 
         class="p-6 card-hover-lift animate-slide-up"
-        style="animation-delay: 0.3s; animation-fill-mode: both;"
+        style="--stagger-delay: 0.3s;"
       >
         <div class="flex items-center justify-between mb-3">
           <span class="text-sm font-medium text-muted">累计学习</span>
@@ -193,7 +205,7 @@ const greeting = computed(() => {
       <!-- Left Column: Recent Tasks & Courses -->
       <div class="lg:col-span-2 space-y-6">
         <!-- Today Assignments -->
-        <GlassCard class="p-6 animate-slide-up" style="animation-delay: 0.4s; animation-fill-mode: both;">
+        <GlassCard class="p-6 animate-slide-up" style="--stagger-delay: 0.4s;">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-bold text-shuimo flex items-center gap-2">
               <Target class="w-5 h-5 text-qinghua" />
@@ -232,7 +244,7 @@ const greeting = computed(() => {
         </GlassCard>
 
         <!-- Recent Courses -->
-        <GlassCard class="p-6 animate-slide-up" style="animation-delay: 0.5s; animation-fill-mode: both;">
+        <GlassCard class="p-6 animate-slide-up" style="--stagger-delay: 0.5s;">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-bold text-shuimo flex items-center gap-2">
               <Play class="w-5 h-5 text-tianlv" />
@@ -278,7 +290,7 @@ const greeting = computed(() => {
       <!-- Right Column: Badges & Activity -->
       <div class="space-y-6">
         <!-- Badges -->
-        <GlassCard class="p-6 animate-slide-up" style="animation-delay: 0.6s; animation-fill-mode: both;">
+        <GlassCard class="p-6 animate-slide-up" style="--stagger-delay: 0.6s;">
            <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-bold text-shuimo flex items-center gap-2">
               <Award class="w-5 h-5 text-yanzhi" />
@@ -301,7 +313,7 @@ const greeting = computed(() => {
                  class="w-10 h-10 rounded-full flex items-center justify-center transition-[transform,box-shadow,background-color,opacity] duration-300 transform group-hover:scale-110"
                  :class="badge.unlocked ? 'bg-gradient-to-br from-slate-50 to-white shadow-sm border border-slate-100' : 'bg-slate-100 grayscale opacity-60'"
                >
-                 <component :is="badge.icon" class="w-5 h-5" :class="badge.color" />
+                  <component :is="resolveBadgeIcon(badge.iconCode)" class="w-5 h-5" :class="badge.color" />
                </div>
                
                <!-- Tooltip -->
@@ -318,7 +330,7 @@ const greeting = computed(() => {
         </GlassCard>
 
         <!-- Activity Feed -->
-        <GlassCard class="p-6 animate-slide-up" style="animation-delay: 0.7s; animation-fill-mode: both;">
+        <GlassCard class="p-6 animate-slide-up" style="--stagger-delay: 0.7s;">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-bold text-shuimo flex items-center gap-2">
               <MessageSquare class="w-5 h-5 text-qiuxiang" />
@@ -356,6 +368,7 @@ const greeting = computed(() => {
 .animate-slide-up {
   opacity: 0;
   animation: slideUp var(--motion-duration-medium) var(--motion-ease-standard) forwards;
+  animation-delay: var(--stagger-delay, 0s);
 }
 
 @keyframes fadeIn {

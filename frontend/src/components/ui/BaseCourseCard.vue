@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { getImageUrl } from '../../services/api'
 import { BookOpen, Play, Star, Users } from 'lucide-vue-next'
 

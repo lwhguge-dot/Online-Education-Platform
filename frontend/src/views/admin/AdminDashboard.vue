@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 /**
  * 管理员仪表盘组件
  * 展示系统概况、数据趋势图表、待办事项和最近活动。
@@ -18,6 +18,7 @@ import UserTrendChart from '../../components/charts/UserTrendChart.vue'
 import CourseDistributionChart from '../../components/charts/CourseDistributionChart.vue'
 import OnlineUsersModal from '../../components/admin/OnlineUsersModal.vue'
 import { statsAPI, courseAPI } from '../../services/api'
+import { logger } from '../../utils/logger'
 
 defineProps({
   stats: {
@@ -86,7 +87,7 @@ const loadChartData = async () => {
       courseDistributionData.value = distributionRes.data
     }
   } catch (e) {
-    console.error('加载图表数据失败:', e)
+    logger.error('加载图表数据失败:', e)
   } finally {
     chartsLoading.value = false
   }
@@ -102,7 +103,7 @@ const handleTrendRangeChange = async (days) => {
       userTrendData.value = res.data
     }
   } catch (e) {
-    console.error('加载趋势数据失败:', e)
+    logger.error('加载趋势数据失败:', e)
   } finally {
     chartsLoading.value = false
   }

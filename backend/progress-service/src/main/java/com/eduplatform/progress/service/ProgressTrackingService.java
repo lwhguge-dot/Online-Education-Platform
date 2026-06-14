@@ -5,6 +5,7 @@ import com.eduplatform.common.event.EventType;
 import com.eduplatform.common.event.RedisStreamConstants;
 import com.eduplatform.common.event.RedisStreamPublisher;
 import com.eduplatform.progress.client.HomeworkServiceClient;
+import com.eduplatform.progress.config.ProgressTrackingConfig;
 import com.eduplatform.progress.dto.QuizSubmitDTO;
 import com.eduplatform.progress.dto.VideoProgressDTO;
 import com.eduplatform.progress.entity.Chapter;
@@ -18,10 +19,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -51,15 +53,14 @@ public class ProgressTrackingService {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final CacheManager cacheManager;
+    private final ProgressTrackingConfig progressTrackingConfig;
 
     private static final String PROGRESS_KEY_PREFIX = "progress:";
-    private static final long DB_SYNC_INTERVAL_MS = 30000;
 
     /**
      * 上报视频进度，包含异常快进检测、缓存写入与定时落库。
      */
     @Transactional
-    @CacheEvict(value = "learning_track", key = "#dto.studentId")
     public Map<String, Object> reportVideoProgress(VideoProgressDTO dto) {
         String redisKey = PROGRESS_KEY_PREFIX + dto.getStudentId() + ":" + dto.getChapterId();
 
@@ -90,7 +91,8 @@ public class ProgressTrackingService {
             int reportedProgress = dto.getCurrentPosition() - lastPosition;
 
             if (reportedProgress > 0 && elapsedRealTimeSec > 0
-                    && reportedProgress > elapsedRealTimeSec * 1.5 + 5) {
+                    && reportedProgress > elapsedRealTimeSec * progressTrackingConfig.getFastForwardToleranceRatio()
+                            + progressTrackingConfig.getFastForwardToleranceSeconds()) {
                 log.warn("检测到疑似异常快进: studentId={}, chapterId={}, 实际耗时={}s, 上报进度增量={}s",
                         dto.getStudentId(), dto.getChapterId(), elapsedRealTimeSec, reportedProgress);
 
@@ -143,7 +145,7 @@ public class ProgressTrackingService {
             String lastSyncStr = redisTemplate.opsForValue().get(syncKey);
             long lastSyncTime = lastSyncStr != null ? Long.parseLong(lastSyncStr) : 0;
 
-            if (now - lastSyncTime > DB_SYNC_INTERVAL_MS) {
+            if (now - lastSyncTime > progressTrackingConfig.getDbSyncIntervalMs()) {
                 shouldSyncDb = true;
             }
         }
@@ -153,15 +155,22 @@ public class ProgressTrackingService {
             redisTemplate.opsForValue().set(redisKey + ":last_sync", String.valueOf(now));
             log.info("同步视频进度到数据库: studentId={}, chapterId={}", dto.getStudentId(), dto.getChapterId());
 
-            try {
-                Cache trackCache = cacheManager.getCache("learning_track");
-                if (trackCache != null) {
-                    trackCache.evict(dto.getStudentId());
-                    log.debug("失效学习轨迹缓存: studentId={}", dto.getStudentId());
+            // 在事务提交后手动 evict 缓存
+            Long studentId = dto.getStudentId();
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        Cache trackCache = cacheManager.getCache("learning_track");
+                        if (trackCache != null) {
+                            trackCache.evict(studentId);
+                            log.debug("失效学习轨迹缓存: studentId={}", studentId);
+                        }
+                    } catch (Exception e) {
+                        log.warn("失效缓存失败", e);
+                    }
                 }
-            } catch (Exception e) {
-                log.warn("失效缓存失败", e);
-            }
+            });
         }
 
         try {
@@ -187,7 +196,6 @@ public class ProgressTrackingService {
      * 提交章节测验并更新测验成绩。
      */
     @Transactional
-    @CacheEvict(value = "learning_track", key = "#dto.studentId")
     public Map<String, Object> submitQuiz(QuizSubmitDTO dto) {
         List<ChapterQuiz> quizzes = quizMapper.selectList(
                 new LambdaQueryWrapper<ChapterQuiz>()
@@ -234,6 +242,23 @@ public class ProgressTrackingService {
         progressMapper.updateById(progress);
 
         boolean unlockTriggered = checkAndTriggerUnlock(progress);
+
+        // 在事务提交后手动 evict 缓存
+        Long studentId = dto.getStudentId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    Cache trackCache = cacheManager.getCache("learning_track");
+                    if (trackCache != null) {
+                        trackCache.evict(studentId);
+                        log.debug("失效学习轨迹缓存: studentId={}", studentId);
+                    }
+                } catch (Exception e) {
+                    log.warn("失效缓存失败", e);
+                }
+            }
+        });
 
         Map<String, Object> result = new HashMap<>();
         result.put("score", earnedScore);
@@ -306,17 +331,43 @@ public class ProgressTrackingService {
 
             publishChapterCompletedEvent(progress, chapter);
 
-            try {
-                homeworkServiceClient.unlockHomework(progress.getStudentId(), progress.getChapterId());
-                log.info("作业解锁成功: studentId={}, chapterId={}", progress.getStudentId(), progress.getChapterId());
-            } catch (Exception e) {
-                log.error("调用作业解锁服务失败: {}", e.getMessage());
-            }
+            Long studentId = progress.getStudentId();
+            Long chapterId = progress.getChapterId();
+            // 跨服务 Feign 调用与徽章授予在事务提交后执行，
+            // 避免在事务内调用 RPC 长时间占用 DB 连接导致连接池耗尽，
+            // 同时保证「DB 未提交则不触发下游副作用」。
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            homeworkServiceClient.unlockHomework(studentId, chapterId);
+                            log.info("作业解锁成功: studentId={}, chapterId={}", studentId, chapterId);
+                        } catch (Exception e) {
+                            log.error("调用作业解锁服务失败: studentId={}, chapterId={}", studentId, chapterId, e);
+                        }
 
-            try {
-                badgeService.checkAndAwardBadges(progress.getStudentId());
-            } catch (Exception e) {
-                log.error("检查徽章授予失败: {}", e.getMessage());
+                        try {
+                            badgeService.checkAndAwardBadges(studentId);
+                        } catch (Exception e) {
+                            log.error("检查徽章授予失败: studentId={}", studentId, e);
+                        }
+                    }
+                });
+            } else {
+                // 无事务上下文兜底：直接执行（理论上不会走到，调用方均为 @Transactional）
+                try {
+                    homeworkServiceClient.unlockHomework(studentId, chapterId);
+                    log.info("作业解锁成功: studentId={}, chapterId={}", studentId, chapterId);
+                } catch (Exception e) {
+                    log.error("调用作业解锁服务失败: studentId={}, chapterId={}", studentId, chapterId, e);
+                }
+
+                try {
+                    badgeService.checkAndAwardBadges(studentId);
+                } catch (Exception e) {
+                    log.error("检查徽章授予失败: studentId={}", studentId, e);
+                }
             }
 
             return true;

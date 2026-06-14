@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { Bell, Target } from 'lucide-vue-next'
 import GlassCard from '../ui/GlassCard.vue'
 

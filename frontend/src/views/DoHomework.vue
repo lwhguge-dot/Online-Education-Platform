@@ -1,10 +1,10 @@
-<script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+﻿<script setup lang="ts">
+import { ref, reactive, onMounted, computed, type Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useConfirmStore } from '../stores/confirm'
 import { homeworkAPI } from '../services/api'
-import { X, CheckCircle, ArrowLeft, Clock, FileText, AlertCircle, Sparkles } from 'lucide-vue-next'
+import { CheckCircle, ArrowLeft, Clock, FileText, Sparkles } from 'lucide-vue-next'
 import { useToastStore } from '../stores/toast'
 import BaseButton from '../components/ui/BaseButton.vue'
 import GlassCard from '../components/ui/GlassCard.vue'
@@ -12,6 +12,51 @@ import SkeletonLoader from '../components/SkeletonLoader.vue'
 import HomeworkQA from '../components/student/HomeworkQA.vue'
 import AnimatedNumber from '../components/ui/AnimatedNumber.vue'
 import { formatDateTimeCN } from '../utils/datetime'
+import { logger } from '../utils/logger'
+import QuestionCard from '../components/homework/QuestionCard.vue'
+
+interface HomeworkQuestion {
+  id: number
+  content: string
+  questionType: string
+  options: string | string[]
+  score: number
+}
+
+interface HomeworkAnswerResult {
+  questionId: number
+  isCorrect: number
+  score: number | null
+  correctAnswer?: string
+  studentAnswer?: string
+  aiFeedback?: string
+  teacherFeedback?: string
+}
+
+interface HomeworkDetail {
+  id: number
+  chapterId: number
+  title: string
+  description: string
+  deadline?: string
+  createdAt: string
+  totalScore?: number
+}
+
+interface HomeworkSubmissionDetail {
+  id: number
+  homeworkId: number
+  studentId: number
+  content: string
+  score?: number
+  totalScore?: number
+  objectiveScore?: number
+  submitStatus?: string
+  feedback?: string
+  submittedAt: string
+  gradedAt?: string
+  answerResults?: HomeworkAnswerResult[]
+}
 
 const router = useRouter()
 const route = useRoute()
@@ -22,11 +67,11 @@ const authStore = useAuthStore()
 const toast = useToastStore()
 const confirmStore = useConfirmStore()
 
-const homework = ref(null)
-const questions = ref([])
-const studentAnswers = reactive({})
-const submissionData = ref(null)
-const answerResults = ref([])
+const homework = ref<HomeworkDetail | null>(null) as Ref<HomeworkDetail | null>
+const questions = ref<HomeworkQuestion[]>([])
+const studentAnswers = reactive<Record<number, string>>({})
+const submissionData = ref<HomeworkSubmissionDetail | null>(null) as Ref<HomeworkSubmissionDetail | null>
+const answerResults = ref<HomeworkAnswerResult[]>([])
 const loading = ref(true)
 const submitting = ref(false)
 const isViewMode = ref(false)
@@ -39,7 +84,10 @@ const displayScore = computed(() => {
 
 const completionRate = computed(() => {
   if (questions.value.length === 0) return 0
-  const answeredCount = Object.keys(studentAnswers).filter(k => studentAnswers[k] && studentAnswers[k].length > 0).length
+  const answeredCount = Object.keys(studentAnswers).filter(k => {
+    const v = studentAnswers[Number(k)]
+    return v != null && v.length > 0
+  }).length
   return Math.round((answeredCount / questions.value.length) * 100)
 })
 
@@ -51,44 +99,18 @@ const getCompletionScaleStyle = () => ({
 // 是否全部完成
 const isAllCompleted = computed(() => completionRate.value === 100)
 
-// 选项选中动画状态
-const animatingOptions = reactive({})
-const triggerOptionAnimation = (questionId, optionKey) => {
-  const key = `${questionId}-${optionKey}`
-  animatingOptions[key] = true
-  setTimeout(() => {
-    animatingOptions[key] = false
-  }, 300)
-}
-
-// 检查选项是否正在动画
-const isOptionAnimating = (questionId, optionKey) => {
-  return animatingOptions[`${questionId}-${optionKey}`]
-}
-
-// 安全解析题目选项，避免模板内反复 JSON.parse 和异常中断
-const parseQuestionOptions = (options) => {
-  if (Array.isArray(options)) {
-    return options
-  }
-  if (typeof options === 'string') {
-    try {
-      const parsed = JSON.parse(options)
-      return Array.isArray(parsed) ? parsed : []
-    } catch (error) {
-      console.warn('题目选项解析失败:', error)
-      return []
-    }
-  }
-  return []
-}
-
 // 判断是否可以提问：必须是查看模式（已提交）且作业已被批改
 const canAskQuestion = computed(() => {
   if (!isViewMode.value || !submissionData.value) return false
   // 检查是否已批改：submitStatus为graded或者gradedAt有值
   return submissionData.value.submitStatus === 'graded' || submissionData.value.gradedAt != null
 })
+
+// 安全读取错误消息（捕获的 e 类型为 unknown）
+const errorMessage = (e: unknown, fallback = '未知错误'): string => {
+  if (e instanceof Error) return e.message
+  return fallback
+}
 
 onMounted(async () => {
   isViewMode.value = route.query.view === 'true'
@@ -101,14 +123,20 @@ onMounted(async () => {
 const loadHomework = async () => {
   try {
     const homeworkId = route.params.id
-    const res = await homeworkAPI.getDetail(homeworkId)
+    if (!homeworkId || !/^\d+$/.test(homeworkId as string)) {
+      router.replace('/404')
+      return
+    }
+    const res = await homeworkAPI.getDetail(Number(homeworkId))
     if (res.data) {
-      homework.value = res.data.homework
-      questions.value = res.data.questions || []
+      // 后端返回 { homework, questions } 结构，但 API 类型签名较为宽松
+      const data = res.data as unknown as { homework: HomeworkDetail; questions?: HomeworkQuestion[] }
+      homework.value = data.homework
+      questions.value = data.questions || []
     }
   } catch (e) {
-    console.error('加载作业失败:', e)
-    toast.error('加载作业失败: ' + e.message)
+    logger.error('加载作业失败:', e)
+    toast.error('加载作业失败: ' + errorMessage(e))
     // 使用显式跳转替代 router.back()，提升可靠性
     router.push(STUDENT_HOME_ROUTE)
   } finally {
@@ -119,52 +147,30 @@ const loadHomework = async () => {
 const loadSubmission = async () => {
   try {
     const homeworkId = route.params.id
+    if (!homeworkId || !/^\d+$/.test(homeworkId as string)) {
+      router.replace('/404')
+      return
+    }
     const studentId = authStore.user?.id
-    const res = await homeworkAPI.getSubmission(homeworkId, studentId)
+    const res = await homeworkAPI.getSubmission(Number(homeworkId), studentId ?? null)
     if (res.data) {
-      submissionData.value = res.data.submission
-      answerResults.value = res.data.answers || []
-      
+      // 后端返回 { submission, answers } 结构
+      const data = res.data as unknown as { submission: HomeworkSubmissionDetail; answers?: HomeworkAnswerResult[] }
+      submissionData.value = data.submission
+      answerResults.value = data.answers || []
+
       // 填充学生答案到studentAnswers
       answerResults.value.forEach(answer => {
-        studentAnswers[answer.questionId] = answer.studentAnswer
+        studentAnswers[answer.questionId] = answer.studentAnswer || ''
       })
     }
   } catch (e) {
-    console.error('加载提交记录失败:', e)
+    logger.error('加载提交记录失败:', e)
   }
 }
 
-const getAnswerResult = (questionId) => {
+const getAnswerResult = (questionId: number) => {
   return answerResults.value.find(a => a.questionId === questionId)
-}
-
-/**
- * 切换多选选项状态
- * @param {number} questionId 题目ID
- * @param {string} option 选项标识 (A, B, C...)
- * 
- * 逻辑：
- * 1. 触发选中动画
- * 2. 如果已选则移除，未选则追加
- * 3. 始终保持选项按字母顺序排序，方便后续比对
- */
-const toggleMultipleChoice = (questionId, option) => {
-  if (isViewMode.value) return
-  triggerOptionAnimation(questionId, option)
-  const current = studentAnswers[questionId] || ''
-  if (current.includes(option)) {
-    studentAnswers[questionId] = current.replace(option, '').split('').sort().join('')
-  } else {
-    studentAnswers[questionId] = (current + option).split('').sort().join('')
-  }
-}
-
-// 单选点击处理（带动画）
-const selectSingleChoice = (questionId, option) => {
-  if (isViewMode.value) return
-  triggerOptionAnimation(questionId, option)
-  studentAnswers[questionId] = option
 }
 
 const submitHomework = async () => {
@@ -172,7 +178,7 @@ const submitHomework = async () => {
     questionId: q.id,
     answer: studentAnswers[q.id] || ''
   }))
-  
+
   if (answers.some(a => !a.answer)) {
     const confirmed = await confirmStore.show({
       title: '题目未完成',
@@ -185,28 +191,31 @@ const submitHomework = async () => {
       return
     }
   }
-  
+
   submitting.value = true
   try {
+    // 提交体由客观题答案数组拼接而成，content 字段使用占位
     const dto = {
-      homeworkId: homework.value.id,
-      studentId: authStore.user?.id,
-      answers: answers
+      homeworkId: homework.value?.id ?? 0,
+      studentId: authStore.user?.id ?? 0,
+      content: '',
+      answers: answers.map(a => a.answer)
     }
-    
+
     const res = await homeworkAPI.submit(dto)
-    if (res.code === 200) {
-      submissionData.value = res.data
+    if (res.code === 200 && res.data) {
+      const data = res.data as unknown as HomeworkSubmissionDetail
+      submissionData.value = data
       // answerResults 已是数组，不需要 JSON.parse
-      answerResults.value = res.data.answerResults || []
-      toast.success('提交成功！得分：' + (res.data?.objectiveScore || 0) + '分')
+      answerResults.value = data.answerResults || []
+      toast.success('提交成功！得分：' + (data.objectiveScore || 0) + '分')
       router.push(STUDENT_HOME_ROUTE)
     } else {
       toast.error('提交失败: ' + res.message)
     }
   } catch (e) {
-    console.error('提交失败:', e)
-    toast.error('提交失败: ' + e.message)
+    logger.error('提交失败:', e)
+    toast.error('提交失败: ' + errorMessage(e))
   } finally {
     submitting.value = false
   }
@@ -322,7 +331,7 @@ const goBack = () => {
             </span>
             <span class="flex items-center gap-2">
               <CheckCircle class="w-4 h-4 text-tianlv" />
-              总分 {{ homework.totalScore }} 分
+              总分 {{ homework?.totalScore ?? '-' }} 分
             </span>
           </div>
           <div v-if="isViewMode && submissionData" class="text-sm text-shuimo/50">
@@ -334,140 +343,16 @@ const goBack = () => {
 
         <div class="space-y-6">
           <TransitionGroup name="question-list" appear>
-          <GlassCard v-for="(question, index) in questions" :key="question.id" 
-                     :hoverable="!isViewMode"
-                     class="transition-[transform,box-shadow,border-color,background-color] duration-500 question-card"
-                     :class="{'ring-2 ring-qinghua/20': !isViewMode}"
-                     :style="{ '--delay': index * 0.08 + 's' }">
-            
-            <div class="flex items-start gap-4">
-              <!-- 题号 -->
-
-              <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-qinghua/10 text-qinghua rounded-lg font-bold font-song text-lg mt-0.5 question-number">
-                {{ index + 1 }}
-              </span>
-              
-              <div class="flex-1 min-w-0">
-                <!-- 题目内容 -->
-
-                <div class="mb-4">
-                  <div class="flex items-center gap-3 mb-2">
-                    <span class="text-xs px-2 py-0.5 rounded bg-slate-100 text-shuimo/60 font-medium">
-                      {{ question.questionType === 'single' ? '单选题' : question.questionType === 'multiple' ? '多选题' : question.questionType === 'fill' ? '填空题' : '主观题' }}
-                    </span>
-                    <span class="text-xs text-shuimo/40">
-                      {{ question.score }} 分
-                    </span>
-                  </div>
-                  <h3 class="text-lg font-medium text-shuimo leading-relaxed">{{ question.content }}</h3>
-                </div>
-
-                <!-- 单选题选项 -->
-
-                <div v-if="question.questionType === 'single'" class="space-y-3">
-                  <div v-for="(option, idx) in parseQuestionOptions(question.options)" :key="idx" 
-                       @click="selectSingleChoice(question.id, String.fromCharCode(65 + idx))"
-                       :class="['group relative p-4 rounded-xl border transition-[transform,box-shadow,border-color,background-color] duration-300 option-item',
-                                 !isViewMode && 'cursor-pointer hover:border-qinghua/50 hover:bg-white/80',
-                                 studentAnswers[question.id] === String.fromCharCode(65 + idx) 
-                                   ? 'border-qinghua bg-qinghua/5 shadow-sm ring-1 ring-qinghua/20' 
-                                   : 'border-slate-200/60 bg-white/40',
-                                 isOptionAnimating(question.id, String.fromCharCode(65 + idx)) && 'animate-option-select']">
-                    <div class="flex items-center gap-3">
-                      <div :class="['w-5 h-5 rounded-full border flex items-center justify-center transition-[transform,border-color,background-color] duration-200',
-                                    studentAnswers[question.id] === String.fromCharCode(65 + idx)
-                                      ? 'border-qinghua/50 bg-qinghua text-white scale-110'
-                                      : 'border-slate-300 group-hover:border-qinghua/50']">
-                         <div v-if="studentAnswers[question.id] === String.fromCharCode(65 + idx)" class="w-2 h-2 bg-white rounded-full animate-scale-in"></div>
-                      </div>
-                      <span class="font-medium text-shuimo/50 w-4">{{ String.fromCharCode(65 + idx) }}.</span>
-                      <span :class="['flex-1 text-shuimo transition-colors', studentAnswers[question.id] === String.fromCharCode(65 + idx) ? 'font-medium' : '']">
-                        {{ option }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 多选题选项 -->
-
-                <div v-else-if="question.questionType === 'multiple'" class="space-y-3">
-                  <div v-for="(option, idx) in parseQuestionOptions(question.options)" :key="idx"
-                       @click="toggleMultipleChoice(question.id, String.fromCharCode(65 + idx))"
-                       :class="['group relative p-4 rounded-xl border transition-[transform,box-shadow,border-color,background-color] duration-300 option-item',
-                                 !isViewMode && 'cursor-pointer hover:border-qinghua/50 hover:bg-white/80',
-                                 (studentAnswers[question.id] || '').includes(String.fromCharCode(65 + idx))
-                                   ? 'border-qinghua/50 bg-qinghua/5 shadow-sm ring-1 ring-qinghua/20' 
-                                   : 'border-slate-200/60 bg-white/40',
-                                 isOptionAnimating(question.id, String.fromCharCode(65 + idx)) && 'animate-option-select']">
-                    <div class="flex items-center gap-3">
-                      <div :class="['w-5 h-5 rounded border flex items-center justify-center transition-[transform,border-color,background-color] duration-200',
-                                    (studentAnswers[question.id] || '').includes(String.fromCharCode(65 + idx))
-                                      ? 'border-qinghua bg-qinghua text-white scale-110'
-                                      : 'border-slate-300 group-hover:border-qinghua/50']">
-                         <CheckCircle v-if="(studentAnswers[question.id] || '').includes(String.fromCharCode(65 + idx))" class="w-3.5 h-3.5 animate-scale-in" />
-                      </div>
-                      <span class="font-medium text-shuimo/50 w-4">{{ String.fromCharCode(65 + idx) }}.</span>
-                      <span :class="['flex-1 text-shuimo transition-colors', (studentAnswers[question.id] || '').includes(String.fromCharCode(65 + idx)) ? 'font-medium' : '']">
-                        {{ option }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 填空题 -->
-
-                <div v-else-if="question.questionType === 'fill'" class="relative">
-                  <input v-model="studentAnswers[question.id]" type="text" :disabled="isViewMode"
-                         class="w-full px-4 py-3 rounded-xl border border-slate-200/60 bg-white/50 focus:bg-white focus:border-qinghua focus:ring-4 focus:ring-qinghua/10 outline-none transition-[background-color,border-color,box-shadow,color] duration-300 disabled:bg-slate-50 disabled:text-shuimo/60 placeholder:text-shuimo/30"
-                         placeholder="在此输入您的答案..." />
-                </div>
-
-                <!-- 主观题 -->
-
-                <div v-else-if="question.questionType === 'subjective'">
-                  <textarea v-model="studentAnswers[question.id]" rows="5" :disabled="isViewMode"
-                            class="w-full px-4 py-3 rounded-xl border border-slate-200/60 bg-white/50 focus:bg-white focus:border-qinghua focus:ring-4 focus:ring-qinghua/10 outline-none resize-none transition-[background-color,border-color,box-shadow,color] duration-300 disabled:bg-slate-50 disabled:text-shuimo/60 placeholder:text-shuimo/30"
-                            placeholder="在此输入您的详细解答..."></textarea>
-                </div>
-
-                <!-- 批改结果 -->
-
-                <Transition name="result-expand">
-                <div v-if="isViewMode && getAnswerResult(question.id)" class="mt-6 pt-4 border-t border-slate-100/50 space-y-3">
-                   <div class="flex items-center justify-between">
-                     <span :class="['flex items-center gap-2 font-medium px-3 py-1 rounded-lg text-sm result-badge', 
-                       getAnswerResult(question.id).isCorrect === 1 ? 'bg-qingsong/10 text-qingsong' : 
-                       getAnswerResult(question.id).isCorrect === 0 ? 'bg-yanzhi/10 text-yanzhi' : 'bg-zhizi/10 text-zhizi']">
-                      <component :is="getAnswerResult(question.id).isCorrect === 1 ? CheckCircle : getAnswerResult(question.id).isCorrect === 0 ? X : AlertCircle" 
-                                 :class="['w-4 h-4', getAnswerResult(question.id).isCorrect === 1 ? 'animate-check-mark' : '']" />
-                      {{ getAnswerResult(question.id).isCorrect === 1 ? '回答正确' : getAnswerResult(question.id).isCorrect === 0 ? '回答错误' : (getAnswerResult(question.id).score !== null ? '已批改' : '等待批改') }}
-                    </span>
-                    
-                     <span class="font-bold text-lg font-mono text-qinghua">
-                       {{ getAnswerResult(question.id).score !== null ? getAnswerResult(question.id).score : '--' }} <span class="text-xs text-shuimo/40 font-normal">/ {{ question.score }}</span>
-                     </span>
-                   </div>
-                   
-                   <div v-if="getAnswerResult(question.id).isCorrect === 0" class="p-3 bg-slate-50/80 rounded-xl border border-slate-100 animate-slide-down">
-                     <p class="text-xs text-shuimo/50 mb-1">正确答案</p>
-                     <p class="text-sm font-medium text-shuimo">{{ getAnswerResult(question.id).correctAnswer }}</p>
-                   </div>
-                   
-                   <div v-if="getAnswerResult(question.id).aiFeedback || getAnswerResult(question.id).teacherFeedback" class="space-y-2">
-                     <div v-if="getAnswerResult(question.id).aiFeedback" class="flex gap-3 p-3 bg-qinghua/5 rounded-xl border border-qinghua/10 animate-slide-down" style="animation-delay: 0.1s">
-                       <div class="w-6 h-6 rounded-full bg-qinghua text-white flex items-center justify-center text-xs flex-shrink-0">AI</div>
-                       <p class="text-sm text-shuimo/80 leading-relaxed">{{ getAnswerResult(question.id).aiFeedback }}</p>
-                     </div>
-                     <div v-if="getAnswerResult(question.id).teacherFeedback" class="flex gap-3 p-3 bg-zhizi/5 rounded-xl border border-zhizi/10 animate-slide-down" style="animation-delay: 0.2s">
-                       <div class="w-6 h-6 rounded-full bg-zhizi text-white flex items-center justify-center text-xs flex-shrink-0">师</div>
-                       <p class="text-sm text-shuimo/80 leading-relaxed">{{ getAnswerResult(question.id).teacherFeedback }}</p>
-                     </div>
-                   </div>
-                </div>
-                </Transition>
-              </div>
-            </div>
-          </GlassCard>
+            <QuestionCard
+              v-for="(question, index) in questions"
+              :key="question.id"
+              :question="question"
+              :index="index"
+              :is-view-mode="isViewMode"
+              :model-value="studentAnswers[question.id] || ''"
+              @update:model-value="(v: string) => { studentAnswers[question.id] = v }"
+              :answer-result="getAnswerResult(question.id) ?? undefined"
+            />
           </TransitionGroup>
         </div>
 
@@ -488,164 +373,6 @@ const goBack = () => {
 
 
 <style scoped>
-/* 题目卡片入场动画 */
-.question-list-enter-active {
-  /* P1 第二批：作业页入场/反馈动效统一到 200ms */
-  animation: question-enter var(--motion-duration-medium) var(--motion-ease-standard) both;
-  animation-delay: var(--delay, 0s);
-}
-
-.question-list-leave-active {
-  animation: question-leave var(--motion-duration-medium) var(--motion-ease-standard) both;
-}
-
-@keyframes question-enter {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes question-leave {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-}
-
-/* 题号动画 */
-.question-number {
-  animation: number-pop var(--motion-duration-medium) var(--motion-ease-standard) both;
-  animation-delay: calc(var(--delay, 0s) + 0.2s);
-}
-
-@keyframes number-pop {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.2);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* 选项选中弹性动画 */
-.animate-option-select {
-  animation: option-bounce var(--motion-duration-medium) var(--motion-ease-standard);
-}
-
-@keyframes option-bounce {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(0.97);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-/* 选中圆点/勾选动画 */
-.animate-scale-in {
-  animation: scale-in var(--motion-duration-medium) var(--motion-ease-standard);
-}
-
-@keyframes scale-in {
-  from {
-    transform: scale(0);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* 批改结果展开动画 */
-.result-expand-enter-active {
-  animation: result-expand var(--motion-duration-medium) var(--motion-ease-standard);
-}
-
-.result-expand-leave-active {
-  animation: result-collapse var(--motion-duration-medium) var(--motion-ease-standard);
-}
-
-@keyframes result-expand {
-  from {
-    opacity: 0;
-    /* 中文注释：改为 transform + opacity，避免 max-height 动画带来的布局抖动 */
-    transform: translateY(-8px) scaleY(0.96);
-    transform-origin: top;
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scaleY(1);
-    transform-origin: top;
-  }
-}
-
-@keyframes result-collapse {
-  from {
-    opacity: 1;
-    transform: translateY(0) scaleY(1);
-    transform-origin: top;
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-8px) scaleY(0.96);
-    transform-origin: top;
-  }
-}
-
-/* 正确答案打勾动画 */
-.animate-check-mark {
-  animation: check-mark var(--motion-duration-medium) var(--motion-ease-standard);
-}
-
-@keyframes check-mark {
-  0% {
-    transform: scale(0) rotate(-45deg);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.3) rotate(0deg);
-  }
-  100% {
-    transform: scale(1) rotate(0deg);
-    opacity: 1;
-  }
-}
-
-/* 下滑动画 */
-.animate-slide-down {
-  animation: slide-down var(--motion-duration-medium) var(--motion-ease-standard) both;
-}
-
-@keyframes slide-down {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 微弱脉冲动画（完成状态按钮） */
 .animate-pulse-subtle {
   animation: pulse-subtle var(--motion-duration-medium) var(--motion-ease-standard) infinite;
   animation-iteration-count: var(--motion-loop-iterations-attention, 4);

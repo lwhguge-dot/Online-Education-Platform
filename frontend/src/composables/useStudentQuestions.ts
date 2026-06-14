@@ -1,9 +1,17 @@
-import { ref } from 'vue'
+import { ref, readonly } from 'vue'
 import { commentAPI, homeworkAPI, chapterCommentAPI } from '../services/api'
 import { useToastStore } from '../stores/toast'
-import { formatDateTimeCN } from '../utils/datetime'
+import { formatDateTimeCN, parseToTimestamp, type DateInput } from '../utils/datetime'
+import { logger } from '../utils/logger'
 
 type QuestionId = string | number
+
+interface Reply {
+    teacherName?: string
+    time?: string
+    content?: string
+    [key: string]: unknown
+}
 
 interface QuestionItem {
     id: QuestionId
@@ -12,9 +20,9 @@ interface QuestionItem {
     time: string
     commentCount: number
     hasReply: boolean
-    replies: any[]
-    courseName?: string
-    chapterName?: string
+    replies: Reply[]
+    courseName?: string | undefined
+    chapterName?: string | undefined
 }
 
 interface SubmitQuestionPayload {
@@ -34,16 +42,11 @@ export function useStudentQuestions() {
 
     const normalizeTime = (timeValue: unknown): string => {
         if (!timeValue) return ''
-        const s = String(timeValue)
-        return s.includes('T') ? s.replace('T', ' ') : s
+        return String(timeValue)
     }
 
     const parseTime = (timeValue: unknown): number => {
-        if (!timeValue) return 0
-        const raw = String(timeValue)
-        const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(raw) ? raw.replace(' ', 'T') : raw
-        const t = Date.parse(normalized)
-        return Number.isNaN(t) ? 0 : t
+        return parseToTimestamp(timeValue as DateInput)
     }
 
     const loadQuestions = async (studentId: number | null | undefined): Promise<void> => {
@@ -58,25 +61,25 @@ export function useStudentQuestions() {
 
             const commentQuestions =
                 commentRes.status === 'fulfilled' && commentRes.value?.code === 200 && Array.isArray(commentRes.value?.data)
-                    ? commentRes.value.data.map((q: any): QuestionItem => ({
-                        id: q.id ?? q.questionId,
-                        title: q.title || '课程提问',
-                        content: q.content || q.answerContent || '',
+                    ? (commentRes.value.data as Record<string, unknown>[]).map((q): QuestionItem => ({
+                        id: (q.id ?? q.questionId) as QuestionId,
+                        title: (q.title as string) || '课程提问',
+                        content: ((q.content as string) || (q.answerContent as string) || ''),
                         time: normalizeTime(q.time || q.answeredAt || q.createdAt),
                         commentCount: Number(q.commentCount || 0),
                         hasReply: Boolean(q.hasReply),
-                        replies: Array.isArray(q.replies) ? q.replies : []
+                        replies: Array.isArray(q.replies) ? (q.replies as Reply[]) : []
                     }))
                     : []
 
             const homeworkQuestions =
                 homeworkRes.status === 'fulfilled' && homeworkRes.value?.code === 200 && Array.isArray(homeworkRes.value?.data)
-                    ? homeworkRes.value.data.map((q: any): QuestionItem => {
+                    ? (homeworkRes.value.data as Record<string, unknown>[]).map((q): QuestionItem => {
                         const hasTeacherReply = q.teacherReply != null && String(q.teacherReply).trim() !== ''
                         return {
                             id: `homework-${q.id}`,
                             title: q.homeworkTitle ? `作业：${q.homeworkTitle}` : '作业提问',
-                            content: q.questionContent,
+                            content: (q.questionContent as string) || '',
                             time: normalizeTime(q.repliedAt || q.createdAt),
                             commentCount: hasTeacherReply ? 1 : 0,
                             hasReply: hasTeacherReply,
@@ -85,7 +88,7 @@ export function useStudentQuestions() {
                                     {
                                         teacherName: '教师',
                                         time: normalizeTime(q.repliedAt || q.createdAt),
-                                        content: q.teacherReply
+                                        content: q.teacherReply as string
                                     }
                                 ]
                                 : []
@@ -95,16 +98,16 @@ export function useStudentQuestions() {
 
             const chapterCommentQuestions =
                 chapterCommentRes.status === 'fulfilled' && chapterCommentRes.value?.code === 200 && Array.isArray(chapterCommentRes.value?.data)
-                    ? chapterCommentRes.value.data.map((q: any): QuestionItem => ({
-                        id: `chapter-${q.id ?? Date.now()}`,
-                        title: q.title || '章节提问',
-                        content: q.content || '',
-                        courseName: q.courseName,
-                        chapterName: q.chapterName,
+                    ? (chapterCommentRes.value.data as Record<string, unknown>[]).map((q): QuestionItem => ({
+                        id: `chapter-${(q.id ?? Date.now()) as string | number}`,
+                        title: (q.title as string) || '章节提问',
+                        content: (q.content as string) || '',
+                        courseName: q.courseName as string | undefined,
+                        chapterName: q.chapterName as string | undefined,
                         time: normalizeTime(q.time || q.createdAt),
                         commentCount: Number(q.commentCount || 0),
                         hasReply: Boolean(q.hasReply),
-                        replies: Array.isArray(q.replies) ? q.replies : []
+                        replies: Array.isArray(q.replies) ? (q.replies as Reply[]) : []
                     }))
                     : []
 
@@ -112,7 +115,7 @@ export function useStudentQuestions() {
                 .sort((a, b) => parseTime(b.time) - parseTime(a.time))
 
         } catch (e) {
-            console.error('加载我的提问失败:', e)
+            logger.error('加载我的提问失败:', e)
         } finally {
             loading.value = false
         }
@@ -154,15 +157,15 @@ export function useStudentQuestions() {
                 return true
             }
         } catch (e) {
-            console.error('提交问题失败:', e)
+            logger.error('提交问题失败:', e)
             toast.error('提问失败，请稍后重试')
         }
         return false
     }
 
     return {
-        questions,
-        loading,
+        questions: readonly(questions),
+        loading: readonly(loading),
         loadQuestions,
         submitQuestion
     }

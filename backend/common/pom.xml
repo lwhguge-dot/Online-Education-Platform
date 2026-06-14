@@ -31,6 +31,12 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!-- Spring Security 支持（用于 @PreAuthorize 方法级权限控制） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
         <!-- JSON 处理 -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

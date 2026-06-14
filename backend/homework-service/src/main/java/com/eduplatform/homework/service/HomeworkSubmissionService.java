@@ -88,6 +88,11 @@ public class HomeworkSubmissionService {
                         .eq(HomeworkSubmission::getStudentId, dto.getStudentId())
                         .eq(HomeworkSubmission::getHomeworkId, dto.getHomeworkId()));
 
+        // 记录提交前是否已处于终态（graded）。
+        // 业务规则：仅在作业已被评定后，才允许向学生展示客观题正确答案与解析，
+        // 避免首次提交即泄露答案导致重复提交作弊。
+        boolean previouslyGraded = submission != null && "graded".equals(submission.getSubmitStatus());
+
         if (submission == null) {
             submission = new HomeworkSubmission();
             submission.setStudentId(dto.getStudentId());
@@ -100,6 +105,9 @@ public class HomeworkSubmissionService {
                         new LambdaQueryWrapper<HomeworkSubmission>()
                                 .eq(HomeworkSubmission::getStudentId, dto.getStudentId())
                                 .eq(HomeworkSubmission::getHomeworkId, dto.getHomeworkId()));
+                if (submission == null) {
+                    throw new BusinessException("提交记录创建失败");
+                }
             }
         }
 
@@ -148,17 +156,22 @@ public class HomeworkSubmissionService {
                 boolean isCorrect = compareAnswer(question.getCorrectAnswer(), studentAnswer);
                 answer.setIsCorrect(isCorrect ? 1 : 0);
                 answer.setScore(isCorrect ? question.getScore() : 0);
-                answer.setAiFeedback(isCorrect ? "回答正确"
-                        : "回答有误。建议重新查看章节解析。正确选项为：" + question.getCorrectAnswer());
+                // 反馈文案仅告知对错，不再把正确答案写入 DB 与反馈文案。
+                answer.setAiFeedback(isCorrect ? "回答正确" : "回答有误，建议重新查看章节内容。");
 
                 if (isCorrect) {
                     objectiveScore += question.getScore();
                 }
 
+                // 始终返回对错结果与得分，便于前端即时反馈。
                 answerResult.put("isCorrect", isCorrect);
-                answerResult.put("correctAnswer", question.getCorrectAnswer());
-                answerResult.put("analysis", question.getAnswerAnalysis());
                 answerResult.put("score", answer.getScore());
+                // 仅当本次提交前已处于 graded 时才回显正确答案与解析；
+                // 否则需等本次提交最终评定后再统一回填（见循环后处理）。
+                if (previouslyGraded) {
+                    answerResult.put("correctAnswer", question.getCorrectAnswer());
+                    answerResult.put("analysis", question.getAnswerAnalysis());
+                }
             } else {
                 // 标记存在需要人工介入的主观题
                 hasSubjective = true;
@@ -176,6 +189,7 @@ public class HomeworkSubmissionService {
         }
 
         // 状态机流转：若全为客观题则直接进入 graded 状态
+        boolean fullyGradedNow = !hasSubjective;
         submission.setSubmitStatus(hasSubjective ? "submitted" : "graded");
         submission.setObjectiveScore(objectiveScore);
         submission.setSubmittedAt(LocalDateTime.now());
@@ -184,6 +198,22 @@ public class HomeworkSubmissionService {
             submission.setGradedAt(LocalDateTime.now());
         }
         submissionMapper.updateById(submission);
+
+        // 若本次提交即进入终态（全客观题），补发一次包含正确答案与解析的响应字段，
+        // 因为此时作业已被评定，不再存在重复提交作弊风险。
+        if (fullyGradedNow) {
+            // 通过题目 id 索引快速补齐 correctAnswer / analysis
+            java.util.Map<Long, HomeworkQuestion> qIndex = questions.stream()
+                    .collect(Collectors.toMap(HomeworkQuestion::getId, q -> q, (a, b) -> a));
+            for (Map<String, Object> answerResult : answerResults) {
+                Long qId = (Long) answerResult.get("questionId");
+                HomeworkQuestion q = qIndex.get(qId);
+                if (q != null && !"subjective".equals(q.getQuestionType())) {
+                    answerResult.put("correctAnswer", q.getCorrectAnswer());
+                    answerResult.put("analysis", q.getAnswerAnalysis());
+                }
+            }
+        }
 
         // 若需人工批改则触发通知
         if (hasSubjective) {

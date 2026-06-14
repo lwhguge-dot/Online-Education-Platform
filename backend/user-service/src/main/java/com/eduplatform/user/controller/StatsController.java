@@ -1,7 +1,7 @@
 package com.eduplatform.user.controller;
 
-import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.security.RequestContext;
 import com.eduplatform.user.feign.CourseServiceClient;
 import com.eduplatform.user.service.UserService;
 import com.eduplatform.user.service.UserSessionService;
@@ -24,16 +24,16 @@ public class StatsController {
     private final UserService userService;
     private final UserSessionService sessionService;
     private final CourseServiceClient courseServiceClient;
+    private final RequestContext requestContext;
 
     /**
      * 获取管理员仪表盘统计数据。
      * 说明：用户与在线数据来自本服务，课程统计通过 Feign 聚合。
      */
     @GetMapping("/admin/dashboard")
-    public Result<Map<String, Object>> getAdminDashboard(
-            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
-        if (!isAdminRole(currentUserRole)) {
-            throw new BusinessException(403, "权限不足，仅管理员可访问管理统计");
+    public Result<Map<String, Object>> getAdminDashboard() {
+        if (!requestContext.isAdmin()) {
+            return Result.failure(403, "权限不足，仅管理员可查看管理仪表盘");
         }
         Map<String, Object> stats = new HashMap<>();
 
@@ -77,11 +77,8 @@ public class StatsController {
      */
     @GetMapping("/student/dashboard")
     public Result<Map<String, Object>> getStudentDashboard(
-            @RequestParam("studentId") Long studentId,
-            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
-            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
-        Long currentUserId = parseUserId(currentUserIdHeader);
-        if (!hasSelfOrAdminAccess(studentId, currentUserId, currentUserRole)) {
+            @RequestParam("studentId") Long studentId) {
+        if (!requestContext.canAccessSelfOrAdmin(studentId)) {
             return Result.failure(403, "权限不足，仅本人或管理员可查看学生仪表盘");
         }
         Map<String, Object> stats = new HashMap<>();
@@ -94,36 +91,5 @@ public class StatsController {
         stats.put("streakDays", 0);
 
         return Result.success(stats);
-    }
-
-    /**
-     * 判断是否管理员角色。
-     */
-    private boolean isAdminRole(String currentUserRole) {
-        return currentUserRole != null && "admin".equalsIgnoreCase(currentUserRole);
-    }
-
-    /**
-     * 解析网关注入的用户ID。
-     */
-    private Long parseUserId(String userIdHeader) {
-        if (userIdHeader == null || userIdHeader.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(userIdHeader);
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
-    /**
-     * 判断是否具备本人或管理员访问权限。
-     */
-    private boolean hasSelfOrAdminAccess(Long targetUserId, Long currentUserId, String currentUserRole) {
-        if (isAdminRole(currentUserRole)) {
-            return true;
-        }
-        return currentUserId != null && currentUserId.equals(targetUserId);
     }
 }

@@ -1,7 +1,8 @@
 package com.eduplatform.user.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -11,7 +12,8 @@ import java.time.LocalDateTime;
  *
  * @author Antigravity
  */
-@Data
+@Getter
+@Setter
 @TableName("users")
 public class User {
 

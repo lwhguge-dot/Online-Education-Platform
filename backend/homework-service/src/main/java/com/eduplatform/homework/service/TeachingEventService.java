@@ -1,5 +1,6 @@
 package com.eduplatform.homework.service;
 
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.homework.dto.TeachingEventDTO;
 import com.eduplatform.homework.entity.TeachingEvent;
 import com.eduplatform.homework.mapper.TeachingEventMapper;
@@ -74,7 +75,7 @@ public class TeachingEventService {
 
         // 安全校验：非管理员仅允许修改本人事件，避免通过事件ID越权修改他人日历
         if (!isAdmin && (operatorUserId == null || !operatorUserId.equals(event.getTeacherId()))) {
-            throw new RuntimeException("权限不足，仅可修改本人教学事件");
+            throw new BusinessException("权限不足，仅可修改本人教学事件");
         }
         
         event.setTitle(dto.getTitle());
@@ -96,7 +97,7 @@ public class TeachingEventService {
         if (event != null) {
             // 安全校验：非管理员仅允许删除本人事件，避免通过事件ID越权删除他人日历
             if (!isAdmin && (operatorUserId == null || !operatorUserId.equals(event.getTeacherId()))) {
-                throw new RuntimeException("权限不足，仅可删除本人教学事件");
+                throw new BusinessException("权限不足，仅可删除本人教学事件");
             }
             event.setStatus("cancelled");
             eventMapper.updateById(event);

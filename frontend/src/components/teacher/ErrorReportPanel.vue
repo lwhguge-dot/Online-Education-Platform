@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 /**
  * 错题报告面板组件
  * 展示作业中的高错误率题目和讲解建议
@@ -7,6 +7,7 @@ import { ref, onMounted, watch } from 'vue'
 import { AlertTriangle, ChevronDown, ChevronUp, Lightbulb, BookOpen, Users, Target } from 'lucide-vue-next'
 import { homeworkAPI } from '../../services/api'
 import AnimatedNumber from '../ui/AnimatedNumber.vue'
+import { logger } from '../../utils/logger'
 
 const props = defineProps({
   /** 作业ID */
@@ -51,7 +52,7 @@ const loadReportData = async () => {
       }
     }
   } catch (e) {
-    console.error('加载错题报告失败:', e)
+    logger.error('加载错题报告失败:', e)
     reportData.value = {
       totalQuestions: 0,
       avgScore: 0,
@@ -111,7 +112,7 @@ const parseQuestionOptions = (options) => {
       const parsed = JSON.parse(options)
       return Array.isArray(parsed) ? parsed : []
     } catch (error) {
-      console.warn('错题选项解析失败:', error)
+      logger.warn('错题选项解析失败:', error)
       return []
     }
   }

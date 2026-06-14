@@ -3,13 +3,16 @@ package com.eduplatform.user.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.security.InternalTokenVerifier;
+import com.eduplatform.common.security.RequestContext;
 import com.eduplatform.user.dto.CreateAuditLogRequest;
 import com.eduplatform.user.entity.AuditLog;
 import com.eduplatform.user.service.AuditLogService;
 import com.eduplatform.user.vo.AuditLogVO;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,14 +25,15 @@ import java.util.Map;
  * 审计日志控制器
  * 提供系统操作轨迹的查询接口，支持精细化的多维筛选（操作人、时间、业务目标）。
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/audit-logs")
 @RequiredArgsConstructor
 public class AuditLogController {
 
     private final AuditLogService auditLogService;
-    @Value("${security.internal-token}")
-    private String internalToken;
+    private final InternalTokenVerifier internalTokenVerifier;
+    private final RequestContext requestContext;
 
     /**
      * 审计轨迹分页检索 (管理员控制台)
@@ -52,10 +56,10 @@ public class AuditLogController {
             @RequestParam(name = "operatorId", required = false) Long operatorId,
             @RequestParam(name = "targetType", required = false) String targetType,
             @RequestParam(name = "startDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
-            @RequestParam(name = "endDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
-            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
-        if (!isAdminRole(currentUserRole)) {
-            throw new BusinessException(403, "权限不足，仅管理员可查询审计日志");
+            @RequestParam(name = "endDate", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
+
+        if (!requestContext.isAdmin()) {
+            return Result.failure(403, "权限不足，仅管理员可查看审计日志");
         }
 
         IPage<AuditLog> pageResult = auditLogService.findByPage(page, size, type, operatorId, targetType,
@@ -76,11 +80,9 @@ public class AuditLogController {
      * 查看单条审计日志的原始上下文
      */
     @GetMapping("/{id}")
-    public Result<AuditLogVO> getAuditLogById(
-            @PathVariable(name = "id") Long id,
-            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
-        if (!isAdminRole(currentUserRole)) {
-            throw new BusinessException(403, "权限不足，仅管理员可查看审计日志详情");
+    public Result<AuditLogVO> getAuditLogById(@PathVariable(name = "id") Long id) {
+        if (!requestContext.isAdmin()) {
+            return Result.failure(403, "权限不足，仅管理员可查看审计详情");
         }
         AuditLogVO log = auditLogService.convertToVO(auditLogService.findById(id));
         if (log == null) {
@@ -93,6 +95,12 @@ public class AuditLogController {
      * 业务日志采集埋点 (Feign 内部调用或网关透传)
      * 允许全微服务系统将关键业务操作（尤其是高危操作）记录至 User-service 的统一流水。
      *
+     * <p>信任链说明：
+     * <ul>
+     *   <li>内部调用（携带合法 X-Internal-Token）：信任请求体中的 operatorId，但额外记录调用源 IP 便于事后追溯。</li>
+     *   <li>外部调用（管理员 UI）：强制以网关注入的 X-User-Id 作为 operatorId，忽略请求体传入值。</li>
+     * </ul>
+     *
      * @param body 包含操作人隐私、目标快照及具体变更详情的原始映射
      */
     @PostMapping
@@ -101,7 +109,8 @@ public class AuditLogController {
             @RequestHeader(value = "X-Internal-Token", required = false) String requestInternalToken,
             @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Name", required = false) String currentUserName,
-            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole,
+            HttpServletRequest httpRequest) {
         boolean internalCall = hasValidInternalToken(requestInternalToken);
         if (!internalCall && !isAdminRole(currentUserRole)) {
             return Result.failure(403, "权限不足，仅内部调用或管理员可写入审计日志");
@@ -126,11 +135,33 @@ public class AuditLogController {
             if (currentUserName != null && !currentUserName.isBlank()) {
                 operatorName = currentUserName;
             }
+        } else {
+            // 内部调用：记录调用源 IP 与声明操作人，便于审计反查异常调用链。
+            // 内部调用方必须保证 operatorId 真实，此处记录便于事后定位伪造源。
+            // 净化所有用户可控字段，防止日志注入（换行/控制字符伪造日志条目）。
+            String sourceIp = sanitizeForLog(resolveClientIp(httpRequest));
+            log.info("内部审计写入: sourceIp={}, declaredOperatorId={}, action={}, targetId={}",
+                    sourceIp, sanitizeForLog(operatorId), sanitizeForLog(actionType), sanitizeForLog(targetId));
         }
 
         auditLogService.log(operatorId, operatorName, actionType, targetType, targetId, targetName, details,
                 ipAddress);
         return Result.success("审计流水已入库", null);
+    }
+
+    /**
+     * 解析请求来源 IP（优先网关注入的 X-Real-IP）。
+     */
+    private String resolveClientIp(HttpServletRequest request) {
+        if (request == null) {
+            return "unknown";
+        }
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isBlank()) {
+            return xRealIp.trim();
+        }
+        String remoteAddr = request.getRemoteAddr();
+        return remoteAddr != null && !remoteAddr.isBlank() ? remoteAddr.trim() : "unknown";
     }
 
     /**
@@ -141,23 +172,34 @@ public class AuditLogController {
     }
 
     /**
+     * 净化用户可控字符串，防止日志注入（换行/控制字符伪造）。
+     */
+    private static String sanitizeForLog(String value) {
+        if (value == null) {
+            return "null";
+        }
+        String cleaned = value.replaceAll("[\\r\\n\\t\\p{Cntrl}]", "_");
+        return cleaned.length() > 200 ? cleaned.substring(0, 200) + "..." : cleaned;
+    }
+
+    /**
+     * 净化用户可控 Long，防止日志注入（实际 Long 不会注入，此处仅为统一调用）。
+     */
+    private static String sanitizeForLog(Long value) {
+        return value == null ? "null" : value.toString();
+    }
+
+    /**
      * 校验内部调用令牌。
      */
     private boolean hasValidInternalToken(String requestInternalToken) {
-        return requestInternalToken != null && !requestInternalToken.isBlank() && requestInternalToken.equals(internalToken);
+        return internalTokenVerifier.isValid(requestInternalToken);
     }
 
     /**
      * 解析网关注入的用户ID。
      */
     private Long parseUserId(String userIdHeader) {
-        if (userIdHeader == null || userIdHeader.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(userIdHeader);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return requestContext.parseUserId(userIdHeader);
     }
 }

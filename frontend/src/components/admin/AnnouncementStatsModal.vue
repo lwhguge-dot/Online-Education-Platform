@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 /**
  * 公告阅读统计弹窗组件
  * 展示公告的阅读率、已读用户列表和阅读时间分布
@@ -8,6 +8,7 @@ import { X, Users, Eye, Clock, CheckCircle, User, TrendingUp } from 'lucide-vue-
 import { announcementAPI } from '../../services/api'
 import { formatDateCN } from '../../utils/datetime'
 import AnimatedNumber from '../ui/AnimatedNumber.vue'
+import { logger } from '../../utils/logger'
 
 const props = defineProps({
   /** 是否显示弹窗 */
@@ -57,7 +58,7 @@ const loadStats = async () => {
       }
     }
   } catch (e) {
-    console.error('加载公告统计失败:', e)
+    logger.error('加载公告统计失败:', e)
   } finally {
     loading.value = false
   }

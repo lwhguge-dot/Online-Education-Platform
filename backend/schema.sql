@@ -9,6 +9,8 @@
 -- 创建数据库（如果需要手动创建，请在psql中执行）
 -- CREATE DATABASE edu_platform WITH ENCODING 'UTF8' LC_COLLATE='zh_CN.UTF-8' LC_CTYPE='zh_CN.UTF-8' TEMPLATE=template0;
 -- \c edu_platform;
+BEGIN;
+
 -- =====================================================
 -- 1. 用户相关表
 -- =====================================================
@@ -278,6 +280,7 @@ CREATE TABLE IF NOT EXISTS enrollments (
     last_study_at TIMESTAMP DEFAULT NULL,
     progress INT DEFAULT 0,
     status VARCHAR(20) DEFAULT 'active',
+    version INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uk_student_course UNIQUE (student_id, course_id)
@@ -978,3 +981,4 @@ WHERE NOT EXISTS (
             AND bw.course_id IS NULL
     );
 
+COMMIT;

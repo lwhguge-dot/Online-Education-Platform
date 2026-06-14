@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 /**
  * 空状态组件
  * 用于展示无数据、搜索无结果、加载失败等场景的占位状态。
@@ -162,6 +162,7 @@ const handleAction = () => {
 
 <template>
   <div
+    data-testid="empty-state"
     :class="[
       'flex flex-col items-center justify-center text-center',
       sizeClasses[size].padding,
@@ -203,6 +204,7 @@ const handleAction = () => {
     <button
       v-if="actionText"
       @click="handleAction"
+      data-testid="empty-state-action"
       :class="[
         'mt-5 rounded-xl font-medium flex items-center gap-2 transition-[background-color,color,box-shadow,transform] duration-300',
         sizeClasses[size].btn,

@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { RouterView } from 'vue-router'
 import { onUnmounted, watch } from 'vue'
 import OfflineNotice from './components/OfflineNotice.vue'
@@ -50,8 +50,9 @@ const setupWebSocket = () => {
   })
 
   offNotification = onNotification((payload) => {
-    if (payload?.title) {
-      toastStore.info(payload.title)
+    const title = payload.title
+    if (typeof title === 'string' && title) {
+      toastStore.info(title)
     }
   })
 }

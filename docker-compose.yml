@@ -6,9 +6,12 @@ services:
       - MODE=standalone
       - JVM_XMS=256m
       - JVM_XMX=256m
+      # 开发环境禁用Nacos认证
+      - NACOS_AUTH_ENABLE=false
     ports:
-      - "8848:8848"
-      - "9848:9848"
+      # SEC-05: 绑定 127.0.0.1，仅本机可访问
+      - "127.0.0.1:8848:8848"
+      - "127.0.0.1:9848:9848"
     volumes:
       - nacos-data:/home/nacos/data
     healthcheck:
@@ -38,7 +41,8 @@ services:
       - LANG=C.UTF-8
       - LC_ALL=C.UTF-8
     ports:
-      - "5432:5432"
+      # SEC-05: 绑定 127.0.0.1，仅本机可访问
+      - "127.0.0.1:5432:5432"
     volumes:
       - ./backend/schema.sql:/docker-entrypoint-initdb.d/init.sql
       - postgres-data:/var/lib/postgresql/data
@@ -64,14 +68,16 @@ services:
     image: redis:7.0
     container_name: demo-redis
     ports:
-      - "16379:6379"
+      # SEC-05: 绑定 127.0.0.1，仅本机可访问
+      - "127.0.0.1:16379:6379"
     command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required} --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --save 900 1 --save 300 10
     volumes:
       - redis-data:/data
     mem_limit: 512m
     cpus: 0.5
     healthcheck:
-      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "ping" ]
+      # DOCK-03: 使用 --no-auth-warning 避免密码出现在 docker inspect 输出中
+      test: [ "CMD-SHELL", "redis-cli --no-auth-warning -a \"$REDIS_PASSWORD\" ping | grep PONG" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -96,8 +102,11 @@ services:
       - "8090:8090"
     environment:
       - NACOS_ADDR=nacos:8848
+      - NACOS_USERNAME=nacos
+      - NACOS_PASSWORD=nacos
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
       - INTERNAL_API_TOKEN=${INTERNAL_API_TOKEN:?INTERNAL_API_TOKEN is required}
+      - SPRING_REDIS_PASSWORD=${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       - JAVA_OPTS=-Xms128m -Xmx256m -XX:MaxRAMPercentage=75 -XX:+UseG1GC -XX:+UseStringDeduplication
       - SPRING_THREADS_VIRTUAL_ENABLED=false
       - SPRING_CLOUD_LOADBALANCER_CACHE_ENABLED=true
@@ -113,7 +122,7 @@ services:
       nacos:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD-SHELL", "curl -s -o /dev/null --max-time 3 http://localhost:8090/ || exit 1" ]
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8090/actuator/health || exit 1" ]
       interval: 15s
       timeout: 5s
       retries: 8
@@ -132,6 +141,8 @@ services:
     container_name: demo-user-service
     environment:
       - NACOS_ADDR=nacos:8848
+      - NACOS_USERNAME=nacos
+      - NACOS_PASSWORD=nacos
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/edu_platform?characterEncoding=UTF-8
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       - SPRING_REDIS_PASSWORD=${REDIS_PASSWORD:?REDIS_PASSWORD is required}
@@ -176,6 +187,8 @@ services:
     container_name: demo-course-service
     environment:
       - NACOS_ADDR=nacos:8848
+      - NACOS_USERNAME=nacos
+      - NACOS_PASSWORD=nacos
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/edu_platform?characterEncoding=UTF-8
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       - SPRING_REDIS_PASSWORD=${REDIS_PASSWORD:?REDIS_PASSWORD is required}
@@ -218,6 +231,8 @@ services:
     container_name: demo-homework-service
     environment:
       - NACOS_ADDR=nacos:8848
+      - NACOS_USERNAME=nacos
+      - NACOS_PASSWORD=nacos
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/edu_platform?characterEncoding=UTF-8
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       - SPRING_REDIS_PASSWORD=${REDIS_PASSWORD:?REDIS_PASSWORD is required}
@@ -256,10 +271,11 @@ services:
       args:
         MODULE_NAME: progress-service
     container_name: demo-progress-service
-    ports:
-      - "8084:8084"
+    # DOCK-04: 移除端口映射，统一通过 Gateway（8090）路由访问
     environment:
       - NACOS_ADDR=nacos:8848
+      - NACOS_USERNAME=nacos
+      - NACOS_PASSWORD=nacos
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/edu_platform?characterEncoding=UTF-8
       - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       - SPRING_REDIS_PASSWORD=${REDIS_PASSWORD:?REDIS_PASSWORD is required}
@@ -321,14 +337,15 @@ services:
     image: minio/minio:RELEASE.2024-01-18T22-51-28Z
     container_name: demo-minio
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      # SEC-05: 绑定 127.0.0.1，仅本机可访问
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
     volumes:
       - minio-data:/data
-    command: server /data/disk{1...4} --console-address ":9001"
+    command: server /data --console-address ":9001"
     mem_limit: 512m
     cpus: 0.5
     logging:
@@ -337,7 +354,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: [ "CMD", "mc", "ready", "local" ]
+      test: ["CMD", "mc", "ready", "local"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -349,17 +366,21 @@ services:
     image: ghcr.io/vectorize-io/hindsight:latest
     container_name: demo-hindsight
     ports:
-      - "8888:8888"
-      - "9999:9999"
+      # SEC-05: 绑定 127.0.0.1，仅本机可访问
+      - "127.0.0.1:8888:8888"
+      - "127.0.0.1:9999:9999"
     environment:
       - HINDSIGHT_API_LLM_PROVIDER=ollama
       - HINDSIGHT_API_LLM_API_KEY=ollama
       - HINDSIGHT_API_LLM_MODEL=qwen2.5:3b
       - HINDSIGHT_API_LLM_BASE_URL=http://ollama-json-proxy:11435/v1
       - OLLAMA_KEEP_ALIVE=-1
-      - HINDSIGHT_API_LLM_MAX_CONCURRENT=4
+      - HINDSIGHT_API_LLM_MAX_CONCURRENT=1
+      - HINDSIGHT_API_LLM_TEMPERATURE=0
       - HINDSIGHT_API_LOG_LEVEL=info
       - HF_ENDPOINT=https://huggingface.co
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
       - HINDSIGHT_API_EMBEDDINGS_PROVIDER=local
       - HINDSIGHT_API_EMBEDDINGS_LOCAL_MODEL=BAAI/bge-m3
       - HINDSIGHT_API_RERANKER_PROVIDER=rrf
@@ -373,9 +394,9 @@ services:
       timeout: 10s
       retries: 5
       start_period: 300s
-    mem_limit: 4g
-    memswap_limit: 4g
-    cpus: 4.0
+    mem_limit: 2g
+    memswap_limit: 3g
+    cpus: 2.0
     stop_grace_period: 60s
     logging:
       driver: json-file
@@ -396,9 +417,10 @@ services:
       - OLLAMA_HOST=host.docker.internal
       - OLLAMA_PORT=11434
       - PROXY_PORT=11435
-      - LLM_TIMEOUT=900
+      - LLM_TIMEOUT=300
     ports:
-      - "11436:11435"
+      # SEC-05: 绑定 127.0.0.1，仅本机可访问
+      - "127.0.0.1:11436:11435"
     networks:
       - edu-net
     restart: unless-stopped

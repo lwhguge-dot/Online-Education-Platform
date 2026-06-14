@@ -1,3 +1,13 @@
+﻿<script setup>
+defineProps({
+  type: {
+    type: String,
+    default: 'default',
+    validator: (value) => ['course-card', 'list-item', 'stat-card', 'table-row', 'detail-header', 'default'].includes(value)
+  }
+})
+</script>
+
 <template>
   <div class="skeleton-loader relative overflow-hidden bg-white/50 backdrop-blur-sm border border-white/20 shadow-sm">
     <!-- Shimmer Overlay -->
@@ -66,21 +76,10 @@
   </div>
 </template>
 
-<script setup>
-defineProps({
-  type: {
-    type: String,
-    default: 'default',
-    validator: (value) => ['course-card', 'list-item', 'stat-card', 'table-row', 'detail-header', 'default'].includes(value)
-  }
-})
-</script>
-
 <style scoped>
-@reference "tailwindcss";
-
 .skeleton-loader {
-  @apply bg-white rounded-xl;
+  background-color: white;
+  border-radius: 0.75rem;
 }
 
 @keyframes pulse {

@@ -3,10 +3,14 @@ import { ref, computed } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
 import { getAuth, saveAuth, clearAuth } from '../services/api'
 import type { User } from '../types/api'
+import type { SessionUser } from '../services/request'
 import SentryService from '../utils/sentry'
+import { useStudentCourseStore } from './student-courses'
+import { useStudentHomeworkStore } from './student-homeworks'
+import { useStudentStatsStore } from './student-stats'
 
 export const useAuthStore = defineStore('auth', () => {
-  const user: Ref<User | null> = ref(null)
+  const user: Ref<SessionUser | null> = ref(null)
   const token: Ref<string | null> = ref(null)
   const loading: Ref<boolean> = ref(true)
 
@@ -17,11 +21,9 @@ export const useAuthStore = defineStore('auth', () => {
     if (auth.token && auth.user) {
       token.value = auth.token
       user.value = auth.user
-      // 设置 Sentry 用户上下文
       SentryService.setUser({
         id: auth.user.id,
         username: auth.user.username,
-        email: auth.user.email,
       })
     }
     loading.value = false
@@ -29,15 +31,19 @@ export const useAuthStore = defineStore('auth', () => {
 
   function login(newToken: string, newUser: User): void {
     saveAuth(newToken, newUser)
+    const sessionUser: SessionUser = {
+      id: newUser.id,
+      username: newUser.username,
+      name: newUser.name,
+      role: newUser.role,
+      avatar: newUser.avatar,
+    }
     token.value = newToken
-    user.value = newUser
-    // 设置 Sentry 用户上下文
+    user.value = sessionUser
     SentryService.setUser({
       id: newUser.id,
       username: newUser.username,
-      email: newUser.email,
     })
-    // 记录登录事件
     SentryService.addBreadcrumb({
       message: 'User logged in',
       category: 'auth',
@@ -49,9 +55,17 @@ export const useAuthStore = defineStore('auth', () => {
     clearAuth()
     token.value = null
     user.value = null
-    // 清除 Sentry 用户上下文
+
+    // 清除关联 Store 缓存
+    try {
+      useStudentCourseStore().reset()
+      useStudentHomeworkStore().reset()
+      useStudentStatsStore().reset()
+    } catch {
+      // Store 可能未初始化，忽略
+    }
+
     SentryService.setUser(null)
-    // 记录登出事件
     SentryService.addBreadcrumb({
       message: 'User logged out',
       category: 'auth',
@@ -59,17 +73,13 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  // 更新用户信息（不改变token）
-  function updateUser(updatedFields: Partial<User>): void {
+  function updateUser(updatedFields: Partial<SessionUser>): void {
     if (user.value) {
       user.value = { ...user.value, ...updatedFields }
-      // 同步到sessionStorage
-      saveAuth(token.value!, user.value)
-      // 更新 Sentry 用户上下文
+      saveAuth(token.value!, user.value as User)
       SentryService.setUser({
         id: user.value.id,
         username: user.value.username,
-        email: user.value.email,
       })
     }
   }

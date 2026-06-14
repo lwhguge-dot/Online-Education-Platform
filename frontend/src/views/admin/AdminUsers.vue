@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, onMounted, watch, onUnmounted, onActivated, onDeactivated } from 'vue'
 import {
   Search, X, UserX, UserCheck, Shield, Trash2,
@@ -13,6 +13,7 @@ import { useConfirmStore } from '../../stores/confirm'
 import { useAuthStore } from '../../stores/auth'
 import { formatDateTimeCN } from '../../utils/datetime'
 import { mapWithConcurrency } from '../../utils/concurrency'
+import { logger } from '../../utils/logger'
 
 
 const confirmStore = useConfirmStore()
@@ -104,7 +105,7 @@ const fetchOnlineStatus = async () => {
       onlineUserIds.value = new Set(res.data)
     }
   } catch (e) {
-    console.error('Failed to fetch online status:', e)
+    logger.error('Failed to fetch online status:', e)
   } finally {
     loadingOnlineStatus.value = false
   }
@@ -123,7 +124,7 @@ const fetchUserSessions = async (user) => {
     const res = await userAPI.getSessions(user.id)
     userSessions.value = res.data || []
   } catch (e) {
-    console.error('获取会话信息失败:', e)
+    logger.error('获取会话信息失败:', e)
     toast.error('获取会话信息失败')
   } finally {
     loadingSessions.value = false
@@ -150,7 +151,7 @@ const forceLogoutUser = async (user) => {
       showSessionModal.value = false
     }
   } catch (e) {
-    console.error('强制下线失败:', e)
+    logger.error('强制下线失败:', e)
     toast.error('强制下线失败')
   }
 }
@@ -162,7 +163,7 @@ const exportUsers = async () => {
     await userAPI.exportCSV()
     toast.success('用户数据导出成功')
   } catch (e) {
-    console.error('导出用户数据失败:', e)
+    logger.error('导出用户数据失败:', e)
     toast.error('导出失败')
   } finally {
     exporting.value = false
@@ -237,7 +238,7 @@ const toggleUserStatus = async (user) => {
     emit('refresh')
     toast.success(`用户${newStatus === 1 ? '已启用' : '已禁用'}`)
   } catch (e) {
-    console.error('更新用户状态失败:', e)
+    logger.error('更新用户状态失败:', e)
     toast.error('操作失败')
   }
 }
@@ -259,7 +260,7 @@ const deleteUser = async () => {
     emit('refresh')
     toast.success('用户已删除')
   } catch (e) {
-    console.error('删除用户失败:', e)
+    logger.error('删除用户失败:', e)
     toast.error('删除失败')
   } finally {
     showDeleteModal.value = false
@@ -306,7 +307,7 @@ const batchAction = async (action) => {
       toast.error(`批量${confirmMsg}失败，请稍后重试`)
     } else {
       toast.warning(`批量${confirmMsg}部分成功：成功 ${successCount}，失败 ${failedCount}`)
-      console.error('批量更新用户状态存在失败项', results)
+      logger.error('批量更新用户状态存在失败项', results)
     }
 
     emit('refresh')

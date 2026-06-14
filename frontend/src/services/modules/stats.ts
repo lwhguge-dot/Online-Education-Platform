@@ -1,102 +1,80 @@
 import { request, resolveUserId } from '../request'
+import type { Result, TeacherDashboardStats, AdminDashboardStats, StudentDashboardStats, ChapterProgress } from '../../types/api'
 
 export const statsAPI = {
-    // 教师仪表盘统计（带课程数据）
-    getTeacherDashboard: (teacherId: number | null = null, courses: any[] = []) => {
+    getTeacherDashboard: (teacherId: number | null = null, courses: Array<{ id: number; title: string }> = []): Promise<Result<TeacherDashboardStats>> => {
         const resolvedTeacherId = resolveUserId(teacherId, '教师')
         if (courses.length > 0) {
-            return request(`/stats/teacher/dashboard?teacherId=${resolvedTeacherId}`, {
+            return request<TeacherDashboardStats>(`/stats/teacher/dashboard?teacherId=${resolvedTeacherId}`, {
                 method: 'POST',
                 body: JSON.stringify(courses),
             })
         }
-        return request(`/stats/teacher/dashboard?teacherId=${resolvedTeacherId}`)
+        return request<TeacherDashboardStats>(`/stats/teacher/dashboard?teacherId=${resolvedTeacherId}`)
     },
-
-    // 教师待办事项
-    getTeacherTodos: (teacherId: number | null = null) => {
+    getTeacherTodos: (teacherId: number | null = null): Promise<Result<Array<{ id: number; title: string; count: number; type: string }>>> => {
         const resolvedTeacherId = resolveUserId(teacherId, '教师')
         return request(`/homeworks/teacher/${resolvedTeacherId}/todos`)
     },
-
-    // 教师最近活动
-    getTeacherActivities: (teacherId: number | null = null) => {
+    getTeacherActivities: (teacherId: number | null = null): Promise<Result<Array<{ type: string; title: string; time: string }>>> => {
         const resolvedTeacherId = resolveUserId(teacherId, '教师')
         return request(`/homeworks/teacher/${resolvedTeacherId}/activities`)
     },
-
-    // 管理员仪表盘
-    getAdminDashboard: () => request('/stats/admin/dashboard'),
-
-    // 学生学习统计
-    getStudentDashboard: (studentId: number | null = null) => {
+    getAdminDashboard: (): Promise<Result<AdminDashboardStats>> => request<AdminDashboardStats>('/stats/admin/dashboard'),
+    getStudentDashboard: (studentId: number | null = null): Promise<Result<StudentDashboardStats>> => {
         const resolvedStudentId = resolveUserId(studentId, '学生')
-        return request(`/stats/student/${resolvedStudentId}/dashboard`)
+        return request<StudentDashboardStats>(`/stats/student/${resolvedStudentId}/dashboard`)
     },
-
-    // 获取教师今日新增学生数
-    getTeacherTodayEnrollments: (teacherId: number | null = null) => {
+    getTeacherTodayEnrollments: (teacherId: number | null = null): Promise<Result<{ count: number }>> => {
         const resolvedTeacherId = resolveUserId(teacherId, '教师')
         return request(`/enrollments/teacher/${resolvedTeacherId}/today`)
     },
-
-    // 获取用户增长趋势数据（管理员仪表盘图表）
-    getUserTrends: (days = 7) =>
+    getUserTrends: (days = 7): Promise<Result<Array<{ date: string; count: number }>>> =>
         request(`/stats/admin/user-trends?days=${days}`),
 }
 
 export const progressAPI = {
-    // 上报视频进度（自动携带时间戳用于防作弊校验）
-    reportVideo: (data: any) => request('/progress/video/report', {
+    reportVideo: (data: { chapterId: number; studentId: number; progress: number; duration: number }): Promise<Result<void>> => request('/progress/video/report', {
         method: 'POST',
         body: JSON.stringify({ ...data, clientTimestamp: Date.now() })
     }),
-    submitQuiz: (data: any) => request('/progress/quiz/submit', { method: 'POST', body: JSON.stringify(data) }),
-    getChapterProgress: (chapterId: number, studentId: number | null = null) => {
+    submitQuiz: (data: { chapterId: number; studentId: number; answers: number[] }): Promise<Result<{ score: number }>> => request('/progress/quiz/submit', { method: 'POST', body: JSON.stringify(data) }),
+    getChapterProgress: (chapterId: number, studentId: number | null = null): Promise<Result<ChapterProgress>> => {
         const resolvedStudentId = resolveUserId(studentId, '学生')
-        return request(`/progress/chapter/${chapterId}?studentId=${resolvedStudentId}`)
+        return request<ChapterProgress>(`/progress/chapter/${chapterId}?studentId=${resolvedStudentId}`)
     },
-    getCourseProgress: (courseId: number, studentId: number | null = null) => {
+    getCourseProgress: (courseId: number, studentId: number | null = null): Promise<Result<ChapterProgress[]>> => {
         const resolvedStudentId = resolveUserId(studentId, '学生')
-        return request(`/progress/course/${courseId}?studentId=${resolvedStudentId}`)
+        return request<ChapterProgress[]>(`/progress/course/${courseId}?studentId=${resolvedStudentId}`)
     },
-    checkUnlock: (chapterId: number, studentId: number | null = null) => {
+    checkUnlock: (chapterId: number, studentId: number | null = null): Promise<Result<{ unlocked: boolean }>> => {
         const resolvedStudentId = resolveUserId(studentId, '学生')
         return request(`/progress/check-unlock?studentId=${resolvedStudentId}&chapterId=${chapterId}`)
     },
-    // 更新进度（自动携带时间戳用于防作弊校验）
-    updateProgress: (data: any) => request('/progress/video/report', {
+    updateProgress: (data: { chapterId: number; studentId: number; progress?: number; duration?: number; courseId?: number; videoRate?: number; isCompleted?: number; currentPosition?: number }): Promise<Result<void>> => request('/progress/video/report', {
         method: 'POST',
         body: JSON.stringify({ ...data, clientTimestamp: Date.now() })
     }),
-    // 学习轨迹和知识点掌握度（真实数据）
-    getLearningTrack: (studentId: number | null = null) => {
+    getLearningTrack: (studentId: number | null = null): Promise<Result<Array<{ chapterId: number; chapterTitle: string; completed: boolean; studyTime: number }>>> => {
         const resolvedStudentId = resolveUserId(studentId, '学生')
         return request(`/progress/student/${resolvedStudentId}/learning-track`)
     },
-    getKnowledgeMastery: (studentId: number | null = null) => {
+    getKnowledgeMastery: (studentId: number | null = null): Promise<Result<Array<{ chapterId: number; title: string; mastery: number }>>> => {
         const resolvedStudentId = resolveUserId(studentId, '学生')
         return request(`/progress/student/${resolvedStudentId}/mastery`)
     },
-    // 教师端：获取学生在特定课程的学习轨迹
-    getLearningTrajectory: (courseId: number, studentId: number) => request(`/progress/course/${courseId}/student/${studentId}/trajectory`),
-    // 教师端：获取学生在特定课程的测验分数趋势
-    getQuizScoreTrend: (courseId: number, studentId: number) => request(`/progress/course/${courseId}/student/${studentId}/quiz-trend`),
-    // 教师端：获取学生在特定课程的详细学情分析
-    getStudentCourseAnalytics: (courseId: number, studentId: number) => request(`/progress/course/${courseId}/student/${studentId}/analytics`),
-    // 教师端：获取课程分析数据
-    getCourseAnalytics: (courseId: number) => request(`/progress/course/${courseId}/analytics`),
+    getLearningTrajectory: (courseId: number, studentId: number): Promise<Result<unknown>> => request(`/progress/course/${courseId}/student/${studentId}/trajectory`),
+    getQuizScoreTrend: (courseId: number, studentId: number): Promise<Result<unknown>> => request(`/progress/course/${courseId}/student/${studentId}/quiz-trend`),
+    getStudentCourseAnalytics: (courseId: number, studentId: number): Promise<Result<unknown>> => request(`/progress/course/${courseId}/student/${studentId}/analytics`),
+    getCourseAnalytics: (courseId: number): Promise<Result<unknown>> => request(`/progress/course/${courseId}/analytics`),
 }
 
 export const badgeAPI = {
-    // 获取学生徽章（包含已解锁和未解锁）
-    getStudentBadges: (studentId: number | null = null) => {
+    getStudentBadges: (studentId: number | null = null): Promise<Result<Array<{ id: number; name: string; code: string; description: string; unlocked: boolean; unlockedAt: string | null; progress: number; currentValue: number; targetValue: number; nearUnlock: boolean }>>> => {
         const resolvedStudentId = resolveUserId(studentId, '学生')
         return request(`/progress/badges/student/${resolvedStudentId}`)
     },
-
-    // 检查并授予符合条件的徽章
-    checkAndAwardBadges: (studentId: number | null = null) => {
+    checkAndAwardBadges: (studentId: number | null = null): Promise<Result<void>> => {
         const resolvedStudentId = resolveUserId(studentId, '学生')
         return request(`/progress/badges/student/${resolvedStudentId}/check`, {
             method: 'POST',
@@ -105,11 +83,9 @@ export const badgeAPI = {
 }
 
 export const auditLogAPI = {
-    // 分页查询审计日志
-    getList: (params: any = {}) => {
+    getList: (params: Record<string, string> = {}): Promise<Result<unknown[]>> => {
         const query = new URLSearchParams(params).toString()
         return request(`/audit-logs?${query}`)
     },
-    // 根据ID查询审计日志详情
-    getById: (id: number) => request(`/audit-logs/${id}`),
+    getById: (id: number): Promise<Result<unknown>> => request(`/audit-logs/${id}`),
 }

@@ -1,9 +1,10 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, watch } from 'vue'
 import { X, TrendingUp, BookOpen, Clock, Award, AlertTriangle, Calendar } from 'lucide-vue-next'
 import { progressAPI } from '../../services/api'
 import GlassCard from '../ui/GlassCard.vue'
 import BaseModal from '../ui/BaseModal.vue'
+import { logger } from '../../utils/logger'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -36,7 +37,7 @@ const loadAnalytics = async () => {
       analyticsData.value = res.data
     }
   } catch (e) {
-    console.error('加载学情数据失败', e)
+    logger.error('加载学情数据失败', e)
   } finally {
     loading.value = false
   }

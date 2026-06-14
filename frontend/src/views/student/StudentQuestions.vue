@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, watch, onMounted, nextTick } from 'vue'
 import { MessageSquare, MessageCircle, X, Image, Upload, Loader2, Trash2, CheckCircle, Clock, ChevronDown, ChevronUp, BookOpen, FileText } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
@@ -8,6 +8,7 @@ import { useToastStore } from '../../stores/toast'
 import { useAuthStore } from '../../stores/auth'
 import { useStudentQuestions } from '../../composables/useStudentQuestions'
 import { useStudentCourses } from '../../composables/useStudentCourses'
+import { logger } from '../../utils/logger'
 
 const toast = useToastStore()
 const authStore = useAuthStore()
@@ -107,7 +108,7 @@ watch(() => newQuestion.value.courseId, async (courseId) => {
         courseChapters.value = res.data
       }
     } catch (e) {
-      console.error('加载章节失败:', e)
+      logger.error('加载章节失败:', e)
     }
     loadingChapters.value = false
     

@@ -1,6 +1,7 @@
 package com.eduplatform.course.feign;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.course.config.InternalApiFeignConfig;
 import com.eduplatform.course.dto.UserBriefDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,7 +17,7 @@ import java.util.List;
  *
  * @author Antigravity
  */
-@FeignClient(name = "user-service", contextId = "userServiceClient", fallback = UserServiceClientFallback.class)
+@FeignClient(name = "user-service", contextId = "userServiceClient", fallback = UserServiceClientFallback.class, configuration = InternalApiFeignConfig.class)
 public interface UserServiceClient {
 
     /**

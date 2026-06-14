@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import {
   X, Clock,
@@ -16,6 +16,7 @@ import ErrorReportPanel from '../../components/teacher/ErrorReportPanel.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import { homeworkAPI, chapterAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
+import { logger } from '../../utils/logger'
 
 const props = defineProps({
   courses: {
@@ -117,14 +118,14 @@ const loadHomeworks = async () => {
               })
             }
           } catch (error) {
-            console.error('加载章节作业失败', error)
+            logger.error('加载章节作业失败', error)
           }
         }
       }
     }
     homeworks.value = allHomeworks
   } catch (e) {
-    console.error('List homeworks failed', e)
+    logger.error('List homeworks failed', e)
   } finally {
     loading.value = false
   }
@@ -140,7 +141,7 @@ const onCourseChange = async () => {
     const res = await chapterAPI.getByCourse(newHomework.value.courseId)
     selectedCourseChapters.value = res.data || []
   } catch (error) {
-    console.error('加载课程章节失败', error)
+    logger.error('加载课程章节失败', error)
     selectedCourseChapters.value = []
   }
 }

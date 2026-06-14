@@ -67,7 +67,7 @@ public class RedisStreamPublisher {
             messageMap.put("timestamp", message.getTimestamp().toString());
             messageMap.put("data", objectMapper.writeValueAsString(message.getData()));
         } catch (JsonProcessingException e) {
-            log.error("事件序列化失败: type={}, error={}", type, e.getMessage());
+            log.error("事件序列化失败: type={}", type, e);
             return null;
         }
 
@@ -82,7 +82,7 @@ public class RedisStreamPublisher {
 
             return recordId != null ? recordId.getValue() : null;
         } catch (Exception e) {
-            log.error("事件发布失败: stream={}, type={}, error={}", streamKey, type, e.getMessage());
+            log.error("事件发布失败: stream={}, type={}", streamKey, type, e);
             return null;
         }
     }

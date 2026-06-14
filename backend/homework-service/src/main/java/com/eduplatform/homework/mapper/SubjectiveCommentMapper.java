@@ -68,6 +68,7 @@ public interface SubjectiveCommentMapper extends BaseMapper<SubjectiveComment> {
     
     /**
      * 获取超过48小时未回复的讨论数量
+     * 说明：使用 PostgreSQL 标准的 INTERVAL 语法，避免使用 MySQL 专有 DATE_SUB。
      */
     @Select("""
         SELECT COUNT(*) FROM subjective_comments sc
@@ -75,20 +76,20 @@ public interface SubjectiveCommentMapper extends BaseMapper<SubjectiveComment> {
         AND sc.parent_id IS NULL
         AND sc.status = 1
         AND sc.answer_status = 'pending'
-        AND sc.created_at < DATE_SUB(NOW(), INTERVAL 48 HOUR)
+        AND sc.created_at < NOW() - INTERVAL '48 hour'
     """)
     Integer countOverdue(@Param("teacherId") Long teacherId);
-    
+
     /**
      * 获取讨论统计
      */
     @Select("""
-        SELECT 
+        SELECT
             COUNT(*) as totalQuestions,
             SUM(CASE WHEN answer_status = 'pending' THEN 1 ELSE 0 END) as pendingCount,
             SUM(CASE WHEN answer_status = 'answered' THEN 1 ELSE 0 END) as answeredCount,
             SUM(CASE WHEN answer_status = 'follow_up' THEN 1 ELSE 0 END) as followUpCount,
-            SUM(CASE WHEN answer_status = 'pending' AND created_at < DATE_SUB(NOW(), INTERVAL 48 HOUR) THEN 1 ELSE 0 END) as overdueCount
+            SUM(CASE WHEN answer_status = 'pending' AND created_at < NOW() - INTERVAL '48 hour' THEN 1 ELSE 0 END) as overdueCount
         FROM subjective_comments sc
         WHERE sc.course_id IN (SELECT id FROM courses WHERE teacher_id = #{teacherId})
         AND sc.parent_id IS NULL

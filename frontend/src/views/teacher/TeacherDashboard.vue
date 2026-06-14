@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, ref } from 'vue'
 import {
   BookOpen, Users, ClipboardCheck, Activity,

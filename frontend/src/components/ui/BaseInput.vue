@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref, useAttrs } from 'vue'
 
 const props = defineProps({
@@ -35,18 +35,17 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'focus', 'blur'])
 
 const attrs = useAttrs()
-const internalId = `input-${Math.random().toString(36).slice(2, 9)}`
-const inputId = computed(() => attrs.id || attrs.name || internalId)
-const inputName = computed(() => attrs.name || attrs.id || undefined)
+const inputId = computed(() => (attrs.id as string) || (attrs.name as string) || `input-${(attrs.name as string) || 'field'}`)
+const inputName = computed(() => (attrs.name as string) || (attrs.id as string) || undefined)
 
 const isFocused = ref(false)
 
-const handleFocus = (e) => {
+const handleFocus = (e: Event) => {
   isFocused.value = true
   emit('focus', e)
 }
 
-const handleBlur = (e) => {
+const handleBlur = (e: Event) => {
   isFocused.value = false
   emit('blur', e)
 }
@@ -57,6 +56,11 @@ const containerClasses = computed(() => [
   props.error ? 'border-danger ring-danger/10' : '',
   props.disabled ? 'opacity-60 bg-gray-100 cursor-not-allowed' : ''
 ])
+
+const handleInput = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  emit('update:modelValue', target.value)
+}
 </script>
 
 <template>
@@ -76,7 +80,9 @@ const containerClasses = computed(() => [
         :value="modelValue"
         :placeholder="placeholder"
         :disabled="disabled"
-        @input="$emit('update:modelValue', $event.target.value)"
+        :aria-invalid="!!error"
+        :aria-describedby="error ? `${inputId}-error` : undefined"
+        @input="handleInput"
         @focus="handleFocus"
         @blur="handleBlur"
         class="w-full bg-transparent border-0 px-4 py-3 text-text-main placeholder-text-muted/50 focus:ring-0 outline-none rounded-xl"
@@ -86,7 +92,7 @@ const containerClasses = computed(() => [
       </div>
     </div>
     <Transition name="fade">
-      <p v-if="error" class="text-xs text-danger mt-1 ml-1 flex items-center">
+      <p v-if="error" :id="`${inputId}-error`" class="text-xs text-danger mt-1 ml-1 flex items-center" role="alert">
         <svg class="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>

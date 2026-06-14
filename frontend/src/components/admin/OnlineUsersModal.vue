@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 /**
  * 在线用户实时监控弹窗组件
  * 展示当前在线用户列表，支持WebSocket实时更新
@@ -8,6 +8,7 @@ import { X, Users, Wifi, WifiOff, Clock, Monitor, RefreshCw, Search } from 'luci
 import { userAPI } from '../../services/api'
 import AnimatedNumber from '../ui/AnimatedNumber.vue'
 import { formatTimeCN } from '../../utils/datetime'
+import { logger } from '../../utils/logger'
 
 const props = defineProps({
   /** 是否显示弹窗 */
@@ -41,7 +42,7 @@ const loadOnlineUsers = async () => {
       lastUpdateTime.value = formatTimeCN(new Date())
     }
   } catch (e) {
-    console.error('加载在线用户失败:', e)
+    logger.error('加载在线用户失败:', e)
     // 如果API不存在，使用模拟数据展示组件功能
     onlineUsers.value = []
   } finally {

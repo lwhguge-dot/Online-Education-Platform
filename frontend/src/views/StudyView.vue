@@ -1,5 +1,5 @@
-<script setup>
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+﻿<script setup lang="ts">
+import { ref, onMounted, onUnmounted, computed, watch, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { courseAPI, chapterAPI, progressAPI } from '../services/api'
@@ -9,28 +9,38 @@ import AnimatedNumber from '../components/ui/AnimatedNumber.vue'
 import StudyChapterSidebar from '../components/student/StudyChapterSidebar.vue'
 import StudyChapterInfoCard from '../components/student/StudyChapterInfoCard.vue'
 import { ArrowLeft, Play, Clock, Sparkles } from 'lucide-vue-next'
+import { logger } from '../utils/logger'
+import type { Course, Chapter } from '../types/api'
+
+type StudyChapter = Chapter & { unlocked: boolean; completed: boolean; progress: number; lastPosition?: number }
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const courseId = computed(() => route.params.id)
+const courseId = computed<number | null>(() => {
+  const id = route.params.id
+  if (!id || !/^\d+$/.test(id as string)) {
+    return null
+  }
+  return Number(id)
+})
 const initialChapterId = computed(() => route.query.chapter ? Number(route.query.chapter) : null)
 const initialPosition = computed(() => route.query.t ? Number(route.query.t) : null)
 const fromStudent = computed(() => route.query.from === 'student')
-const course = ref(null)
-const chapters = ref([])
-const currentChapter = ref(null)
+const course = ref<Course | null>(null) as Ref<Course | null>
+const chapters = ref<StudyChapter[]>([])
+const currentChapter = ref<StudyChapter | null>(null)
 const isPlaying = ref(false)
 const videoProgress = ref(0)
 const loading = ref(true)
-const videoRef = ref(null)
+const videoRef = ref<HTMLVideoElement | null>(null)
 const videoDuration = ref(0)
 const lastSavedProgress = ref(0)
 const lastPlayPosition = ref(0) // 上次播放位置（秒）
 const showResumePrompt = ref(false) // 显示跳转提示
 const showCompleteCelebration = ref(false) // 显示完成庆祝动画
-let resumePromptTimer = null // 跳转提示定时器
+let resumePromptTimer: ReturnType<typeof setTimeout> | null = null // 跳转提示定时器
 
 // 显示跳转提示（5秒后自动消失）
 const showResumePromptWithTimer = () => {
@@ -45,21 +55,25 @@ const showResumePromptWithTimer = () => {
   }, 5000)
 }
 
-const clampPercent = (value) => {
+const clampPercent = (value: unknown) => {
   const n = Number(value)
   if (!Number.isFinite(n)) return 0
   return Math.min(100, Math.max(0, n))
 }
 
 const loadCourse = async () => {
+  if (!courseId.value) {
+    router.replace('/404')
+    return
+  }
   try {
     loading.value = true
-    const res = await courseAPI.getById(courseId.value)
+    const res = await courseAPI.getById(Number(courseId.value))
     if (res.data) {
       course.value = res.data
     }
-    
-    const chaptersRes = await chapterAPI.getByCourse(courseId.value)
+
+    const chaptersRes = await chapterAPI.getByCourse(Number(courseId.value))
     if (chaptersRes.data) {
       chapters.value = chaptersRes.data.map((ch, idx) => ({
         ...ch,
@@ -67,12 +81,12 @@ const loadCourse = async () => {
         completed: false,
         progress: 0
       }))
-      
+
       // 尝试加载进度（忽略错误）
       try {
         const studentId = authStore.user?.id
         if (studentId) {
-          const progressRes = await progressAPI.getCourseProgress(courseId.value, studentId)
+          const progressRes = await progressAPI.getCourseProgress(Number(courseId.value), studentId)
           if (progressRes.data) {
             progressRes.data.forEach(p => {
               const ch = chapters.value.find(c => Number(c.id) === Number(p.chapterId))
@@ -88,21 +102,21 @@ const loadCourse = async () => {
             })
             // 解锁下一章
             for (let i = 0; i < chapters.value.length - 1; i++) {
-              if (chapters.value[i].completed) {
-                chapters.value[i + 1].unlocked = true
+              if (chapters.value[i]?.completed) {
+                chapters.value[i + 1]!.unlocked = true
               }
             }
           }
         }
       } catch (e) {
-        console.warn('加载进度失败，使用默认状态:', e)
+        logger.warn('加载进度失败，使用默认状态:', e)
       }
       
       // 恢复上次选择的章节（刷新不跳转）
       if (chapters.value.length > 0) {
         const savedChapterId = sessionStorage.getItem(`study_chapter_${courseId.value}`)
-        let targetChapter = null
-        let targetPosition = null
+        let targetChapter: StudyChapter | null | undefined = null
+        let targetPosition: number | null = null
         
         // 优先使用URL参数指定的章节
         if (initialChapterId.value) {
@@ -119,52 +133,63 @@ const loadCourse = async () => {
         if (!targetChapter) {
           targetChapter = chapters.value[0]
         }
-        
-        targetChapter.progress = clampPercent(targetChapter.progress || 0)
-        if (targetChapter.completed) targetChapter.progress = 100
 
-        currentChapter.value = targetChapter
-        videoProgress.value = clampPercent(currentChapter.value.progress || 0)
-        lastSavedProgress.value = clampPercent(currentChapter.value.progress || 0)
-        // 保存章节ID到sessionStorage
-        sessionStorage.setItem(`study_chapter_${courseId.value}`, targetChapter.id.toString())
-        
-        // 如果有URL指定的播放位置，使用它
-        if (targetPosition && targetPosition > 0) {
-          lastPlayPosition.value = targetPosition
-          showResumePromptWithTimer()
-        }
-        // 否则检查是否有上次播放位置（未完成的章节才显示提示）
-        else if (!currentChapter.value.completed && currentChapter.value.lastPosition && currentChapter.value.lastPosition > 10) {
-          lastPlayPosition.value = currentChapter.value.lastPosition
-          showResumePromptWithTimer()
+        if (targetChapter) {
+          targetChapter.progress = clampPercent(targetChapter.progress || 0)
+          if (targetChapter.completed) targetChapter.progress = 100
+
+          currentChapter.value = targetChapter
+          videoProgress.value = clampPercent(currentChapter.value.progress || 0)
+          lastSavedProgress.value = clampPercent(currentChapter.value.progress || 0)
+          // 保存章节ID到sessionStorage
+          sessionStorage.setItem(`study_chapter_${courseId.value}`, targetChapter.id.toString())
+
+          // 如果有URL指定的播放位置，使用它
+          if (targetPosition && targetPosition > 0) {
+            lastPlayPosition.value = targetPosition
+            showResumePromptWithTimer()
+          }
+          // 否则检查是否有上次播放位置（未完成的章节才显示提示）
+          else if (!currentChapter.value.completed && currentChapter.value.lastPosition && currentChapter.value.lastPosition > 10) {
+            lastPlayPosition.value = currentChapter.value.lastPosition
+            showResumePromptWithTimer()
+          }
         }
       }
     }
   } catch (e) {
-    console.error('加载课程失败:', e)
+    logger.error('加载课程失败:', e)
   } finally {
     loading.value = false
   }
 }
 
-const selectChapter = (chapter) => {
+const selectChapter = (chapter: { id: number | string; unlocked?: boolean; completed?: boolean; progress?: number; lastPosition?: number; title?: string; videoUrl?: string }) => {
   if (chapter.unlocked) {
     // 保存当前章节ID到sessionStorage（刷新不跳转）
     sessionStorage.setItem(`study_chapter_${courseId.value}`, chapter.id.toString())
-    
-    chapter.progress = clampPercent(chapter.progress || 0)
-    if (chapter.completed) chapter.progress = 100
 
-    currentChapter.value = chapter
-    videoProgress.value = clampPercent(chapter.progress || 0)
-    lastSavedProgress.value = clampPercent(chapter.progress || 0)
+    const progressVal = clampPercent(chapter.progress || 0)
+    const completedVal = chapter.completed === true
+    chapter.progress = progressVal
+    if (completedVal) chapter.progress = 100
+
+    // 通过 id 找到 chapters.value 中的对应章节进行更新（避免类型不一致）
+    const target = chapters.value.find(c => Number(c.id) === Number(chapter.id))
+    if (target) {
+      target.progress = progressVal
+      if (completedVal) target.progress = 100
+      currentChapter.value = target
+    }
+    videoProgress.value = progressVal
+    lastSavedProgress.value = progressVal
     isPlaying.value = false
     videoDuration.value = 0 // 重置时长，等待新视频加载
-    
+
     // 检查该章节是否有上次播放位置
-    if (chapter.lastPosition && chapter.lastPosition > 10) {
-      lastPlayPosition.value = chapter.lastPosition
+    const lastPos = target?.lastPosition ?? chapter.lastPosition
+    if (lastPos && lastPos > 10) {
+      lastPlayPosition.value = lastPos
       showResumePromptWithTimer()
     } else {
       lastPlayPosition.value = 0
@@ -194,25 +219,25 @@ watch(
   { immediate: true }
 )
 
-const getVideoUrl = (chapter) => {
-  if (!chapter?.videoUrl) return null
+const getVideoUrl = (chapter: { videoUrl?: string } | null): string | undefined => {
+  if (!chapter?.videoUrl) return undefined
   if (chapter.videoUrl.startsWith('/')) {
-    const staticBase = import.meta.env.VITE_API_BASE.replace('/api', '') || '';
+    const staticBase = (import.meta.env.VITE_API_BASE || '').replace('/api', '');
     return `${staticBase}/api/course-service${chapter.videoUrl}`;
   }
   return chapter.videoUrl
 }
 
 // 视频加载完成，获取时长
-const onVideoLoaded = (e) => {
-  const video = e.target
+const onVideoLoaded = (e: Event) => {
+  const video = e.target as HTMLVideoElement
   if (video.duration) {
     videoDuration.value = Math.floor(video.duration) // 向下取整保存秒数
   }
 }
 
 // 格式化时长显示
-const formatDuration = (seconds) => {
+const formatDuration = (seconds: number) => {
   if (!seconds) return '0分00秒'
   const totalSeconds = Math.floor(seconds)
   const mins = Math.floor(totalSeconds / 60)
@@ -221,21 +246,21 @@ const formatDuration = (seconds) => {
 }
 
 // 保存进度到后端（包含播放位置）
-const saveProgress = async (progress, isCompleted = 0, currentPosition = 0) => {
+const saveProgress = async (progress: number, isCompleted = 0, currentPosition = 0) => {
   if (!currentChapter.value) return
   try {
     const safeProgress = clampPercent(progress)
     await progressAPI.updateProgress({
       courseId: Number(courseId.value),
       chapterId: currentChapter.value.id,
-      studentId: authStore.user?.id,
+      studentId: authStore.user?.id ?? 0,
       videoRate: safeProgress / 100,
       isCompleted: isCompleted,
       currentPosition: Math.floor(currentPosition)
     })
     lastSavedProgress.value = safeProgress
   } catch (e) {
-    console.error('保存进度失败:', e)
+    logger.error('保存进度失败:', e)
   }
 }
 
@@ -254,8 +279,8 @@ const dismissResumePrompt = () => {
 }
 
 // 视频暂停时保存播放位置（精确记忆，不降低进度）
-const onVideoPause = (e) => {
-  const video = e.target
+const onVideoPause = (e: Event) => {
+  const video = e.target as HTMLVideoElement
   if (video.currentTime > 10 && video.duration) {
     // 只保存播放位置，使用当前进度或历史最高进度
     const currentProgress = clampPercent(Math.round((video.currentTime / video.duration) * 100))
@@ -265,8 +290,8 @@ const onVideoPause = (e) => {
 }
 
 // 视频进度更新（只增不减，保持历史最高进度）
-const onVideoTimeUpdate = (e) => {
-  const video = e.target
+const onVideoTimeUpdate = (e: Event) => {
+  const video = e.target as HTMLVideoElement
   if (video.duration) {
     const currentProgress = clampPercent(Math.round((video.currentTime / video.duration) * 100))
     // 只有当前进度大于已记录进度时才更新
@@ -277,7 +302,7 @@ const onVideoTimeUpdate = (e) => {
         saveProgress(currentProgress, 0, video.currentTime)
       }
     }
-    if (currentChapter.value && currentProgress > currentChapter.value.progress) {
+    if (currentChapter.value && currentProgress > (currentChapter.value.progress ?? 0)) {
       currentChapter.value.progress = currentProgress
     }
   }
@@ -296,9 +321,9 @@ const onVideoEnded = async () => {
     // 保存完成状态
     await saveProgress(100, 1)
     // 解锁下一章（使用展开运算符触发响应式更新）
-    const idx = chapters.value.findIndex(c => c.id === currentChapter.value.id)
+    const idx = chapters.value.findIndex(c => c.id === currentChapter.value!.id)
     if (idx >= 0 && idx < chapters.value.length - 1) {
-      const nextChapter = chapters.value[idx + 1]
+      const nextChapter = chapters.value[idx + 1]!
       chapters.value[idx + 1] = { ...nextChapter, unlocked: true }
       // 强制刷新数组引用
       chapters.value = [...chapters.value]

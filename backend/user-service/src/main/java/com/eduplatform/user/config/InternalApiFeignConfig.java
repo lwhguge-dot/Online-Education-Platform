@@ -8,8 +8,8 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Feign 内部调用鉴权配置。
  * 设计意图：
- * 1. user-service 调用课程级联接口时自动携带内部令牌。
- * 2. 仅对 /cascade/ 路径注入，控制最小暴露面。
+ * 1. 对所有 Feign 调用自动注入 X-Internal-Token，使下游服务可识别为内部可信调用。
+ * 2. cascade 接口由网关 + 业务双重校验 token；普通接口由业务自行决定是否放行内部调用。
  */
 @Configuration
 public class InternalApiFeignConfig {
@@ -19,12 +19,7 @@ public class InternalApiFeignConfig {
 
     @Bean
     public RequestInterceptor internalApiTokenInterceptor() {
-        return requestTemplate -> {
-            String path = requestTemplate.path();
-            if (path != null && path.contains("/cascade/")) {
-                requestTemplate.header("X-Internal-Token", internalToken);
-            }
-        };
+        return requestTemplate -> requestTemplate.header("X-Internal-Token", internalToken);
     }
 }
 
