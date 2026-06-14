@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="course-detail-root min-h-screen animate-fade-in">
     <div class="max-w-6xl mx-auto px-4 py-8">
       <!-- 返回按钮 -->
@@ -95,7 +95,7 @@
           </div>
         </div>
         
-        <ChapterList :chapters="chapters" :interactive="isEnrolled || isAdmin" @select="handleChapterClick" />
+        <ChapterList :chapters="(chapters as unknown as Array<{ id: number; title: string; description: string; videoDuration: number }>)" :interactive="isEnrolled || isAdmin" @select="handleChapterClick" />
       </div>
       
       <div v-else class="text-center py-32">
@@ -145,7 +145,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useConfirmStore } from '../stores/confirm'
@@ -157,6 +157,7 @@ import AnimatedNumber from '../components/ui/AnimatedNumber.vue'
 import { ArrowLeft, Users, Star, User, Play, LogOut, Eye } from 'lucide-vue-next'
 import ChapterList from '../components/course/ChapterList.vue'
 import { logger } from '../utils/logger'
+import type { Course, Chapter } from '../types/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -164,14 +165,20 @@ const authStore = useAuthStore()
 const confirmStore = useConfirmStore()
 
 const loading = ref(true)
-const course = ref(null)
-const chapters = ref([])
+const course = ref<Course | null>(null) as Ref<Course | null>
+const chapters = ref<Chapter[]>([])
 const isEnrolled = ref(false)
 const enrolling = ref(false)
 const showToast = ref(false)
 const toastType = ref('success')
 const toastTitle = ref('')
 const toastMessage = ref('')
+
+// 安全读取错误消息
+const errorMessage = (e: unknown, fallback = '未知错误'): string => {
+  if (e instanceof Error) return e.message
+  return fallback
+}
 
 const showMessage = (type: string, title: string, message: string) => {
   toastType.value = type
@@ -181,42 +188,42 @@ const showMessage = (type: string, title: string, message: string) => {
 }
 
 const statusClass = computed(() => {
-  const statusMap = {
+  const statusMap: Record<string, string> = {
     'PUBLISHED': 'px-3 py-1 bg-qingsong/10 text-qingsong rounded-lg text-sm font-medium',
     'DRAFT': 'px-3 py-1 bg-shuimo/10 text-shuimo rounded-lg text-sm font-medium',
     'REVIEWING': 'px-3 py-1 bg-zhizi/10 text-zhizi rounded-lg text-sm font-medium',
     'REJECTED': 'px-3 py-1 bg-yanzhi/10 text-yanzhi rounded-lg text-sm font-medium',
     'OFFLINE': 'px-3 py-1 bg-shuimo/10 text-shuimo rounded-lg text-sm font-medium',
   }
-  return statusMap[course.value?.status] || statusMap['DRAFT']
+  return statusMap[course.value?.status ?? ''] || statusMap['DRAFT']
 })
 
 const statusText = computed(() => {
-  const textMap = {
+  const textMap: Record<string, string> = {
     'PUBLISHED': '已发布',
     'DRAFT': '草稿',
     'REVIEWING': '审核中',
     'REJECTED': '已驳回',
     'OFFLINE': '已下架',
   }
-  return textMap[course.value?.status] || '未知'
+  return textMap[course.value?.status ?? ''] || '未知'
 })
 
 const statusTipText = computed(() => {
-  const tips = {
+  const tips: Record<string, string> = {
     PUBLISHED: '课程已发布，学生可访问并进行选课。',
     DRAFT: '课程为草稿状态，仅课程教师可见。',
     REVIEWING: '课程正在管理员审核中，暂不对学生开放。',
     REJECTED: '课程已被驳回，教师修改并保存后可再次提交审核。',
     OFFLINE: '课程已下架，学生暂不可访问。'
   }
-  return tips[course.value?.status] || '课程状态以管理员审核结果为准。'
+  return tips[course.value?.status ?? ''] || '课程状态以管理员审核结果为准。'
 })
 
 const canEnroll = computed(() => {
   const role = authStore.user?.role?.toLowerCase()
-  return role === 'student' && 
-         course.value?.status === 'PUBLISHED' && 
+  return role === 'student' &&
+         course.value?.status === 'PUBLISHED' &&
          !isEnrolled.value
 })
 
@@ -232,23 +239,23 @@ const loadCourse = async () => {
       router.replace('/404')
       return
     }
-    const result = await courseAPI.getById(courseId)
+    const result = await courseAPI.getById(Number(courseId))
     if (result.code === 200 && result.data) {
       course.value = result.data
     }
-    
+
     try {
-      const chaptersResult = await chapterAPI.getByCourse(courseId)
+      const chaptersResult = await chapterAPI.getByCourse(Number(courseId))
       if (chaptersResult.code === 200 && chaptersResult.data) {
         chapters.value = chaptersResult.data || []
       }
     } catch (e) {
       logger.info('章节加载失败:', e)
     }
-    
+
     if (authStore.user?.id) {
       try {
-        const enrollResult = await enrollmentAPI.check(courseId, authStore.user.id)
+        const enrollResult = await enrollmentAPI.checkEnrollment(Number(courseId), authStore.user.id)
         if (enrollResult.code === 200 && enrollResult.data) {
           isEnrolled.value = enrollResult.data?.enrolled || false
         }
@@ -268,19 +275,21 @@ const handleEnroll = async () => {
     router.push('/login')
     return
   }
-  
+
   enrolling.value = true
   try {
-    const result = await enrollmentAPI.enroll(course.value.id, authStore.user.id)
+    const result = await enrollmentAPI.enroll(course.value?.id ?? 0, authStore.user?.id ?? 0)
     if (result.code === 200) {
       isEnrolled.value = true
-      course.value.studentCount = (course.value.studentCount || 0) + 1
+      if (course.value) {
+        course.value.studentCount = (course.value.studentCount || 0) + 1
+      }
       showMessage('success', '报名成功', '恭喜您成功报名该课程，开始学习之旅吧！')
     } else {
       showMessage('error', '报名失败', result.message || '请稍后重试')
     }
   } catch (e) {
-    showMessage('error', '报名失败', e.message)
+    showMessage('error', '报名失败', errorMessage(e))
   } finally {
     enrolling.value = false
   }
@@ -295,18 +304,20 @@ const handleDrop = async () => {
     cancelText: '取消'
   })
   if (!confirmed) return
-  
+
   try {
-    const result = await enrollmentAPI.drop(course.value.id, authStore.user.id)
+    const result = await enrollmentAPI.drop(course.value?.id ?? 0, authStore.user?.id ?? 0)
     if (result.code === 200) {
       isEnrolled.value = false
-      course.value.studentCount = Math.max(0, (course.value.studentCount || 1) - 1)
+      if (course.value) {
+        course.value.studentCount = Math.max(0, (course.value.studentCount || 1) - 1)
+      }
       showMessage('success', '退出成功', '您已成功退出该课程')
     } else {
       showMessage('error', '退出失败', result.message || '请稍后重试')
     }
   } catch (e) {
-    showMessage('error', '退出失败', e.message)
+    showMessage('error', '退出失败', errorMessage(e))
   }
 }
 
@@ -319,7 +330,7 @@ const handleChapterClick = () => {
 }
 
 const goToStudy = () => {
-  router.push(`/study/${course.value.id}`)
+  router.push(`/study/${course.value?.id ?? 0}`)
 }
 
 const goBack = () => {

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import { useConfirmStore } from '../../stores/confirm'
@@ -6,23 +6,47 @@ import { calendarAPI, courseAPI, chapterAPI } from '../../services/api'
 import { logger } from '../../utils/logger'
 import CalendarGrid from '../../components/teacher/CalendarGrid.vue'
 import EventFormModal from '../../components/teacher/EventFormModal.vue'
+import type { Course, Chapter } from '../../types/api'
+
+interface CalendarEvent {
+  id: number
+  title: string
+  eventType: string
+  startTime: string
+  endTime: string
+  courseId?: number | null
+  chapterId?: number | null
+  description?: string
+  reminderMinutes?: number
+}
+
+interface EventForm {
+  title: string
+  eventType: string
+  startTime: string
+  endTime: string
+  courseId: number | null
+  chapterId: number | null
+  description: string
+  reminderMinutes: number
+}
 
 const authStore = useAuthStore()
 const confirmStore = useConfirmStore()
 
 const viewMode = ref('month')
 const currentDate = ref(new Date())
-const events = ref([])
+const events = ref<CalendarEvent[]>([])
 const loading = ref(false)
 const showEventModal = ref(false)
-const editingEvent = ref(null)
-const courses = ref([])
-const chapters = ref([])
+const editingEvent = ref<CalendarEvent | null>(null)
+const courses = ref<Course[]>([])
+const chapters = ref<Chapter[]>([])
 
 const calendarSlideDirection = ref('none')
 const calendarKey = ref(0)
 
-const eventForm = ref({
+const eventForm = ref<EventForm>({
   title: '',
   eventType: 'CLASS',
   startTime: '',
@@ -50,7 +74,7 @@ const calendarDays = computed(() => {
   const firstDay = new Date(year, month, 1)
   const lastDay = new Date(year, month + 1, 0)
   const startPadding = firstDay.getDay()
-  const days = []
+  const days: Array<{ date: Date; isCurrentMonth: boolean }> = []
 
   const prevMonth = new Date(year, month, 0)
   for (let i = startPadding - 1; i >= 0; i--) {
@@ -70,7 +94,7 @@ const weekDays = computed(() => {
   const date = new Date(currentDate.value)
   const day = date.getDay()
   const diff = date.getDate() - day
-  const days = []
+  const days: Date[] = []
   for (let i = 0; i < 7; i++) {
     const d = new Date(date)
     d.setDate(diff + i)
@@ -80,7 +104,7 @@ const weekDays = computed(() => {
 })
 
 const timeSlots = computed(() => {
-  const slots = []
+  const slots: string[] = []
   for (let i = 8; i <= 22; i++) {
     slots.push(`${i.toString().padStart(2, '0')}:00`)
   }
@@ -124,12 +148,15 @@ const loadEvents = async () => {
     if (viewMode.value === 'month') {
       res = await calendarAPI.getByMonth(teacherId, currentYear.value, currentMonth.value)
     } else if (viewMode.value === 'week') {
-      res = await calendarAPI.getByWeek(teacherId, formatDate(weekDays.value[0]))
+      const firstDay = weekDays.value[0]
+      if (firstDay) {
+        res = await calendarAPI.getByWeek(teacherId, formatDate(firstDay))
+      }
     } else {
       res = await calendarAPI.getByDay(teacherId, formatDate(currentDate.value))
     }
-    if (res.code === 200) {
-      events.value = res.data || []
+    if (res?.code === 200) {
+      events.value = (res.data || []) as CalendarEvent[]
     }
   } catch (e) {
     logger.error('加载日历事件失败', e)
@@ -141,9 +168,11 @@ const loadEvents = async () => {
 
 const loadCourses = async () => {
   try {
-    const res = await courseAPI.getTeacherCourses(authStore.user?.id)
+    const teacherId = authStore.user?.id
+    if (!teacherId) return
+    const res = await courseAPI.getTeacherCourses(teacherId)
     if (res.data) {
-      courses.value = res.data
+      courses.value = res.data as Course[]
     }
   } catch (e) {
     logger.error('加载课程失败', e)
@@ -176,28 +205,28 @@ const openCreateModal = (date?: Date) => {
     eventType: 'CLASS',
     startTime: `${dateStr}T${hour}:00`,
     endTime: `${dateStr}T${(parseInt(hour) + 1).toString().padStart(2, '0')}:00`,
-    courseId: null as unknown as number | null,
-    chapterId: null as unknown as number | null,
+    courseId: null,
+    chapterId: null,
     description: '',
     reminderMinutes: 30
   }
   showEventModal.value = true
 }
 
-const openEditModal = (event: Record<string, unknown>) => {
-  editingEvent.value = event as never
+const openEditModal = (event: CalendarEvent) => {
+  editingEvent.value = event
   eventForm.value = {
     title: (event.title as string) || '',
     eventType: (event.eventType as string) || 'CLASS',
     startTime: (event.startTime as string) || '',
     endTime: (event.endTime as string) || '',
-    courseId: (event.courseId as number) || null,
-    chapterId: (event.chapterId as number) || null,
+    courseId: (event.courseId as number) ?? null,
+    chapterId: (event.chapterId as number) ?? null,
     description: (event.description as string) || '',
     reminderMinutes: (event.reminderMinutes as number) || 30
   }
   if (event.courseId) {
-    loadChapters(event.courseId as number)
+    loadChapters(event.courseId)
   }
   showEventModal.value = true
 }
@@ -206,7 +235,7 @@ const saveEvent = async () => {
   try {
     const data = { ...eventForm.value, teacherId: authStore.user?.id }
     if (editingEvent.value) {
-      await calendarAPI.updateEvent((editingEvent.value as Record<string, unknown>).id, data)
+      await calendarAPI.updateEvent(editingEvent.value.id, data)
     } else {
       await calendarAPI.createEvent(data)
     }
@@ -228,7 +257,7 @@ const deleteEvent = async () => {
   })
   if (!confirmed) return
   try {
-    await calendarAPI.deleteEvent((editingEvent.value as Record<string, unknown>).id, authStore.user?.id)
+    await calendarAPI.deleteEvent(editingEvent.value.id, authStore.user?.id ?? null)
     showEventModal.value = false
     loadEvents()
   } catch (e) {
@@ -237,7 +266,7 @@ const deleteEvent = async () => {
 }
 
 const exportCalendar = () => {
-  const url = calendarAPI.exportICal(authStore.user?.id, currentYear.value, currentMonth.value)
+  const url = calendarAPI.exportICal(authStore.user?.id ?? null, currentYear.value, currentMonth.value)
   window.open(url, '_blank')
 }
 

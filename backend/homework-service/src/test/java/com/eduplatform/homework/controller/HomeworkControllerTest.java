@@ -1,10 +1,12 @@
 package com.eduplatform.homework.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.security.RequestContext;
 import com.eduplatform.homework.dto.DuplicateHomeworkRequest;
 import com.eduplatform.homework.service.HomeworkCascadeDeleteService;
 import com.eduplatform.homework.service.HomeworkService;
 import com.eduplatform.homework.vo.HomeworkVO;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,6 +41,15 @@ class HomeworkControllerTest {
 
     @Mock
     private HomeworkCascadeDeleteService homeworkCascadeDeleteService;
+
+    @Mock
+    private RequestContext requestContext;
+
+    @BeforeEach
+    void setUp() {
+        // 复制作业接口仅教师/管理员可访问，默认放行以便聚焦后续逻辑。
+        lenient().when(requestContext.isTeacherOrAdmin()).thenReturn(true);
+    }
 
     @Test
     @DisplayName("复制作业-异常信息不应外泄")

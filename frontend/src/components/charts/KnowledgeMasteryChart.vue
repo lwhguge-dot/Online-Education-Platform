@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 /**
  * 知识点掌握度图表组件
  * 以雷达图/进度条形式展示学生对各章节/知识点的掌握程度

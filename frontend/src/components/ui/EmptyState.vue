@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 /**
  * 空状态组件
  * 用于展示无数据、搜索无结果、加载失败等场景的占位状态。

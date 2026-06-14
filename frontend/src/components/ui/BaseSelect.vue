@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { ChevronDown, Check } from 'lucide-vue-next'
 

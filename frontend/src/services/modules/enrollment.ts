@@ -1,7 +1,8 @@
 import { request, requestBlob, resolveUserId } from '../request'
+import type { Result } from '../../types/api'
 
 export const enrollmentAPI = {
-    enroll: (courseId: number, studentId: number | null = null) => {
+    enroll: (courseId: number, studentId: number | null = null): Promise<Result<unknown>> => {
         const resolvedStudentId = resolveUserId(studentId, '学生')
         return request('/enrollments', {
             method: 'POST',
@@ -9,14 +10,14 @@ export const enrollmentAPI = {
         })
     },
 
-    drop: (courseId: number, studentId: number | null = null) => {
+    drop: (courseId: number, studentId: number | null = null): Promise<Result<unknown>> => {
         const resolvedStudentId = resolveUserId(studentId, '学生')
         return request(`/enrollments?courseId=${courseId}&studentId=${resolvedStudentId}`, {
             method: 'DELETE',
         })
     },
 
-    checkEnrollment: (courseId: number, studentId: number | null = null) => {
+    checkEnrollment: (courseId: number, studentId: number | null = null): Promise<Result<{ enrolled: boolean }>> => {
         const resolvedStudentId = resolveUserId(studentId, '学生')
         return request(`/enrollments/check?studentId=${resolvedStudentId}&courseId=${courseId}`)
     },

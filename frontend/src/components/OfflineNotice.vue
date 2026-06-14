@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <Transition name="slide">
     <div v-if="!isOnline" class="offline-notice">
       <div class="offline-content">
@@ -9,7 +9,7 @@
   </Transition>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { WifiOff } from 'lucide-vue-next'
 

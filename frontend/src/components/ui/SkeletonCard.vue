@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 defineProps({
   lines: {
     type: Number,

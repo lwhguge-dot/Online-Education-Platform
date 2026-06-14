@@ -26,8 +26,8 @@ interface DashboardStats {
 }
 
 interface QuizScoreItem {
-  courseId?: number
-  chapterId?: number
+  courseId?: number | undefined
+  chapterId?: number | undefined
   title: string
   score: number
   time: string
@@ -40,7 +40,7 @@ interface BadgeItem {
   color: string
   unlocked: boolean
   description: string
-  unlockedAt?: string
+  unlockedAt?: string | undefined
   progress: number
   currentValue: number
   targetValue: number

@@ -43,8 +43,8 @@ interface RawTrackEntry {
 }
 
 interface QuizItem {
-  courseId?: number
-  chapterId?: number
+  courseId?: number | undefined
+  chapterId?: number | undefined
   title: string
   score: number
   time: string

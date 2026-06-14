@@ -177,7 +177,16 @@ export interface PasswordResetConfirmRequest {
 /**
  * 课程状态
  */
-export type CourseStatus = 'draft' | 'published' | 'archived'
+export type CourseStatus =
+  | 'draft'
+  | 'published'
+  | 'archived'
+  // 兼容后端大写枚举值
+  | 'PUBLISHED'
+  | 'DRAFT'
+  | 'REVIEWING'
+  | 'REJECTED'
+  | 'OFFLINE'
 
 /**
  * 课程实体
@@ -193,6 +202,19 @@ export interface Course {
   status: CourseStatus
   createdAt: string
   updatedAt: string
+  // 视图模型字段：由前端聚合/后端补齐的非标准属性，允许渐进式收口
+  cover?: string
+  rating?: number
+  studentCount?: number
+  students?: number
+  teacher?: string
+  color?: string
+  chapters?: Chapter[]
+  progress?: number
+  totalChapters?: number
+  completedChapters?: number
+  lastStudy?: string
+  hasNewChapters?: boolean
 }
 
 /**
@@ -308,6 +330,20 @@ export interface ChapterProgress {
   videoProgress: number
   quizScore?: number
   completed: boolean
+  // 视图模型字段：StudyView 等页面使用的扩展字段（后端返回的进度数据）
+  id?: number
+  courseId?: number
+  progress?: number
+  unlocked?: boolean
+  videoRate?: number
+  // 注意：后端 isCompleted 返回 0/1 整数，前端 completed 为布尔
+  isCompleted?: number
+  lastPosition?: number
+  title?: string
+  description?: string
+  videoUrl?: string
+  duration?: number
+  orderNum?: number
 }
 
 // ==================== 报名相关 ====================
@@ -407,4 +443,23 @@ export interface StudentDashboardStats {
   completedChapters: number
   totalStudyTime: number
   averageScore: number
+  // 视图模型字段：学生仪表盘/学习进度页面使用的扩展字段
+  totalStudyMinutes?: number
+  pendingHomework?: number
+  todayStudyMinutes?: number
+  streakDays?: number
+  dailyGoalMinutes?: number
+  goalAchievedToday?: boolean
+  thisWeekMinutes?: number
+  lastWeekMinutes?: number
+  weeklyChange?: number
+  weeklyStudyHours?: Array<{ day?: string; hours?: number }>
+  lastWeekStudyHours?: Array<{ day?: string; hours?: number }>
+  quizScores?: Array<{
+    courseId: number
+    chapterId: number
+    title: string
+    score: number
+    time: string
+  }>
 }

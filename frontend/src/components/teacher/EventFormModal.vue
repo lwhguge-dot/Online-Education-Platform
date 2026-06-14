@@ -66,8 +66,9 @@ const getFocusableElements = (): HTMLElement[] => {
 
 const focusFirstElement = () => {
   const focusables = getFocusableElements()
-  if (focusables.length > 0) {
-    focusables[0].focus()
+  const first = focusables[0]
+  if (first) {
+    first.focus()
     return
   }
   modalRef.value?.focus()

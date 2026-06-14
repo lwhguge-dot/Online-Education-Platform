@@ -21,6 +21,12 @@ import org.springframework.security.web.SecurityFilterChain;
  * SpEL 表达式 {@code authentication.principal.toString()} 抛 NPE。所有业务 Controller 已通过
  * {@code RequestContext} 自行完成权限校验，无需依赖 AOP 注解。
  *
+ * <p><b>CSRF 禁用说明（lgtm [java/spring-disabled-csrf-protection]）</b>：
+ * 本项目为纯无状态（{@link SessionCreationPolicy#STATELESS}）的 REST API，前端通过
+ * {@code Authorization: Bearer <jwt>} 头部携带凭据，不使用 Cookie 会话。CSRF 攻击的载体
+ * 是基于 Cookie 的自动凭据携带，无 Cookie 即无 CSRF 攻击面；网关侧另有限流与签名校验。
+ * 故禁用 CSRF 是与威胁模型相符的设计决策。
+ *
  * <p>Bean 名显式指定为 {@code commonSecurityConfig}，避免与各业务模块
  * （如 {@code com.eduplatform.user.config.SecurityConfig}）的同名类冲突。
  */

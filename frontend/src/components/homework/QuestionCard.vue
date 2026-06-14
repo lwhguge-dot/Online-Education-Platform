@@ -27,7 +27,7 @@ const props = defineProps<{
   index: number
   isViewMode: boolean
   modelValue: string
-  answerResult?: AnswerResult
+  answerResult?: AnswerResult | undefined
 }>()
 
 const emit = defineEmits<{

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 import { ref, onMounted, onUnmounted, onActivated, onDeactivated, computed, watch, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'

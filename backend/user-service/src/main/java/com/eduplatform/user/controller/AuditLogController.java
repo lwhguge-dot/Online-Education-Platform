@@ -138,9 +138,10 @@ public class AuditLogController {
         } else {
             // 内部调用：记录调用源 IP 与声明操作人，便于审计反查异常调用链。
             // 内部调用方必须保证 operatorId 真实，此处记录便于事后定位伪造源。
-            String sourceIp = resolveClientIp(httpRequest);
+            // 净化所有用户可控字段，防止日志注入（换行/控制字符伪造日志条目）。
+            String sourceIp = sanitizeForLog(resolveClientIp(httpRequest));
             log.info("内部审计写入: sourceIp={}, declaredOperatorId={}, action={}, targetId={}",
-                    sourceIp, operatorId, actionType, targetId);
+                    sourceIp, sanitizeForLog(operatorId), sanitizeForLog(actionType), sanitizeForLog(targetId));
         }
 
         auditLogService.log(operatorId, operatorName, actionType, targetType, targetId, targetName, details,
@@ -168,6 +169,24 @@ public class AuditLogController {
      */
     private boolean isAdminRole(String currentUserRole) {
         return currentUserRole != null && "admin".equalsIgnoreCase(currentUserRole);
+    }
+
+    /**
+     * 净化用户可控字符串，防止日志注入（换行/控制字符伪造）。
+     */
+    private static String sanitizeForLog(String value) {
+        if (value == null) {
+            return "null";
+        }
+        String cleaned = value.replaceAll("[\\r\\n\\t\\p{Cntrl}]", "_");
+        return cleaned.length() > 200 ? cleaned.substring(0, 200) + "..." : cleaned;
+    }
+
+    /**
+     * 净化用户可控 Long，防止日志注入（实际 Long 不会注入，此处仅为统一调用）。
+     */
+    private static String sanitizeForLog(Long value) {
+        return value == null ? "null" : value.toString();
     }
 
     /**

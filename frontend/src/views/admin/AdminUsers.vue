@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 import { ref, computed, onMounted, watch, onUnmounted, onActivated, onDeactivated } from 'vue'
 import {
   Search, X, UserX, UserCheck, Shield, Trash2,

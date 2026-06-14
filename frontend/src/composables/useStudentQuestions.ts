@@ -1,7 +1,7 @@
 import { ref, readonly } from 'vue'
 import { commentAPI, homeworkAPI, chapterCommentAPI } from '../services/api'
 import { useToastStore } from '../stores/toast'
-import { formatDateTimeCN, parseToTimestamp } from '../utils/datetime'
+import { formatDateTimeCN, parseToTimestamp, type DateInput } from '../utils/datetime'
 import { logger } from '../utils/logger'
 
 type QuestionId = string | number
@@ -21,8 +21,8 @@ interface QuestionItem {
     commentCount: number
     hasReply: boolean
     replies: Reply[]
-    courseName?: string
-    chapterName?: string
+    courseName?: string | undefined
+    chapterName?: string | undefined
 }
 
 interface SubmitQuestionPayload {
@@ -46,7 +46,7 @@ export function useStudentQuestions() {
     }
 
     const parseTime = (timeValue: unknown): number => {
-        return parseToTimestamp(timeValue)
+        return parseToTimestamp(timeValue as DateInput)
     }
 
     const loadQuestions = async (studentId: number | null | undefined): Promise<void> => {
@@ -61,7 +61,7 @@ export function useStudentQuestions() {
 
             const commentQuestions =
                 commentRes.status === 'fulfilled' && commentRes.value?.code === 200 && Array.isArray(commentRes.value?.data)
-                    ? commentRes.value.data.map((q: Record<string, unknown>): QuestionItem => ({
+                    ? (commentRes.value.data as Record<string, unknown>[]).map((q): QuestionItem => ({
                         id: (q.id ?? q.questionId) as QuestionId,
                         title: (q.title as string) || '课程提问',
                         content: ((q.content as string) || (q.answerContent as string) || ''),
@@ -74,7 +74,7 @@ export function useStudentQuestions() {
 
             const homeworkQuestions =
                 homeworkRes.status === 'fulfilled' && homeworkRes.value?.code === 200 && Array.isArray(homeworkRes.value?.data)
-                    ? homeworkRes.value.data.map((q: Record<string, unknown>): QuestionItem => {
+                    ? (homeworkRes.value.data as Record<string, unknown>[]).map((q): QuestionItem => {
                         const hasTeacherReply = q.teacherReply != null && String(q.teacherReply).trim() !== ''
                         return {
                             id: `homework-${q.id}`,
@@ -98,7 +98,7 @@ export function useStudentQuestions() {
 
             const chapterCommentQuestions =
                 chapterCommentRes.status === 'fulfilled' && chapterCommentRes.value?.code === 200 && Array.isArray(chapterCommentRes.value?.data)
-                    ? chapterCommentRes.value.data.map((q: Record<string, unknown>): QuestionItem => ({
+                    ? (chapterCommentRes.value.data as Record<string, unknown>[]).map((q): QuestionItem => ({
                         id: `chapter-${(q.id ?? Date.now()) as string | number}`,
                         title: (q.title as string) || '章节提问',
                         content: (q.content as string) || '',

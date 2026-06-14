@@ -25,7 +25,7 @@ export const courseAPI = {
         }),
 
     updateStatus: async (id: number, status: number): Promise<Result<void>> => {
-        const data = await request(`/courses/${id}/status`, {
+        const data = await request<void>(`/courses/${id}/status`, {
             method: 'PUT',
             body: JSON.stringify({ status }),
         })
@@ -95,7 +95,7 @@ export const courseAPI = {
     },
 
     offline: async (id: number): Promise<Result<void>> => {
-        const data = await request(`/courses/${id}/offline`, {
+        const data = await request<void>(`/courses/${id}/offline`, {
             method: 'POST',
         })
         clearCache()

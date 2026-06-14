@@ -82,7 +82,7 @@ export const useStudentCourseStore = defineStore('student-courses', () => {
       const enrollmentList: Array<{ courseId: number; progress?: number; lastStudyAt?: string }> = Array.isArray(res.data) ? res.data : []
       if (enrollmentList.length > 0) {
         const coursesData = await Promise.all(
-          enrollmentList.map(async (enrollment) => {
+          enrollmentList.map(async (enrollment): Promise<EnrolledCourse | null> => {
             try {
               const courseRes = await courseAPI.getById(enrollment.courseId)
               if (!courseRes.data) return null
@@ -106,7 +106,7 @@ export const useStudentCourseStore = defineStore('student-courses', () => {
                 totalChapters: 0,
                 completedChapters: 0,
                 lastStudy: enrollment.lastStudyAt ? formatTime(enrollment.lastStudyAt) : '暂无记录',
-                chapters: [],
+                chapters: [] as CourseChapter[],
                 subject: String(courseData.subject || ''),
                 color: getSubjectColor(courseData.subject),
                 coverImage: String(courseData.coverImage || courseData.cover || ''),

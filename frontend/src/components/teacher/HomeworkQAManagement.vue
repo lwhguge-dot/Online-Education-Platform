@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 import { ref, computed, onMounted } from 'vue'
 import { MessageCircle, CheckCircle, User } from 'lucide-vue-next'
 import { homeworkAPI } from '../../services/api'

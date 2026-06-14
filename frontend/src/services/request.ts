@@ -11,7 +11,7 @@ export interface SessionUser {
     username: string
     name: string
     role: UserRole
-    avatar?: string
+    avatar?: string | undefined
 }
 import { useToastStore } from '../stores/toast'
 import SentryService from '../utils/sentry'
@@ -580,7 +580,7 @@ export const cachedRequest = async <T = unknown>(url: string, options: RequestOp
     if (!options.method || options.method === 'GET') {
         const cached = cache.get(cacheKey)
         if (cached && now - cached.timestamp < CACHE_DURATION) {
-            return cached.data
+            return cached.data as Result<T>
         }
     }
 

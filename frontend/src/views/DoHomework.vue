@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+﻿<script setup lang="ts">
+import { ref, reactive, onMounted, computed, type Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useConfirmStore } from '../stores/confirm'
@@ -15,6 +15,49 @@ import { formatDateTimeCN } from '../utils/datetime'
 import { logger } from '../utils/logger'
 import QuestionCard from '../components/homework/QuestionCard.vue'
 
+interface HomeworkQuestion {
+  id: number
+  content: string
+  questionType: string
+  options: string | string[]
+  score: number
+}
+
+interface HomeworkAnswerResult {
+  questionId: number
+  isCorrect: number
+  score: number | null
+  correctAnswer?: string
+  studentAnswer?: string
+  aiFeedback?: string
+  teacherFeedback?: string
+}
+
+interface HomeworkDetail {
+  id: number
+  chapterId: number
+  title: string
+  description: string
+  deadline?: string
+  createdAt: string
+  totalScore?: number
+}
+
+interface HomeworkSubmissionDetail {
+  id: number
+  homeworkId: number
+  studentId: number
+  content: string
+  score?: number
+  totalScore?: number
+  objectiveScore?: number
+  submitStatus?: string
+  feedback?: string
+  submittedAt: string
+  gradedAt?: string
+  answerResults?: HomeworkAnswerResult[]
+}
+
 const router = useRouter()
 const route = useRoute()
 
@@ -24,11 +67,11 @@ const authStore = useAuthStore()
 const toast = useToastStore()
 const confirmStore = useConfirmStore()
 
-const homework = ref(null)
-const questions = ref([])
-const studentAnswers = reactive({})
-const submissionData = ref(null)
-const answerResults = ref([])
+const homework = ref<HomeworkDetail | null>(null) as Ref<HomeworkDetail | null>
+const questions = ref<HomeworkQuestion[]>([])
+const studentAnswers = reactive<Record<number, string>>({})
+const submissionData = ref<HomeworkSubmissionDetail | null>(null) as Ref<HomeworkSubmissionDetail | null>
+const answerResults = ref<HomeworkAnswerResult[]>([])
 const loading = ref(true)
 const submitting = ref(false)
 const isViewMode = ref(false)
@@ -41,7 +84,10 @@ const displayScore = computed(() => {
 
 const completionRate = computed(() => {
   if (questions.value.length === 0) return 0
-  const answeredCount = Object.keys(studentAnswers).filter(k => studentAnswers[k] && studentAnswers[k].length > 0).length
+  const answeredCount = Object.keys(studentAnswers).filter(k => {
+    const v = studentAnswers[Number(k)]
+    return v != null && v.length > 0
+  }).length
   return Math.round((answeredCount / questions.value.length) * 100)
 })
 
@@ -60,6 +106,12 @@ const canAskQuestion = computed(() => {
   return submissionData.value.submitStatus === 'graded' || submissionData.value.gradedAt != null
 })
 
+// 安全读取错误消息（捕获的 e 类型为 unknown）
+const errorMessage = (e: unknown, fallback = '未知错误'): string => {
+  if (e instanceof Error) return e.message
+  return fallback
+}
+
 onMounted(async () => {
   isViewMode.value = route.query.view === 'true'
   await loadHomework()
@@ -75,14 +127,16 @@ const loadHomework = async () => {
       router.replace('/404')
       return
     }
-    const res = await homeworkAPI.getDetail(homeworkId)
+    const res = await homeworkAPI.getDetail(Number(homeworkId))
     if (res.data) {
-      homework.value = res.data.homework
-      questions.value = res.data.questions || []
+      // 后端返回 { homework, questions } 结构，但 API 类型签名较为宽松
+      const data = res.data as unknown as { homework: HomeworkDetail; questions?: HomeworkQuestion[] }
+      homework.value = data.homework
+      questions.value = data.questions || []
     }
   } catch (e) {
     logger.error('加载作业失败:', e)
-    toast.error('加载作业失败: ' + e.message)
+    toast.error('加载作业失败: ' + errorMessage(e))
     // 使用显式跳转替代 router.back()，提升可靠性
     router.push(STUDENT_HOME_ROUTE)
   } finally {
@@ -98,14 +152,16 @@ const loadSubmission = async () => {
       return
     }
     const studentId = authStore.user?.id
-    const res = await homeworkAPI.getSubmission(homeworkId, studentId)
+    const res = await homeworkAPI.getSubmission(Number(homeworkId), studentId ?? null)
     if (res.data) {
-      submissionData.value = res.data.submission
-      answerResults.value = res.data.answers || []
-      
+      // 后端返回 { submission, answers } 结构
+      const data = res.data as unknown as { submission: HomeworkSubmissionDetail; answers?: HomeworkAnswerResult[] }
+      submissionData.value = data.submission
+      answerResults.value = data.answers || []
+
       // 填充学生答案到studentAnswers
       answerResults.value.forEach(answer => {
-        studentAnswers[answer.questionId] = answer.studentAnswer
+        studentAnswers[answer.questionId] = answer.studentAnswer || ''
       })
     }
   } catch (e) {
@@ -122,7 +178,7 @@ const submitHomework = async () => {
     questionId: q.id,
     answer: studentAnswers[q.id] || ''
   }))
-  
+
   if (answers.some(a => !a.answer)) {
     const confirmed = await confirmStore.show({
       title: '题目未完成',
@@ -135,28 +191,31 @@ const submitHomework = async () => {
       return
     }
   }
-  
+
   submitting.value = true
   try {
+    // 提交体由客观题答案数组拼接而成，content 字段使用占位
     const dto = {
-      homeworkId: homework.value.id,
-      studentId: authStore.user?.id,
-      answers: answers
+      homeworkId: homework.value?.id ?? 0,
+      studentId: authStore.user?.id ?? 0,
+      content: '',
+      answers: answers.map(a => a.answer)
     }
-    
+
     const res = await homeworkAPI.submit(dto)
-    if (res.code === 200) {
-      submissionData.value = res.data
+    if (res.code === 200 && res.data) {
+      const data = res.data as unknown as HomeworkSubmissionDetail
+      submissionData.value = data
       // answerResults 已是数组，不需要 JSON.parse
-      answerResults.value = res.data.answerResults || []
-      toast.success('提交成功！得分：' + (res.data?.objectiveScore || 0) + '分')
+      answerResults.value = data.answerResults || []
+      toast.success('提交成功！得分：' + (data.objectiveScore || 0) + '分')
       router.push(STUDENT_HOME_ROUTE)
     } else {
       toast.error('提交失败: ' + res.message)
     }
   } catch (e) {
     logger.error('提交失败:', e)
-    toast.error('提交失败: ' + e.message)
+    toast.error('提交失败: ' + errorMessage(e))
   } finally {
     submitting.value = false
   }
@@ -272,7 +331,7 @@ const goBack = () => {
             </span>
             <span class="flex items-center gap-2">
               <CheckCircle class="w-4 h-4 text-tianlv" />
-              总分 {{ homework.totalScore }} 分
+              总分 {{ homework?.totalScore ?? '-' }} 分
             </span>
           </div>
           <div v-if="isViewMode && submissionData" class="text-sm text-shuimo/50">
@@ -290,8 +349,9 @@ const goBack = () => {
               :question="question"
               :index="index"
               :is-view-mode="isViewMode"
-              v-model="studentAnswers[question.id]"
-              :answer-result="getAnswerResult(question.id)"
+              :model-value="studentAnswers[question.id] || ''"
+              @update:model-value="(v: string) => { studentAnswers[question.id] = v }"
+              :answer-result="getAnswerResult(question.id) ?? undefined"
             />
           </TransitionGroup>
         </div>

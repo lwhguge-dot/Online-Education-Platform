@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 /**
  * 用户增长趋势图组件
  * 使用纯CSS实现的折线图，展示新增用户、活跃用户和在线用户的趋势。

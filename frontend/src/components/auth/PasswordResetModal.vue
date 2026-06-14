@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { authAPI } from '../../services/api'
-import BaseInput from './BaseInput.vue'
+import BaseInput from '../ui/BaseInput.vue'
 import BaseButton from './BaseButton.vue'
 import GlassCard from './GlassCard.vue'
 import { KeyRound, X, CheckCircle, AlertCircle, Lock, Eye, EyeOff, Mail, User } from 'lucide-vue-next'

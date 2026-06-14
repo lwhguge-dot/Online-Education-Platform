@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 /**
  * 测验分数趋势图表组件
  * 展示学生在特定课程中的测验分数趋势折线图

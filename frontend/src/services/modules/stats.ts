@@ -51,7 +51,7 @@ export const progressAPI = {
         const resolvedStudentId = resolveUserId(studentId, '学生')
         return request(`/progress/check-unlock?studentId=${resolvedStudentId}&chapterId=${chapterId}`)
     },
-    updateProgress: (data: { chapterId: number; studentId: number; progress: number; duration: number }): Promise<Result<void>> => request('/progress/video/report', {
+    updateProgress: (data: { chapterId: number; studentId: number; progress?: number; duration?: number; courseId?: number; videoRate?: number; isCompleted?: number; currentPosition?: number }): Promise<Result<void>> => request('/progress/video/report', {
         method: 'POST',
         body: JSON.stringify({ ...data, clientTimestamp: Date.now() })
     }),

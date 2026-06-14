@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import {
   Users, TrendingUp, Award, BarChart3, AlertTriangle,

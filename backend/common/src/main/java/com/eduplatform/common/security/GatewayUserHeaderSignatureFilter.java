@@ -60,7 +60,7 @@ public class GatewayUserHeaderSignatureFilter extends OncePerRequestFilter {
 
         boolean hasUserHeaders = StringUtils.hasText(userId) || StringUtils.hasText(username) || StringUtils.hasText(role);
         if (!hasUserHeaders) {
-            log.debug("请求无用户身份头，放行: uri={}", uri);
+            log.debug("请求无用户身份头，放行: uri={}", sanitizeForLog(uri));
             filterChain.doFilter(request, response);
             return;
         }
@@ -98,12 +98,23 @@ public class GatewayUserHeaderSignatureFilter extends OncePerRequestFilter {
 
         String expected = sign(internalToken, userId, username, role, ts);
         if (!MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8), sigHeader.getBytes(StandardCharsets.UTF_8))) {
-            log.warn("身份签名校验失败: uri={}, userId={}", uri, userId);
+            log.warn("身份签名校验失败: uri={}, userId={}", sanitizeForLog(uri), sanitizeForLog(userId));
             writeResult(response, HttpStatus.UNAUTHORIZED, Result.failure(401, "身份信息校验失败"));
             return;
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * 净化用户可控字符串，防止日志注入（换行/控制字符伪造）。
+     */
+    private static String sanitizeForLog(String value) {
+        if (value == null) {
+            return "null";
+        }
+        String cleaned = value.replaceAll("[\\r\\n\\t\\p{Cntrl}]", "_");
+        return cleaned.length() > 200 ? cleaned.substring(0, 200) + "..." : cleaned;
     }
 
     private String sign(String secret, String userId, String username, String role, long ts) {

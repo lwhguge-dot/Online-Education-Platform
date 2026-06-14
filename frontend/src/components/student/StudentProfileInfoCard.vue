@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { User, Mail, Phone, Save, Edit, Camera, ChevronRight } from 'lucide-vue-next'
 import GlassCard from '../ui/GlassCard.vue'

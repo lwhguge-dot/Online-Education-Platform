@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 import { ref, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
 import {
   Shield, Database, Activity, HardDrive, Trash2,

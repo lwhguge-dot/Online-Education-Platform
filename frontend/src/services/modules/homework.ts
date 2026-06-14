@@ -10,7 +10,7 @@ export const homeworkAPI = {
         return request(`/homeworks/student?studentId=${resolvedStudentId}&chapterId=${chapterId}`)
     },
     unlock: (studentId: number, chapterId: number): Promise<Result<void>> => request(`/homeworks/unlock?studentId=${studentId}&chapterId=${chapterId}`, { method: 'POST' }),
-    submit: (data: { homeworkId: number; studentId: number; content: string; answers?: number[] }): Promise<Result<HomeworkSubmission>> => request<HomeworkSubmission>('/homeworks/submit', { method: 'POST', body: JSON.stringify(data) }),
+    submit: (data: { homeworkId: number; studentId: number; content: string; answers?: Array<string | number> }): Promise<Result<HomeworkSubmission>> => request<HomeworkSubmission>('/homeworks/submit', { method: 'POST', body: JSON.stringify(data) }),
     getSubmission: (homeworkId: number, studentId: number | null = null): Promise<Result<HomeworkSubmission | null>> => {
         const resolvedStudentId = resolveUserId(studentId, '学生')
         return request(`/homeworks/${homeworkId}/submission?studentId=${resolvedStudentId}`)

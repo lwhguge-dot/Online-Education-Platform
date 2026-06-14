@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 /**
  * 学生课程页面
  * 展示已选课程和选课中心，支持搜索、筛选和学习入口

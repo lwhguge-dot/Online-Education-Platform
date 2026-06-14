@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { MessageSquare, Loader2 } from 'lucide-vue-next'
 import CommentSortSelector from './CommentSortSelector.vue'

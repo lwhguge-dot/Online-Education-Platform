@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 /**
  * 公告阅读统计弹窗组件
  * 展示公告的阅读率、已读用户列表和阅读时间分布

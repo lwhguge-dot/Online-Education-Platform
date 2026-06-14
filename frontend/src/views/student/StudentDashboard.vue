@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -14,7 +14,7 @@ import DailyGoalProgress from '../../components/student/DailyGoalProgress.vue'
 import UrgentHomeworkBanner from '../../components/student/UrgentHomeworkBanner.vue'
 import SkeletonDashboard from '../../components/ui/SkeletonDashboard.vue'
 import { useAuthStore } from '../../stores/auth'
-import { useStudentCourseStore } from '../../stores/student-courses'
+import { useStudentCourseStore, type EnrolledCourse } from '../../stores/student-courses'
 import { useStudentHomeworkStore } from '../../stores/student-homeworks'
 import { useStudentStatsStore } from '../../stores/student-stats'
 
@@ -50,22 +50,22 @@ onMounted(async () => {
          statsStore.loadBadges(userId)
       ])
       if (courseStore.enrolledCourses.length > 0) {
-         await homeworkStore.loadHomeworks(userId, courseStore.enrolledCourses)
+         await homeworkStore.loadHomeworks(userId, [...courseStore.enrolledCourses] as EnrolledCourse[])
       }
    }
 })
 
 // UI Helpers
-const hoveredBadgeId = ref(null)
+const hoveredBadgeId = ref<number | null>(null)
 // 中文注释：统一约束课程进度范围，避免异常值导致动画抖动
-const clampProgress = (value) => {
+const clampProgress = (value: unknown) => {
   const num = Number(value)
   if (!Number.isFinite(num)) return 0
   return Math.max(0, Math.min(100, num))
 }
 
 // 中文注释：进度条使用 transform 缩放，减少 width 动画触发布局计算
-const getProgressScaleStyle = (value) => ({
+const getProgressScaleStyle = (value: unknown) => ({
   transform: `scaleX(${clampProgress(value) / 100})`
 })
 

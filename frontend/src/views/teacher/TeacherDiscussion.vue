@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 import { ref, computed, onMounted } from 'vue'
 import { Send, Clock, AlertTriangle, Pin, Filter, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 import { ref, onMounted } from 'vue'
 import { AlertTriangle, Users, Clock, TrendingDown, ChevronRight, Bell, X, Send, MessageCircle } from 'lucide-vue-next'
 import { useAuthStore } from '../../stores/auth'

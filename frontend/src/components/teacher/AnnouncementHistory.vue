@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="announcement-history">
     <!-- 筛选栏 -->
     <div class="flex items-center justify-between mb-6">
@@ -191,7 +191,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { announcementAPI, courseAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'

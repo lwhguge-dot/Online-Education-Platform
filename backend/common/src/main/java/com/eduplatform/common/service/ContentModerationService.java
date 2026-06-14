@@ -124,6 +124,8 @@ public class ContentModerationService {
         if (content == null || content.length() <= 10) {
             return "***";
         }
-        return content.substring(0, 5) + "***" + content.substring(content.length() - 5);
+        // 净化控制字符防止日志注入，再脱敏保留前后 5 字符用于排查
+        String safe = content.replaceAll("[\\r\\n\\t\\p{Cntrl}]", "_");
+        return safe.substring(0, 5) + "***" + safe.substring(safe.length() - 5);
     }
 }

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 import { ref, computed, watch } from 'vue'
 import { X, TrendingUp, BookOpen, Clock, Award, AlertTriangle, Calendar } from 'lucide-vue-next'
 import { progressAPI } from '../../services/api'

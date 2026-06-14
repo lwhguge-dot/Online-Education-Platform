@@ -129,9 +129,10 @@ jobs:
         continue-on-error: true
 
       # Trivy 漏洞扫描 (仅在镜像构建成功时执行)
+      # 注：使用 v 前缀标签；如需进一步防止供应链标签投毒，可改为 @<commit-sha>
       - name: Trivy 漏洞扫描 (${{ matrix.target.name }})
         if: steps.docker-build.outputs.success == 'true'
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: 'scan-target:${{ matrix.target.name }}'
           format: 'sarif'

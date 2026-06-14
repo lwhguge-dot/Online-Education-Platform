@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 /**
  * 管理员仪表盘组件
  * 展示系统概况、数据趋势图表、待办事项和最近活动。

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { homeworkAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'

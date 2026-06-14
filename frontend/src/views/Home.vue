@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
@@ -14,9 +14,21 @@ import { Sparkles, GraduationCap, BookOpen, Loader2, ChevronRight } from 'lucide
 const router = useRouter()
 const authStore = useAuthStore()
 
+interface HomeCourse {
+  id: number
+  title: string
+  teacher: string
+  subject: string
+  rating: number
+  students: number
+  coverImage: string | undefined
+  color: string
+  btnStyle?: string
+}
+
 const selectedSubject = ref('全部')
-const allCourses = ref([])
-const displayedCourses = ref([])
+const allCourses = ref<HomeCourse[]>([])
+const displayedCourses = ref<HomeCourse[]>([])
 const loading = ref(false)
 const loadingMore = ref(false)
 const pageSize = 8
@@ -36,11 +48,12 @@ const topCoursesBySubject = computed(() => {
       return b.students - a.students
     })
     const course = subjectCourses[0]
+    if (!course) return null
     return {
       ...course,
       btnStyle: getSubjectBtnStyle(course.subject)
     }
-  }).filter(Boolean)
+  }).filter((c): c is HomeCourse & { btnStyle: string } => c !== null)
 })
 
 onMounted(async () => {
@@ -65,7 +78,7 @@ const loadCourses = async () => {
   loading.value = true
   try {
     const res = await courseAPI.getPublished()
-    allCourses.value = (res.data || []).map(course => ({
+    allCourses.value = ((res.data || []) as Array<{ id: number; title: string; teacherName?: string; subject: string; rating?: number; studentCount?: number; coverImage?: string; cover?: string }>).map(course => ({
       id: course.id,
       title: course.title,
       teacher: course.teacherName || '未知教师',

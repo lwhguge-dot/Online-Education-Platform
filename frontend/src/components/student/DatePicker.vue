@@ -39,7 +39,9 @@ const calendarDays = computed(() => {
 
 const selectedDate = computed(() => {
   if (!props.modelValue) return null
-  const [y, m, d] = props.modelValue.split('-').map(Number)
+  const parts = props.modelValue.split('-').map(Number)
+  const y = parts[0]; const m = parts[1]; const d = parts[2]
+  if (y == null || m == null || d == null) return null
   return { year: y, month: m - 1, day: d }
 })
 
@@ -84,9 +86,12 @@ const updatePosition = () => {
 const openPicker = async () => {
   if (props.disabled) return
   if (props.modelValue) {
-    const [y, m] = props.modelValue.split('-').map(Number)
-    currentYear.value = y; currentMonth.value = m - 1
-    yearRangeStart.value = Math.floor(y / 12) * 12
+    const parts = props.modelValue.split('-').map(Number)
+    const y = parts[0]; const m = parts[1]
+    if (y != null && m != null) {
+      currentYear.value = y; currentMonth.value = m - 1
+      yearRangeStart.value = Math.floor(y / 12) * 12
+    }
   }
   pickerView.value = 'day'
   showPicker.value = true
@@ -96,8 +101,9 @@ const openPicker = async () => {
 
 const formatDisplay = (dateStr: string) => {
   if (!dateStr) return '未设置'
-  const [y, m, d] = dateStr.split('-')
-  return `${y}年${parseInt(m)}月${parseInt(d)}日`
+  const parts = dateStr.split('-')
+  const y = parts[0]; const m = parts[1]; const d = parts[2]
+  return `${y}年${parseInt(m ?? '0')}月${parseInt(d ?? '0')}日`
 }
 
 const handleOutside = (e: MouseEvent) => {

@@ -41,10 +41,23 @@ public class GlobalExceptionHandler {
             throw e;
         }
         // 安全要求：日志中不直接记录请求原始输入，避免日志注入和敏感信息泄露。
-        // 404 是正常的客户端错误，不应该用 error 级别
-        log.warn("请求资源未找到: uri={}", uri);
+        // 对 uri 做净化，仅保留白名单字符，截断长度，避免日志注入。
+        String safeUri = sanitizeForLog(uri);
+        log.warn("请求资源未找到: uri={}", safeUri);
         // 对于非 Actuator 路径，也重新抛出让 Spring 默认处理
         throw e;
+    }
+
+    /**
+     * 净化用户可控字符串，防止日志注入（换行/控制字符伪造）。
+     */
+    private static String sanitizeForLog(String value) {
+        if (value == null) {
+            return "null";
+        }
+        // 去除换行/回车/制表符等控制字符，并截断长度
+        String cleaned = value.replaceAll("[\\r\\n\\t\\p{Cntrl}]", "_");
+        return cleaned.length() > 200 ? cleaned.substring(0, 200) + "..." : cleaned;
     }
 
     /**

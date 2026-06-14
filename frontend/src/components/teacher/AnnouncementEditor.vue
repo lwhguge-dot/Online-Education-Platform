@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="announcement-editor">
     <!-- 编辑器弹窗 -->
     <BaseModal :model-value="visible" max-width-class="max-w-2xl" :show-close="false" @update:modelValue="handleClose">
@@ -160,7 +160,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { announcementAPI, courseAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'

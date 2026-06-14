@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 import { ref, watch, onMounted, nextTick } from 'vue'
 import { MessageSquare, MessageCircle, X, Image, Upload, Loader2, Trash2, CheckCircle, Clock, ChevronDown, ChevronUp, BookOpen, FileText } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'

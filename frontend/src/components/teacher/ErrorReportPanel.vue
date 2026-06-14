@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 /**
  * 错题报告面板组件
  * 展示作业中的高错误率题目和讲解建议

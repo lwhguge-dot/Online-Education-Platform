@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 /**
  * 在线用户实时监控弹窗组件
  * 展示当前在线用户列表，支持WebSocket实时更新

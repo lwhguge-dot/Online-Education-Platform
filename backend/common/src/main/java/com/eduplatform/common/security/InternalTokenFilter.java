@@ -51,7 +51,7 @@ public class InternalTokenFilter extends OncePerRequestFilter {
         }
 
         if (!StringUtils.hasText(internalToken)) {
-            log.error("X-Internal-Token header 但服务未配置 security.internal-token: uri={}", uri);
+            log.error("X-Internal-Token header 但服务未配置 security.internal-token: uri={}", sanitizeForLog(uri));
             writeResult(response, HttpStatus.INTERNAL_SERVER_ERROR, Result.fail("服务内部配置错误"));
             return;
         }
@@ -59,12 +59,23 @@ public class InternalTokenFilter extends OncePerRequestFilter {
         if (!MessageDigest.isEqual(
                 internalToken.getBytes(StandardCharsets.UTF_8),
                 token.getBytes(StandardCharsets.UTF_8))) {
-            log.warn("Internal token 校验失败: uri={}", uri);
+            log.warn("Internal token 校验失败: uri={}", sanitizeForLog(uri));
             writeResult(response, HttpStatus.FORBIDDEN, Result.failure(403, "内部鉴权失败"));
             return;
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * 净化用户可控字符串，防止日志注入（换行/控制字符伪造）。
+     */
+    private static String sanitizeForLog(String value) {
+        if (value == null) {
+            return "null";
+        }
+        String cleaned = value.replaceAll("[\\r\\n\\t\\p{Cntrl}]", "_");
+        return cleaned.length() > 200 ? cleaned.substring(0, 200) + "..." : cleaned;
     }
 
     private void writeResult(HttpServletResponse response, HttpStatus status, Result<?> result) throws IOException {

@@ -68,10 +68,13 @@ class AuthControllerTest {
         request.setRealName("测试用户");
         request.setNewPassword("pass1234");
 
-        // 注：项目未启用 @EnableMethodSecurity，@PreAuthorize 不生效；
-        // 单元测试聚焦于方法本身的调用与 service 委托，权限校验由 RequestContext 在生产链路完成。
+        // 非管理员：Mock 默认返回 false，控制器应直接返回 403 且不调用 service。
+        when(requestContext.isAdmin()).thenReturn(false);
+
         Result<Boolean> result = authController.resetPassword(request);
-        verify(userService).resetPassword(request);
+        assertNotNull(result);
+        assertEquals(403, result.getCode());
+        verify(userService, never()).resetPassword(any());
     }
 
     @Test
@@ -81,6 +84,9 @@ class AuthControllerTest {
         request.setEmail("user@example.com");
         request.setRealName("测试用户");
         request.setNewPassword("pass1234");
+
+        // 管理员：控制器应通过权限校验并委派给 service。
+        when(requestContext.isAdmin()).thenReturn(true);
 
         Result<Boolean> result = authController.resetPassword(request);
         assertNotNull(result);

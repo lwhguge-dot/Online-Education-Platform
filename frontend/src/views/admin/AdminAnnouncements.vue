@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup>
 import { ref, computed, onMounted } from 'vue'
 import {
   Search, X, Plus, Edit2, Trash2, Send,
