@@ -2,8 +2,8 @@
 import { ref } from 'vue'
 import { authAPI } from '../../services/api'
 import BaseInput from '../ui/BaseInput.vue'
-import BaseButton from './BaseButton.vue'
-import GlassCard from './GlassCard.vue'
+import BaseButton from '../ui/BaseButton.vue'
+import GlassCard from '../ui/GlassCard.vue'
 import { KeyRound, X, CheckCircle, AlertCircle, Lock, Eye, EyeOff, Mail, User } from 'lucide-vue-next'
 
 interface Props {
