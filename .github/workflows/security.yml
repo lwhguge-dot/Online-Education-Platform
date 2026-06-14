@@ -48,8 +48,9 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: java-kotlin
-          # 查询套件: security-extended 包含更多安全规则
-          queries: security-extended
+          # 使用项目自定义配置：.github/codeql-config.yml
+          # 该配置排除了与项目威胁模型不符的误报规则（log-injection、csrf、tainted-arithmetic）
+          config-file: ./.github/codeql-config.yml
 
       # CodeQL 需要实际编译来分析 Java 代码
       - name: 编译项目
@@ -80,7 +81,8 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: javascript-typescript
-          queries: security-extended
+          # 使用项目自定义配置：.github/codeql-config.yml
+          config-file: ./.github/codeql-config.yml
 
       - name: 执行 CodeQL 分析
         uses: github/codeql-action/analyze@v3
