@@ -1,14 +1,16 @@
 package com.eduplatform.course.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
  * 章节随堂小测实体类
  * 对应数据库表 `chapter_quizzes`，用于存储章节末尾的即时测试题。
  */
-@Data
+@Getter
+@Setter
 @TableName("chapter_quizzes")
 public class ChapterQuiz {
     /**

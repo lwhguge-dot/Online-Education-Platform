@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * 知识点掌握度图表组件
  * 以雷达图/进度条形式展示学生对各章节/知识点的掌握程度
@@ -8,6 +8,7 @@ import { Brain, TrendingUp, Target, Award, ChevronRight } from 'lucide-vue-next'
 import { progressAPI } from '../../services/api'
 import GlassCard from '../ui/GlassCard.vue'
 import AnimatedNumber from '../ui/AnimatedNumber.vue'
+import { logger } from '../../utils/logger'
 
 const props = defineProps({
   /** 学生ID */
@@ -56,7 +57,7 @@ const loadMasteryData = async () => {
       }
     }
   } catch (e) {
-    console.error('加载知识点掌握度失败:', e)
+    logger.error('加载知识点掌握度失败:', e)
     // 如果API返回错误，使用空数据
     masteryData.value = {
       overallMastery: 0,

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
@@ -8,6 +8,7 @@ import {
   LogOut, Menu, X, Home
 } from 'lucide-vue-next'
 import { startStatusCheck, stopStatusCheck, authAPI, userAPI } from '../services/api'
+import { logger } from '../utils/logger'
 
 const router = useRouter()
 const route = useRoute()
@@ -47,7 +48,7 @@ const handleLogout = async () => {
    try {
      await authAPI.logout()
    } catch (error) {
-     console.error('登出 API 调用失败:', error)
+     logger.error('登出 API 调用失败:', error)
    }
    stopStatusCheck()
    authStore.logout()
@@ -66,7 +67,7 @@ const loadUserProfile = async () => {
        }
      }
   } catch(e) {
-    console.error('Failed to load user profile in layout', e)
+    logger.error('Failed to load user profile in layout', e)
   }
 }
 

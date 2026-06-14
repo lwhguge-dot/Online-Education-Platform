@@ -3,18 +3,31 @@
  * Provides unified HTTP request encapsulation, authentication management, and error handling.
  */
 
-import type { Result, User } from '../types/api'
+import type { Result, User, UserRole } from '../types/api'
+
+// Minimal user data for sessionStorage (strips sensitive fields)
+export interface SessionUser {
+    id: number
+    username: string
+    name: string
+    role: UserRole
+    avatar?: string
+}
 import { useToastStore } from '../stores/toast'
 import SentryService from '../utils/sentry'
+import { logger } from '../utils/logger'
 
 // Environment configuration
 export const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 export const STATIC_BASE = import.meta.env.VITE_STATIC_BASE || ''
 export const USER_STATIC_BASE = import.meta.env.VITE_USER_STATIC_BASE || ''
 
+// Request timeout configuration
+const REQUEST_TIMEOUT = 30000 // 30 seconds
+
 // ==================== Type Definitions ====================
 
-interface CacheEntry<T = any> {
+interface CacheEntry<T = unknown> {
     data: T
     timestamp: number
 }
@@ -96,6 +109,21 @@ const friendlyErrorMessages: FriendlyErrorMessages = {
     '503': '服务暂时不可用，请稍后重试',
     '504': '服务器响应超时，请稍后重试',
     'timeout': '请求超时，请稍后重试',
+    'NullPointerException': '系统异常，请稍后重试',
+    'ClassNotFoundException': '系统异常，请稍后重试',
+    'StackOverflow': '系统异常，请稍后重试',
+    'OutOfMemory': '系统异常，请稍后重试',
+    'Cannot read property': '系统异常，请稍后重试',
+    'is not a function': '系统异常，请稍后重试',
+    'Unexpected token': '系统异常，请稍后重试',
+    'SyntaxError': '系统异常，请稍后重试',
+    'TypeError': '系统异常，请稍后重试',
+    'ReferenceError': '系统异常，请稍后重试',
+    'at Object.': '系统异常，请稍后重试',
+    'at Function.': '系统异常，请稍后重试',
+    'at Array.': '系统异常，请稍后重试',
+    'at String.': '系统异常，请稍后重试',
+    'at Number.': '系统异常，请稍后重试',
 }
 
 const getFriendlyMessage = (errorMsg: string | undefined): string => {
@@ -107,15 +135,32 @@ const getFriendlyMessage = (errorMsg: string | undefined): string => {
         }
     }
 
-    if (/exception|error|sql|null|undefined|cannot|failed/i.test(errorMsg)) {
+    // Catch common internal error patterns
+    if (/exception|error|sql|null|undefined|cannot|failed|stack|trace|\.js:|\.ts:|\.java:|\.py:|\.go:|\.rs:|\.rb:|\.php:|\.cs:|\.cpp:|\.c:|\.h:|\.vue:|\.jsx:|\.tsx:/i.test(errorMsg)) {
         return '操作失败，请稍后重试'
     }
 
-    return errorMsg
+    // Block messages that look like stack traces or internal paths
+    if (/\bat\s+\w+\.\w+[\s(]|at\s+\(|\bat\s+\d+:\d+|\bat\s+<anonymous>|\bat\s+internal|\bat\s+node:|\bat\s+file:|\bat\s+https?:\/\//i.test(errorMsg)) {
+        return '操作失败，请稍后重试'
+    }
+
+    // Final fallback: return generic message instead of raw error
+    return '操作失败，请稍后重试'
 }
 
-// Pending requests to prevent conflicts
-const pendingRequests = new Set<string>()
+// Pending requests to prevent conflicts (key → timestamp)
+const pendingRequests = new Map<string, number>()
+const PENDING_REQUEST_TTL = 30000 // 30 seconds
+
+const cleanupStalePendingRequests = (): void => {
+    const now = Date.now()
+    for (const [key, timestamp] of pendingRequests) {
+        if (now - timestamp > PENDING_REQUEST_TTL) {
+            pendingRequests.delete(key)
+        }
+    }
+}
 
 const getErrorMessage = (error: unknown): string => {
     if (error instanceof Error) {
@@ -235,13 +280,21 @@ const shouldForceLogoutOnForbidden = (message?: string): boolean => {
 // Auth Helpers
 export const saveAuth = (token: string, user: User): void => {
     sessionStorage.setItem('token', token)
-    sessionStorage.setItem('user', JSON.stringify(user))
+    // Strip sensitive fields (email, phone, birthday, gender, status, timestamps)
+    const sessionUser: SessionUser = {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role,
+        avatar: user.avatar,
+    }
+    sessionStorage.setItem('user', JSON.stringify(sessionUser))
 }
 
-export const getAuth = (): { token: string | null; user: User | null } => {
+export const getAuth = (): { token: string | null; user: SessionUser | null } => {
     const token = sessionStorage.getItem('token')
     const userStr = sessionStorage.getItem('user')
-    let user: User | null = null
+    let user: SessionUser | null = null
 
     if (userStr) {
         try {
@@ -318,46 +371,116 @@ const getRequestKey = (url: string, options: RequestOptions): string => {
     return `${method}:${url}`
 }
 
-export const request = async <T = any>(url: string, options: RequestOptions = {}): Promise<Result<T>> => {
+// ==================== 公共请求基础设施 ====================
+
+interface PendingState {
+    requestKey: string
+    shouldTrackPending: boolean
+    pendingAdded: boolean
+}
+
+const beginRequest = (url: string, options: RequestOptions): PendingState => {
+    cleanupStalePendingRequests()
+
     const requestKey = getRequestKey(url, options)
     const shouldTrackPending = shouldTrackPendingRequest(options.method)
     let pendingAdded = false
 
     if (shouldTrackPending) {
         if (pendingRequests.has(requestKey)) {
-            console.warn('重复提交已拦截:', requestKey)
+            logger.warn('重复提交已拦截:', requestKey)
             const duplicateMessage = '请求正在处理中，请勿重复提交'
             useToastStore().warning(duplicateMessage)
             throw createHandledError(duplicateMessage, true)
         }
-        pendingRequests.add(requestKey)
+        pendingRequests.set(requestKey, Date.now())
         pendingAdded = true
     }
 
+    return { requestKey, shouldTrackPending, pendingAdded }
+}
+
+const buildFetchConfig = (options: RequestOptions): RequestInit & { headers: Record<string, string> } => {
     const token = sessionStorage.getItem('token')
     const headers = normalizeHeaders(options.headers)
     if (token) {
         headers.Authorization = `Bearer ${token}`
     }
 
-    const config: RequestInit = {
-        ...options,
-        headers,
-    }
-
     if (shouldAutoSetJsonContentType(options.body) && !hasHeaderIgnoreCase(headers, 'Content-Type')) {
         headers['Content-Type'] = 'application/json'
     }
 
+    return { ...options, headers }
+}
+
+const handleRequestError = (err: unknown, url: string, options: RequestOptions): never => {
+    const errorMessage = getErrorMessage(err)
+    const requestError = err as RequestError
+    const sentryError = err instanceof Error ? err : new Error(errorMessage)
+
+    if (!errorMessage.includes('权限校验') && !errorMessage.includes('禁用')) {
+        const friendlyMsg = getFriendlyMessage(errorMessage)
+        if (!requestError.handledByToast) {
+            useToastStore().error(friendlyMsg)
+        }
+
+        if (!requestError.skipSentry) {
+            SentryService.captureException(sentryError, {
+                level: 'error',
+                tags: {
+                    type: 'api_error',
+                    url: url,
+                    method: options.method || 'GET',
+                },
+                extra: {
+                    requestUrl: `${API_BASE}${url}`,
+                    friendlyMessage: friendlyMsg,
+                    originalMessage: errorMessage,
+                },
+            })
+        }
+    }
+    throw err
+}
+
+const endRequest = (pending: PendingState): void => {
+    if (pending.pendingAdded) {
+        pendingRequests.delete(pending.requestKey)
+    }
+}
+
+// ==================== 请求入口 ====================
+
+export const request = async <T = unknown>(url: string, options: RequestOptions = {}): Promise<Result<T>> => {
+    const pending = beginRequest(url, options)
+    const config = buildFetchConfig(options)
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
+
     try {
-        const response = await fetch(`${API_BASE}${url}`, config)
+        const response = await fetch(`${API_BASE}${url}`, { ...config, signal: controller.signal })
+        clearTimeout(timeoutId)
         const data = await parseResultFromResponse<T>(response)
 
-        const isUnauthorized = response.status === 401 || data.code === 401
-        const isForbiddenNeedLogout = (response.status === 403 || data.code === 403) && shouldForceLogoutOnForbidden(data.message)
+        const httpStatus = response.status
+        const bizCode = data.code
+
+        // 后端 HttpStatusCodeAdvice 启用后，HTTP 状态码与业务码语义一致。
+        // 这里保留「HTTP || 业务码」双判断，向后兼容旧响应（HTTP 200 + bizCode != 200）。
+        const isUnauthorized = httpStatus === 401 || bizCode === 401
+        const isForbiddenNeedLogout = (httpStatus === 403 || bizCode === 403) && shouldForceLogoutOnForbidden(data.message)
         if (isUnauthorized || isForbiddenNeedLogout) {
             forceLogout(data.message || '登录已过期')
             throw new Error(data.message || '权限校验失败')
+        }
+
+        // 429 限流：单独给一个友好提示，避免落入通用错误处理
+        if (httpStatus === 429 || bizCode === 429) {
+            const message = data.message || '请求过于频繁，请稍后再试'
+            useToastStore().warning(message)
+            throw createHandledError(message, true)
         }
 
         if (!response.ok || data.code !== 200) {
@@ -366,80 +489,32 @@ export const request = async <T = any>(url: string, options: RequestOptions = {}
             throw createHandledError(friendlyMsg)
         }
 
-        if (shouldTrackPending) {
+        if (pending.shouldTrackPending) {
             clearCache()
         }
 
         return data
     } catch (err: unknown) {
-        const errorMessage = getErrorMessage(err)
-        const requestError = err as RequestError
-        const sentryError = err instanceof Error ? err : new Error(errorMessage)
-
-        if (!errorMessage.includes('权限校验') && !errorMessage.includes('禁用')) {
-            const friendlyMsg = getFriendlyMessage(errorMessage)
-            if (!requestError.handledByToast) {
-                useToastStore().error(friendlyMsg)
-            }
-
-            if (!requestError.skipSentry) {
-                SentryService.captureException(sentryError, {
-                    level: 'error',
-                    tags: {
-                        type: 'api_error',
-                        url: url,
-                        method: options.method || 'GET',
-                    },
-                    extra: {
-                        requestUrl: `${API_BASE}${url}`,
-                        friendlyMessage: friendlyMsg,
-                        originalMessage: errorMessage,
-                    },
-                })
-            }
+        clearTimeout(timeoutId)
+        if (err instanceof DOMException && err.name === 'AbortError') {
+            throw createHandledError('请求超时，请稍后重试')
         }
-        throw err
+        return handleRequestError(err, url, options)
     } finally {
-        if (pendingAdded) {
-            pendingRequests.delete(requestKey)
-        }
+        endRequest(pending)
     }
 }
 
-// 原始响应请求：用于下载文件等需要读取响应头/二进制内容的场景
 export const requestRaw = async (url: string, options: RequestOptions = {}): Promise<Response> => {
-    const requestKey = getRequestKey(url, options)
-    const shouldTrackPending = shouldTrackPendingRequest(options.method)
-    let pendingAdded = false
+    const pending = beginRequest(url, options)
+    const config = buildFetchConfig(options)
 
-    if (shouldTrackPending) {
-        if (pendingRequests.has(requestKey)) {
-            console.warn('重复提交已拦截:', requestKey)
-            const duplicateMessage = '请求正在处理中，请勿重复提交'
-            useToastStore().warning(duplicateMessage)
-            throw createHandledError(duplicateMessage, true)
-        }
-        pendingRequests.add(requestKey)
-        pendingAdded = true
-    }
-
-    const token = sessionStorage.getItem('token')
-    const headers = normalizeHeaders(options.headers)
-    if (token) {
-        headers.Authorization = `Bearer ${token}`
-    }
-
-    const config: RequestInit = {
-        ...options,
-        headers,
-    }
-
-    if (shouldAutoSetJsonContentType(options.body) && !hasHeaderIgnoreCase(headers, 'Content-Type')) {
-        headers['Content-Type'] = 'application/json'
-    }
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
 
     try {
-        const response = await fetch(`${API_BASE}${url}`, config)
+        const response = await fetch(`${API_BASE}${url}`, { ...config, signal: controller.signal })
+        clearTimeout(timeoutId)
 
         if (response.status === 401) {
             forceLogout('登录已过期')
@@ -454,6 +529,14 @@ export const requestRaw = async (url: string, options: RequestOptions = {}): Pro
             }
         }
 
+        // 429 限流：单独给一个友好提示，避免落入通用错误处理
+        if (response.status === 429) {
+            const rateLimitMessage = await extractResponseMessage(response)
+            const message = rateLimitMessage || '请求过于频繁，请稍后再试'
+            useToastStore().warning(message)
+            throw createHandledError(message, true)
+        }
+
         if (!response.ok) {
             const message = await extractResponseMessage(response)
             const friendlyMsg = getFriendlyMessage(message)
@@ -461,43 +544,19 @@ export const requestRaw = async (url: string, options: RequestOptions = {}): Pro
             throw createHandledError(friendlyMsg)
         }
 
-        if (shouldTrackPending) {
+        if (pending.shouldTrackPending) {
             clearCache()
         }
 
         return response
     } catch (err: unknown) {
-        const errorMessage = getErrorMessage(err)
-        const requestError = err as RequestError
-        const sentryError = err instanceof Error ? err : new Error(errorMessage)
-
-        if (!errorMessage.includes('权限校验') && !errorMessage.includes('禁用')) {
-            const friendlyMsg = getFriendlyMessage(errorMessage)
-            if (!requestError.handledByToast) {
-                useToastStore().error(friendlyMsg)
-            }
-
-            if (!requestError.skipSentry) {
-                SentryService.captureException(sentryError, {
-                    level: 'error',
-                    tags: {
-                        type: 'api_error',
-                        url: url,
-                        method: options.method || 'GET',
-                    },
-                    extra: {
-                        requestUrl: `${API_BASE}${url}`,
-                        friendlyMessage: friendlyMsg,
-                        originalMessage: errorMessage,
-                    },
-                })
-            }
+        clearTimeout(timeoutId)
+        if (err instanceof DOMException && err.name === 'AbortError') {
+            throw createHandledError('请求超时，请稍后重试')
         }
-        throw err
+        return handleRequestError(err, url, options)
     } finally {
-        if (pendingAdded) {
-            pendingRequests.delete(requestKey)
-        }
+        endRequest(pending)
     }
 }
 
@@ -514,7 +573,7 @@ export const requestBlob = async (url: string, options: RequestOptions = {}): Pr
 }
 
 // Cached request
-export const cachedRequest = async <T = any>(url: string, options: RequestOptions = {}): Promise<Result<T>> => {
+export const cachedRequest = async <T = unknown>(url: string, options: RequestOptions = {}): Promise<Result<T>> => {
     const cacheKey = url
     const now = Date.now()
 
@@ -562,7 +621,7 @@ const sendHeartbeat = async (): Promise<void> => {
             heartbeatFailCount = 0
         } else {
             heartbeatFailCount++
-            console.warn(`心跳失败 (${heartbeatFailCount}/${MAX_HEARTBEAT_FAIL}):`, result.message)
+            logger.warn(`心跳失败 (${heartbeatFailCount}/${MAX_HEARTBEAT_FAIL}):`, result.message)
 
             if (heartbeatFailCount >= MAX_HEARTBEAT_FAIL) {
                 if (result.message && (result.message.includes('过期') || result.message.includes('其他设备'))) {
@@ -572,13 +631,13 @@ const sendHeartbeat = async (): Promise<void> => {
                 }
             }
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         heartbeatFailCount++
-        console.warn(`心跳网络错误 (${heartbeatFailCount}/${MAX_HEARTBEAT_FAIL}):`, error.message)
+        const heartbeatErrMsg = error instanceof Error ? error.message : String(error)
+        logger.warn(`心跳网络错误 (${heartbeatFailCount}/${MAX_HEARTBEAT_FAIL}):`, heartbeatErrMsg)
 
         if (heartbeatFailCount >= MAX_HEARTBEAT_FAIL) {
-            console.error('心跳连续失败，停止心跳检测')
-            stopHeartbeat()
+            forceLogout('网络连接异常，会话已过期，请重新登录')
         }
     }
 }

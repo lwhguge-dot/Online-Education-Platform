@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted, onActivated, onDeactivated, computed, watch, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
@@ -7,6 +7,7 @@ import {
   startStatusCheck, stopStatusCheck
 } from '../services/api'
 import { formatTimeCN } from '../utils/datetime'
+import { logger } from '../utils/logger'
 import {
   LayoutDashboard, Users, BookOpen, Settings,
   LogOut, Menu, X, Home, GraduationCap,
@@ -137,7 +138,7 @@ const refreshData = async () => {
       ? formatTimeCN(adminStats.timestamp)
       : formatTimeCN(new Date())
   } catch (e) {
-    console.error('Data refresh failed', e)
+    logger.error('Data refresh failed', e)
   } finally {
     loading.value = false
   }
@@ -185,7 +186,7 @@ const handleLogout = async () => {
     const { authAPI } = await import('../services/api')
     await authAPI.logout()
   } catch (e) {
-    console.error('登出 API 调用失败:', e)
+    logger.error('登出 API 调用失败:', e)
   }
   stopStatusCheck()
   authStore.logout()

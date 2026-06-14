@@ -1,6 +1,8 @@
 package com.eduplatform.homework.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.eduplatform.common.exception.BusinessException;
+import com.eduplatform.common.service.ContentModerationService;
 import com.eduplatform.homework.entity.SubjectiveAnswerPermission;
 import com.eduplatform.homework.entity.SubjectiveComment;
 import com.eduplatform.homework.mapper.SubjectiveAnswerPermissionMapper;
@@ -24,6 +26,7 @@ public class CommentService {
 
     private final SubjectiveCommentMapper commentMapper;
     private final SubjectiveAnswerPermissionMapper permissionMapper;
+    private final ContentModerationService contentModerationService;
 
     /**
      * 发布学生答案（解锁评论区）
@@ -109,9 +112,12 @@ public class CommentService {
     @Transactional
     public SubjectiveComment postComment(Long questionId, Long userId, String content, Long parentId,
             boolean isTeacher) {
+        // 内容审核
+        contentModerationService.checkOrThrow(content);
+
         // 非教师需要先发布答案才能评论
         if (!isTeacher && !canViewComments(userId, questionId)) {
-            throw new RuntimeException("请先发布您的答案后再参与讨论");
+            throw new BusinessException("请先发布您的答案后再参与讨论");
         }
 
         SubjectiveComment comment = new SubjectiveComment();
@@ -145,6 +151,9 @@ public class CommentService {
      */
     @Transactional
     public SubjectiveComment postQuestion(Long questionId, Long teacherId, String questionContent) {
+        // 内容审核
+        contentModerationService.checkOrThrow(questionContent);
+
         SubjectiveComment comment = new SubjectiveComment();
         comment.setQuestionId(questionId);
         comment.setUserId(teacherId);
@@ -164,12 +173,12 @@ public class CommentService {
     public void deleteComment(Long commentId, Long currentUserId, boolean isAdmin) {
         SubjectiveComment comment = commentMapper.selectById(commentId);
         if (comment == null || comment.getStatus() == 0) {
-            throw new RuntimeException("评论不存在或已被删除");
+            throw new BusinessException("评论不存在或已被删除");
         }
 
         // 安全校验：仅管理员或评论作者本人可删除
         if (!isAdmin && !comment.getUserId().equals(currentUserId)) {
-            throw new RuntimeException("权限不足，不能删除他人的评论");
+            throw new BusinessException("权限不足，不能删除他人的评论");
         }
 
         comment.setStatus(0);

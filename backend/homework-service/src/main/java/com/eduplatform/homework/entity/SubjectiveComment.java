@@ -1,7 +1,8 @@
 package com.eduplatform.homework.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
@@ -10,7 +11,8 @@ import java.time.LocalDateTime;
  *
  * @author Antigravity
  */
-@Data
+@Getter
+@Setter
 @TableName("subjective_comments")
 public class SubjectiveComment {
 

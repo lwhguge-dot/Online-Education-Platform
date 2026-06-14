@@ -9,8 +9,11 @@ import com.eduplatform.course.feign.ProgressServiceClient;
 import com.eduplatform.course.mapper.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,17 +21,18 @@ import java.util.List;
 /**
  * 核心级联删除服务 (课程资源终结者)
  * 负责执行高风险、深度关联的数据擦除操作，确保课程或用户注销时，系统各维度冗余数据的原子化清理。
- * 
- * 核心逻辑：
- * 1. 垂直级联：从课程本体向下渗透，清理章节、测验、评论、点赞、禁言、选课及词库。
- * 2. 水平对齐：通过 Feign 强一致或最终一致性地触发 Progress（进度）与 Homework（作业）服务的相关数据同步。
- * 3. 物理回收：作为数据库事务的后置环节，彻底销毁磁盘上的流媒体视频与图片资源。
+ *
+ * <p>事务与 RPC 模型：
+ * <ul>
+ *   <li>跨服务 Feign 调用（progress/homework）在 <b>本地事务之外</b> 执行，避免占用 DB 连接导致连接池雪崩。</li>
+ *   <li>本地多表删除（quiz/comment/like/chapter/enrollment/muted/blocked_word/course）在单事务内原子提交。</li>
+ *   <li>物理文件回收通过 {@code afterCommit} 回调在事务提交后执行，保证「DB 未提交则不误删文件」。</li>
+ * </ul>
  *
  * @author Antigravity
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class CourseCascadeDeleteService {
 
     private final CourseMapper courseMapper;
@@ -42,21 +46,51 @@ public class CourseCascadeDeleteService {
     private final HomeworkServiceClient homeworkServiceClient;
     private final ProgressServiceClient progressServiceClient;
     private final FileUploadService fileUploadService;
+    // 自注入 Spring 代理，用于调用本类的 @Transactional 方法，
+    // 规避同类方法间 this 调用绕过 AOP 代理导致事务失效的问题。
+    private final CourseCascadeDeleteService self;
+
+    public CourseCascadeDeleteService(
+            CourseMapper courseMapper,
+            ChapterMapper chapterMapper,
+            ChapterQuizMapper chapterQuizMapper,
+            EnrollmentMapper enrollmentMapper,
+            ChapterCommentMapper chapterCommentMapper,
+            CommentLikeMapper commentLikeMapper,
+            MutedUserMapper mutedUserMapper,
+            BlockedWordMapper blockedWordMapper,
+            HomeworkServiceClient homeworkServiceClient,
+            ProgressServiceClient progressServiceClient,
+            FileUploadService fileUploadService,
+            @Lazy CourseCascadeDeleteService self) {
+        this.courseMapper = courseMapper;
+        this.chapterMapper = chapterMapper;
+        this.chapterQuizMapper = chapterQuizMapper;
+        this.enrollmentMapper = enrollmentMapper;
+        this.chapterCommentMapper = chapterCommentMapper;
+        this.commentLikeMapper = commentLikeMapper;
+        this.mutedUserMapper = mutedUserMapper;
+        this.blockedWordMapper = blockedWordMapper;
+        this.homeworkServiceClient = homeworkServiceClient;
+        this.progressServiceClient = progressServiceClient;
+        this.fileUploadService = fileUploadService;
+        this.self = self;
+    }
 
     /**
-     * 课程全链路级联销毁 (核心业务算法)
-     * 遵循 12 步标准化清理流程，确保分布式环境下无数据孤岛。
-     * 
-     * 算法阶段：
-     * 1. 环境普查：检索全量章节轨迹，提取物理文件指纹（视频 URL）。
-     * 2. 内部降维：按照依赖顺序依次清理 测验 -> 评论态 -> 章节 -> 选课关系。
-     * 3. 外部同步：强行触发外部微服务的数据下线信号。
-     * 4. 物理擦除：在 DB 事务安全提交后，回收磁盘空间。
-     * 
+     * 课程全链路级联销毁。
+     *
+     * <p>执行顺序（关键）：
+     * <ol>
+     *   <li>资源快照：检索章节视频与封面 URL。</li>
+     *   <li>跨服务同步：在事务外调用 progress/homework 清理远端数据；任一失败抛异常终止流程。</li>
+     *   <li>本地事务：删除 quiz/comment/like/chapter/enrollment/muted/blocked_word/course。</li>
+     *   <li>物理文件回收：通过 afterCommit 回调在事务提交后执行。</li>
+     * </ol>
+     *
      * @param courseId 目标课程 ID
-     * @throws RuntimeException 当课程不存在或核心持久层操作异常时抛出
+     * @throws BusinessException 当课程不存在或远端服务不可用时抛出
      */
-    @Transactional
     public void cascadeDeleteCourse(Long courseId) {
         Course course = courseMapper.selectById(courseId);
         if (course == null) {
@@ -65,7 +99,7 @@ public class CourseCascadeDeleteService {
 
         log.info("级联审计：启动课程清理流 | courseId={}, title={}", courseId, course.getTitle());
 
-        // 1. 资源快照提取：备份物理路径以防事务回滚导致文件误删 (NIO 策略)
+        // 1. 资源快照提取：在事务外读取，避免事务持有时间过长
         List<Chapter> chapters = chapterMapper.selectList(
                 new LambdaQueryWrapper<Chapter>().eq(Chapter::getCourseId, courseId));
         List<Long> chapterIds = chapters.stream().map(Chapter::getId).toList();
@@ -80,30 +114,13 @@ public class CourseCascadeDeleteService {
             filesToDelete.add(course.getCoverImage());
         }
 
-        // 2. 交互数据清理：测验、评论点赞关系
-        for (Long chapterId : chapterIds) {
-            chapterQuizMapper.deleteByChapterId(chapterId);
-        }
-
-        // 处理评论社交足迹
-        List<Long> commentIds = chapterCommentMapper.findIdsByCourseId(courseId);
-        for (Long commentId : commentIds) {
-            commentLikeMapper.deleteByCommentId(commentId);
-        }
-
-        // 3. 业务数据批量擦除
-        chapterCommentMapper.deleteByCourseId(courseId); // 评论内容
-        chapterMapper.deleteByCourseId(courseId); // 教学章节
-        enrollmentMapper.deleteByCourseId(courseId); // 学生选课契约
-        mutedUserMapper.deleteByCourseId(courseId); // 社交管控记录
-        blockedWordMapper.deleteByCourseId(courseId); // 课程私有词库
-
-        // 4. 跨域联动：先同步清理远端数据，失败则回滚本地事务
+        // 2. 跨域联动：在事务外同步清理远端数据，失败抛异常终止流程。
+        //    不在事务内执行 RPC，避免 DB 连接被远程调用长时间占用导致连接池耗尽。
         try {
             progressServiceClient.deleteCourseRelatedData(courseId);
             log.info("RPC 调用：同步清理 Progress-service 成功");
         } catch (Exception e) {
-            log.error("RPC 异常：Progress 数据同步失败，事务将回滚 courseId={}", courseId, e);
+            log.error("RPC 异常：Progress 数据同步失败，终止删除 courseId={}", courseId, e);
             throw new BusinessException("级联删除失败：学习进度服务不可用，请稍后重试");
         }
 
@@ -111,20 +128,37 @@ public class CourseCascadeDeleteService {
             homeworkServiceClient.deleteCourseRelatedData(courseId);
             log.info("RPC 调用：同步清理 Homework-service 成功");
         } catch (Exception e) {
-            log.error("RPC 异常：Homework 数据同步失败，事务将回滚 courseId={}", courseId, e);
+            log.error("RPC 异常：Homework 数据同步失败，终止删除 courseId={}", courseId, e);
             throw new BusinessException("级联删除失败：作业服务不可用，请稍后重试");
         }
 
-        // 5. 远端数据清理成功后，最后删除课程主记录
-        courseMapper.deleteById(courseId);
-        log.info("持久层审计：课程主表记录已移除");
+        // 3. 本地事务：原子删除所有本地关联表
+        // 通过 self 代理调用，确保 @Transactional 生效。
+        self.doLocalCascadeDelete(courseId, chapterIds);
 
-        // 6. 物理资源回收 (在事务同步器完成后，或利用 Aspect 执行)
-        for (String filePath : filesToDelete) {
-            try {
-                fileUploadService.deleteFile(filePath);
-            } catch (Exception e) {
-                log.error("IO 审计失败：物理文件清理中断 {}", filePath, e);
+        // 4. 物理文件回收：注册 afterCommit 回调，事务提交后再删除文件，
+        //    避免「DB 回滚但文件已删」的不一致。
+        if (!filesToDelete.isEmpty() && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    for (String filePath : filesToDelete) {
+                        try {
+                            fileUploadService.deleteFile(filePath);
+                        } catch (Exception e) {
+                            log.error("IO 审计失败：物理文件清理中断 {}", filePath, e);
+                        }
+                    }
+                }
+            });
+        } else if (!filesToDelete.isEmpty()) {
+            // 兜底：无事务上下文时直接删除（理论上不会走到，doLocalCascadeDelete 已开事务）。
+            for (String filePath : filesToDelete) {
+                try {
+                    fileUploadService.deleteFile(filePath);
+                } catch (Exception e) {
+                    log.error("IO 审计失败：物理文件清理中断 {}", filePath, e);
+                }
             }
         }
 
@@ -132,13 +166,40 @@ public class CourseCascadeDeleteService {
     }
 
     /**
+     * 本地多表原子删除（独立事务）。
+     * 不包含跨服务调用，保证事务尽可能短小。
+     */
+    @Transactional
+    public void doLocalCascadeDelete(Long courseId, List<Long> chapterIds) {
+        // 测验数据清理
+        for (Long chapterId : chapterIds) {
+            chapterQuizMapper.deleteByChapterId(chapterId);
+        }
+
+        // 评论点赞关系清理
+        List<Long> commentIds = chapterCommentMapper.findIdsByCourseId(courseId);
+        for (Long commentId : commentIds) {
+            commentLikeMapper.deleteByCommentId(commentId);
+        }
+
+        // 业务数据批量擦除
+        chapterCommentMapper.deleteByCourseId(courseId);
+        chapterMapper.deleteByCourseId(courseId);
+        enrollmentMapper.deleteByCourseId(courseId);
+        mutedUserMapper.deleteByCourseId(courseId);
+        blockedWordMapper.deleteByCourseId(courseId);
+
+        // 主记录最后删除
+        courseMapper.deleteById(courseId);
+        log.info("持久层审计：课程主表记录已移除");
+    }
+
+    /**
      * 用户注销级联清理 (基于角色的数据脱敏)
-     * 根据注销用户在课程体系内的角色（学生/教师），执行不同维度的存量数据清理。
      *
      * @param userId 操作人/注销人 ID
      * @param role   角色标识符 (teacher/student)
      */
-    @Transactional
     public void deleteUserRelatedData(Long userId, String role) {
         log.info("级联审计：启动用户关联清理 | userId={}, role={}", userId, role);
 
@@ -149,13 +210,14 @@ public class CourseCascadeDeleteService {
                 try {
                     cascadeDeleteCourse(courseId);
                 } catch (Exception e) {
+                    // 单个课程失败不阻断其它课程清理，但记录告警以便对账
                     log.error("级联审计失败：教师课程销毁中断 courseId={}", courseId, e);
                 }
             }
         }
 
         if ("student".equals(role)) {
-            // 学生注销：解除所有选课契约，保障招生热度统计准确性
+            // 学生注销：解除所有选课契约
             enrollmentMapper.deleteByStudentId(userId);
         }
 
@@ -164,18 +226,18 @@ public class CourseCascadeDeleteService {
         chapterCommentMapper.deleteByUserId(userId);
         mutedUserMapper.deleteByUserId(userId);
 
-        // 跨服务联动：先同步远端，失败则回滚本地事务
+        // 跨服务联动：在事务外同步远端，失败抛异常让调用方感知并重试
         try {
             progressServiceClient.deleteUserRelatedData(userId);
         } catch (Exception e) {
-            log.error("RPC 异常：Progress 用户数据同步失败，事务将回滚 userId={}", userId, e);
+            log.error("RPC 异常：Progress 用户数据同步失败 userId={}", userId, e);
             throw new BusinessException("级联删除失败：学习进度服务不可用，请稍后重试");
         }
 
         try {
             homeworkServiceClient.deleteUserRelatedData(userId);
         } catch (Exception e) {
-            log.error("RPC 异常：Homework 用户数据同步失败，事务将回滚 userId={}", userId, e);
+            log.error("RPC 异常：Homework 用户数据同步失败 userId={}", userId, e);
             throw new BusinessException("级联删除失败：作业服务不可用，请稍后重试");
         }
 

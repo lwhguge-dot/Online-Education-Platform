@@ -12,6 +12,43 @@ import KnowledgeMasteryChart from '../../components/charts/KnowledgeMasteryChart
 import { chapterAPI, progressAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
 import { useStudentStats } from '../../composables/useStudentStats'
+import { logger } from '../../utils/logger'
+
+interface LearningTrackItem {
+  title: string
+  time: string
+  action: string
+  courseId: number | null
+  chapterId: number | null
+  chapterTitle: string | null
+  duration?: number
+  progress?: number
+  type: string
+}
+
+interface RawTrackEntry {
+  chapterId?: number
+  chapterTitle?: string
+  courseId?: number
+  courseName?: string
+  courseTitle?: string
+  studyTime?: string
+  lastStudyTime?: string
+  time?: string
+  action?: string
+  duration?: number
+  progress?: number
+  type?: string
+  recentLearning?: RawTrackEntry[]
+}
+
+interface QuizItem {
+  courseId?: number
+  chapterId?: number
+  title: string
+  score: number
+  time: string
+}
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -19,7 +56,7 @@ const { dashboardStats, quizzes, loadStudentStats } = useStudentStats()
 
 // 学习轨迹真实数据状态
 const learningTrackLoading = ref(false)
-const learningTrack = ref<any[]>([])
+const learningTrack = ref<LearningTrackItem[]>([])
 
 /**
  * 加载学习轨迹真实数据
@@ -34,10 +71,10 @@ const loadLearningTrack = async () => {
     const res = await progressAPI.getLearningTrack(studentId)
     if (res.code !== 200 || !res.data) return
 
-    const rawData: any = res.data
-    const items: any[] = Array.isArray(rawData)
+    const rawData = res.data as RawTrackEntry | RawTrackEntry[]
+    const items: RawTrackEntry[] = Array.isArray(rawData)
       ? rawData
-      : (Array.isArray(rawData?.recentLearning) ? rawData.recentLearning : [])
+      : (Array.isArray(rawData?.recentLearning) ? rawData.recentLearning! : [])
 
     const mapped = await Promise.allSettled(items.map(async (item) => {
       const chapterId = item?.chapterId
@@ -71,9 +108,9 @@ const loadLearningTrack = async () => {
 
     learningTrack.value = mapped
       .filter(r => r.status === 'fulfilled')
-      .map((r: any) => r.value)
+      .map((r) => (r as PromiseFulfilledResult<LearningTrackItem>).value)
   } catch (e) {
-    console.error('加载学习轨迹失败:', e)
+    logger.error('加载学习轨迹失败:', e)
   } finally {
     learningTrackLoading.value = false
   }
@@ -123,7 +160,7 @@ const weeklyCompareMessage = computed(() => {
 /**
  * 点击学习足迹跳转到对应章节
  */
-const handleTimelineClick = (item: any) => {
+const handleTimelineClick = (item: LearningTrackItem) => {
   if (item.courseId && item.chapterId) {
     router.push(`/study/${item.courseId}?chapter=${item.chapterId}&from=student`)
   } else if (item.courseId) {
@@ -134,7 +171,7 @@ const handleTimelineClick = (item: any) => {
 /**
  * 点击测验跳转到对应章节
  */
-const handleQuizClick = async (quiz: any) => {
+const handleQuizClick = async (quiz: QuizItem) => {
   const chapterId = quiz?.chapterId
   if (!chapterId) return
 
@@ -149,7 +186,7 @@ const handleQuizClick = async (quiz: any) => {
       router.push(`/study/${res.data.courseId}?chapter=${chapterId}&from=student`)
     }
   } catch (e) {
-    console.error('获取章节信息失败:', e)
+    logger.error('获取章节信息失败:', e)
   }
 }
 

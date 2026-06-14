@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import {
   Users, TrendingUp, Award, BarChart3, AlertTriangle,
@@ -12,6 +12,7 @@ import SkeletonTable from '../../components/ui/SkeletonTable.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import AnimatedNumber from '../../components/ui/AnimatedNumber.vue'
 import QuizTrendChart from '../../components/charts/QuizTrendChart.vue'
+import { logger } from '../../utils/logger'
 
 const props = defineProps({
   courses: { type: Array, default: () => [] }
@@ -33,7 +34,7 @@ const loadAnalytics = async () => {
       analyticsData.value = res.data
     }
   } catch (e) {
-    console.error('加载课程分析失败', e)
+    logger.error('加载课程分析失败', e)
   } finally {
     loading.value = false
   }

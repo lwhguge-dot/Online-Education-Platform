@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue'
 import {
   Shield, Database, Activity, HardDrive, Trash2,
@@ -10,6 +10,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useConfirmStore } from '../../stores/confirm'
 import { useRouter } from 'vue-router'
 import { healthAPI, statsAPI, userAPI } from '../../services/api'
+import { logger } from '../../utils/logger'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -93,7 +94,7 @@ const checkHealth = async () => {
        services.value[2].message = res.data.database === 'UP' ? '连接成功 (edu_platform)' : '连接中断'
     }
   } catch (e) {
-    console.error('系统健康检查失败:', e)
+    logger.error('系统健康检查失败:', e)
     services.value[1].status = 'down'
     services.value[1].message = '后端服务无法连接'
     services.value[2].status = 'unknown'
@@ -139,7 +140,7 @@ const fetchDataStats = async () => {
       pendingCourses: sData.pendingCourses || 0
     }
   } catch (e) {
-    console.error('数据统计加载失败:', e)
+    logger.error('数据统计加载失败:', e)
   } finally {
     loadingStats.value = false
   }
@@ -160,7 +161,7 @@ const clearCache = async () => {
       const { authAPI } = await import('../../services/api')
       await authAPI.logout()
     } catch (e) {
-      console.error('登出API调用失败:', e)
+      logger.error('登出API调用失败:', e)
     }
     // 仅清理应用命名空间内的存储键，避免影响同域其他应用
     removeScopedStorageKeys(localStorage, APP_LOCAL_KEYS)

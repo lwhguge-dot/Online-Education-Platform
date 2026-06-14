@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { AlertTriangle, Trash2, Info, HelpCircle, X } from 'lucide-vue-next'
 

@@ -20,7 +20,7 @@
 | `frontend/` | Vue SPA | Vite 构建, `npm run dev` → port 3000 | Docker → port 5173 |
 | `backend/` | Maven 多模块 | gateway(8090), user-service(8081), course-service(8082), homework-service(8083), progress-service(8084), common |
 | `ops/scripts/docker/` | 运维 | Docker 启停脚本 (PowerShell) |
-| `.reasonix/skills/` | AI 规范 | 编码约定 (按需注入 `/skill-name`) |
+| `.opencode/rules/` | AI 规范 | 编码约定 (按需注入) |
 
 ## 开发者命令
 
@@ -81,57 +81,32 @@ docker compose build       # 构建镜像
 
 Gateway URL: `http://localhost:8090`, 认证方式: `Authorization: Bearer <jwt_token>`
 
-## 知识文件索引 (AI 技能, 按需调用 `/skill-name`)
+## 知识文件索引 (AI 规范, 按需注入)
 
-| 领域 | 技能名 | 说明 |
-|------|--------|------|
-| 部署检查 | `deploy-checklist` | 发布前版本确认、数据库迁移、构建、Docker 镜像、环境变量检查、回滚方案 |
-| Docker 诊断 | `docker-health-diagnose` | Docker 服务健康诊断、故障分析、常见问题快速修复 |
-| 记忆协议 | `hindsight-protocol` | Hindsight 记忆系统协议，code-change 保存和会话快照 |
-| 前端规范 | `vue3-frontend-standards` | Vue 3 / Composition API / Pinia / Vite / TypeScript strict |
-| CSS 样式 | `tailwind-styling-standards` | Tailwind CSS 4 / Design Tokens / 中国传统色 / 暗色模式 |
-| 状态管理 | `pinia-state-management` | Pinia 3 / Setup Store / 持久化策略 / 反模式 |
-| Java 规范 | `java-engineering-standards` | Java 21 / Spring Boot 3 / Lombok / MapStruct / JSR303 |
-| 测试规范 | `testing-standards` | Vitest / JUnit 5 / MockMvc / 全栈测试 |
-| TDD 契约 | `test-driven-development` | Red-Green-Refactor 测试驱动开发 |
-| 记忆操作 | `hindsight-auto-memory` | Hindsight 记忆系统操作规范与故障排查 |
+| 领域 | 路径 |
+|------|------|
+| 前端规范 | `.opencode/rules/vue3-frontend-standards.md` |
+| CSS 样式 | `.opencode/rules/tailwind-styling-standards.md` |
+| 状态管理 | `.opencode/rules/pinia-state-management.md` |
+| Java 规范 | `.opencode/rules/java-engineering-standards.md` |
+| 测试规范 | `.opencode/rules/testing-standards.md` |
+| TDD 契约 | `.opencode/rules/test-driven-development.md` |
 
 ## 记忆系统 (强制)
 
 ### Hindsight 记忆系统配置
 
-- **服务地址**: `http://127.0.0.1:8888`（Docker 绑定 127.0.0.1，Windows localhost 可能解析到 IPv6）
+- **服务地址**: `http://localhost:8888`
 - **记忆库 ID**: `deepseek-v2`
 - **LLM 提供者**: Ollama (qwen2.5:3b)
 - **代理服务**: `ops/scripts/hindsight/json-ollama-proxy.py`
 
-### 自动操作
+### 操作方式（MiMoCode）
 
-Reasonix 无 OpenCode 插件机制，Hindsight 操作需手动调用 MCP 工具。
+> **MiMoCode 注意：** `hindsight-automemory.ts` 插件不会自动加载，所有操作必须由 AI 手动执行。
 
-已注册的 MCP 工具（需先启动 Hindsight API 服务）：
-- `hindsight_retain` / `hindsight_retain_batch` — 保存记忆
-- `hindsight_recall` — 检索记忆
-- `hindsight_session_end` — 会话结束快照
-- `hindsight_healthcheck` — 连通性检查
-
-### MCP 服务器配置
-
-Hindsight MCP 服务器已注册到全局 `~/.reasonix/config.json`，指向 Python 脚本。
-
-```json
-{
-  "mcpServers": {
-    "hindsight": {
-      "command": "python",
-      "args": ["C:\\Users\\XuShuang\\Desktop\\demo\\ops\\scripts\\hindsight\\hindsight-mcp-server.py"],
-      "transport": "stdio"
-    }
-  }
-}
-```
-
-前置条件：Python ≥ 3.10，已安装 `mcp` 包（`pip install mcp`）。
+- **每轮 recall**：AI 手动调用 `hindsight_recall` 检索历史记忆
+- **每轮 retain**：AI 手动调用 `hindsight_retain_batch` / `hindsight_retain` 保存记录
 
 ### 手动操作场景
 
@@ -153,6 +128,60 @@ Hindsight MCP 服务器已注册到全局 `~/.reasonix/config.json`，指向 Pyt
 ### 禁止操作
 
 - ❌ 声称完成但没执行步骤 1 和 2
+- ❌ 重复保存已被自动 retain 的对话内容
+
+## 常见陷阱 (Gotchas)
+
+### 环境变量
+- **必须创建 `.env`**: 复制 `.env.example` 后填写强密码，Docker 启动脚本会校验
+- **密码强度要求**: `JWT_SECRET`/`INTERNAL_API_TOKEN` ≥32位，数据库密码 ≥12位
+- **不要提交 `.env`**: 已在 `.gitignore` 中，但 `.env.example` 可提交
+
+### 端口冲突
+| 服务 | 开发端口 | Docker 端口 | 说明 |
+|------|----------|-------------|------|
+| 前端 | 3000 | 5173 | dev server vs nginx |
+| Gateway | 8090 | 8090 | 统一 API 入口 |
+| PostgreSQL | 5432 | 127.0.0.1:5432 | 仅本机访问 |
+| Redis | 16379 | 127.0.0.1:16379 | 非标准端口避免冲突 |
+
+### 前端开发
+- **Token 存储**: 使用 `sessionStorage`（非 `localStorage`），关闭标签页即清除
+- **心跳检测**: 每 30 秒发送一次，连续 2 次失败强制登出
+- **API 代理**: `vite.config.ts` 配置 `/api`、`/ws`、`/oss` 代理到 gateway
+- **TypeScript 严格模式**: `tsconfig.json` 启用 strict，类型错误会导致构建失败
+
+### 后端开发
+- **虚拟线程**: 业务模块启用，Gateway 禁用（WebFlux 不兼容）
+- **JWT 校验**: 仅在 gateway 层校验，user-service 负责生成
+- **内部 API 调用**: 必须携带 `X-Internal-Token` 头
+- **数据库**: 所有服务共享 `edu_platform` 数据库，通过 schema 分区
+
+### Docker 启动顺序
+```
+Nacos (健康检查通过)
+  → PostgreSQL + Redis (健康检查通过)
+    → Gateway (健康检查通过)
+      → 业务服务 (user/course/homework/progress)
+        → Frontend (依赖 Gateway)
+```
+
+### 测试注意事项
+- **单元测试**: `vitest` 运行在 Node 环境，仅 `src/**/*.test.ts`
+- **E2E 测试**: 使用 Playwright（`frontend/tests/`），需手动运行，不在 npm scripts 中
+- **后端测试**: Maven 声明了测试依赖但无实际测试目录，CI 中运行 `mvn test`
+- **数据库测试**: CI 使用内联 PostgreSQL/Redis 服务容器
+
+### Sentry 配置
+- **开发环境默认关闭**: 需设置 `VITE_SENTRY_ENABLE_IN_DEV=true` 才启用
+- **生产环境自动启用**: 但需设置 `VITE_SENTRY_DSN`
+- **错误过滤**: 网络错误和 `ResizeObserver` 错误被忽略
+
+### 常见错误
+1. **"账号已被禁用"**: 检查用户状态字段（`status=1` 为启用）
+2. **"请求正在处理中"**: 防重复提交机制，等待请求完成或刷新页面
+3. **"登录已过期"**: Token 失效，需重新登录
+4. **Docker 启动失败**: 检查 `.env` 文件是否完整，密码是否符合强度要求
 
 ## 默认约定
 

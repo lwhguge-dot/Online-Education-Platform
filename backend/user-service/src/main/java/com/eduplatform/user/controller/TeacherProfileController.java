@@ -1,6 +1,7 @@
 package com.eduplatform.user.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.security.RequestContext;
 import com.eduplatform.user.dto.TeacherProfileDTO;
 import com.eduplatform.user.service.TeacherProfileService;
 import jakarta.validation.Valid;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class TeacherProfileController {
 
     private final TeacherProfileService profileService;
+    private final RequestContext requestContext;
 
     /**
      * 获取教师详细职业资料。
@@ -156,26 +158,13 @@ public class TeacherProfileController {
      * 解析网关注入的用户ID，非法值返回 null。
      */
     private Long parseUserId(String currentUserIdHeader) {
-        if (currentUserIdHeader == null || currentUserIdHeader.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(currentUserIdHeader);
-        } catch (NumberFormatException exception) {
-            return null;
-        }
+        return requestContext.parseUserId(currentUserIdHeader);
     }
 
     /**
      * 判断是否允许管理教师档案：管理员可跨账号操作，教师仅允许操作本人档案。
      */
     private boolean canManageTeacherProfile(Long targetUserId, Long currentUserId, String currentUserRole) {
-        if (currentUserRole != null && "admin".equalsIgnoreCase(currentUserRole)) {
-            return true;
-        }
-        return currentUserRole != null
-                && "teacher".equalsIgnoreCase(currentUserRole)
-                && currentUserId != null
-                && currentUserId.equals(targetUserId);
+        return requestContext.canAccessTeacherData(targetUserId);
     }
 }

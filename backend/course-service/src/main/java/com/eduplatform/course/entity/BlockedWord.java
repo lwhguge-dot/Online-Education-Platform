@@ -3,7 +3,8 @@ package com.eduplatform.course.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -12,7 +13,8 @@ import java.time.LocalDateTime;
  * 对应数据库表 `blocked_words`，用于在评论或课程描述中过滤敏感词汇。
  * 支持全局屏蔽（所有课程生效）或针对特定课程的精准屏蔽。
  */
-@Data
+@Getter
+@Setter
 @TableName("blocked_words")
 public class BlockedWord {
 

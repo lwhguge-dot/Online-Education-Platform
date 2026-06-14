@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone, timedelta
 from mcp.server.fastmcp import FastMCP
 
-HINDSIGHT_URL = "http://127.0.0.1:8888"
+HINDSIGHT_URL = "http://localhost:8888"
 TIMEOUT = 180
 CST = timezone(timedelta(hours=8))
 
@@ -336,7 +336,7 @@ def _detect_category(content: str, hint: str = "") -> str:
             r"bug", r"fix", r"feature", r"refactor",
         ],
         "correction": [
-            r"纠正", r"(?<!没)不对[，,。]", r"(?<!没有)不对[，,。]", r"(?<!不是)错误[的，,。]", r"说错了",
+            r"纠正", r"(?<!没|没有)不对[，,。]", r"(?<!不是)错误[的，,。]", r"说错了",
             r"错了", r"应该", r"不应该", r"需要修改", r"需要调整",
             r"建议修改", r"建议调整", r"建议优化",
         ],
@@ -442,7 +442,7 @@ def hindsight_retain(
 @mcp.tool()
 def hindsight_retain_batch(
     bank_id: str,
-    items: list[dict],
+    items: list,
     context: str = "deepseek-code-assistant",
     date: str = "",
 ) -> dict:

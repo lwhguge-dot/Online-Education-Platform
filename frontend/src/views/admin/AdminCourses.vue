@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, onActivated, onDeactivated } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -12,6 +12,7 @@ import BaseTooltip from '../../components/ui/BaseTooltip.vue'
 import { courseAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
 import { useConfirmStore } from '../../stores/confirm'
+import { logger } from '../../utils/logger'
 
 const confirmStore = useConfirmStore()
 
@@ -203,7 +204,7 @@ const updateStatus = async (course, status) => {
     emit('refresh')
     toast.success('操作成功')
   } catch (error) {
-    console.error('更新课程状态失败:', error)
+    logger.error('更新课程状态失败:', error)
     toast.error('操作失败')
   }
 }
@@ -226,7 +227,7 @@ const auditCourse = async (course, action) => {
     emit('refresh')
     toast.success('操作成功')
   } catch (error) {
-    console.error('审核课程失败:', error)
+    logger.error('审核课程失败:', error)
     toast.error('操作失败')
   }
 }
@@ -272,7 +273,7 @@ const batchAction = async (action) => {
       await courseAPI.updateStatus(id, status)
       patchLocalCourse(id, { status: status == 2 ? 'OFFLINE' : 'PUBLISHED' })
     } catch (e) {
-      console.error('批量更新课程状态失败:', e)
+      logger.error('批量更新课程状态失败:', e)
     }
   }
   selectedCourses.value = []
@@ -286,7 +287,7 @@ const exportCourses = async () => {
     await courseAPI.exportCSV()
     toast.success('课程数据导出成功')
   } catch (error) {
-    console.error('导出课程数据失败:', error)
+    logger.error('导出课程数据失败:', error)
     toast.error('导出失败')
   } finally {
     exporting.value = false

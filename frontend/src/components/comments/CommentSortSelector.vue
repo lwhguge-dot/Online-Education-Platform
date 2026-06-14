@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { Clock, Flame } from 'lucide-vue-next'
 
 const props = defineProps({

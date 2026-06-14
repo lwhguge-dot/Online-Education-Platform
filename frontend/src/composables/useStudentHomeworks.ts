@@ -1,6 +1,7 @@
 import { ref, readonly } from 'vue'
 import { homeworkAPI } from '../services/api'
 import { formatDateCN } from '../utils/datetime'
+import { logger } from '../utils/logger'
 
 interface EnrolledChapter {
     id: number
@@ -58,43 +59,55 @@ export function useStudentHomeworks() {
             const pending: HomeworkListItem[] = []
             const completed: HomeworkListItem[] = []
 
+            const chapterTasks: Array<{ course: EnrolledCourse; chapter: EnrolledChapter }> = []
             for (const course of enrolledCourses) {
                 if (!course.chapters) continue
                 for (const chapter of course.chapters) {
-                    // 只有已完成的章节才显示作业
                     if (!chapter.completed) continue
-
-                    try {
-                        // 真实业务中应由聚合 API 直接返回学生作业列表
-                        // Warning: N+1 problem here, ideally refactor backend later
-                        const res = await homeworkAPI.getStudentHomeworks(chapter.id, studentId)
-                        if (res.data) {
-                            res.data.forEach((hw: any) => {
-                                const item: HomeworkListItem = {
-                                    id: Number(hw.homework?.id || 0),
-                                    title: hw.homework?.title || '未命名作业',
-                                    course: course.title,
-                                    type: hw.homework?.homeworkType || 'objective',
-                                    daysLeft: hw.homework?.deadline ? Math.ceil((new Date(hw.homework.deadline).getTime() - Date.now()) / (86400000)) : null,
-                                    submitTime: hw.submission?.submittedAt || null,
-                                    totalScore: typeof hw.submission?.totalScore === 'number' ? hw.submission.totalScore : null,
-                                    status: hw.submission?.submitStatus === 'graded' ? 'graded' :
-                                        (hw.submission ? 'submitted' : 'pending'),
-                                    unlocked: true // If we are here, chapter is completed/unlocked
-                                }
-
-                                if (hw.submitted && hw.submission) {
-                                    completed.push(item)
-                                } else {
-                                    pending.push(item)
-                                }
-                            })
-                        }
-                    } catch (error) {
-                        console.error(`加载作业失败(chapterId=${chapter.id}):`, error)
-                    }
+                    chapterTasks.push({ course, chapter })
                 }
             }
+
+            const results = await Promise.allSettled(
+                chapterTasks.map(({ course, chapter }) =>
+                    homeworkAPI.getStudentHomeworks(chapter.id, studentId).then((res) => ({
+                        courseTitle: course.title,
+                        data: res.data,
+                    }))
+                )
+            )
+
+            results.forEach((result, index) => {
+                const task = chapterTasks[index]
+                if (result.status !== 'fulfilled') {
+                    logger.error(`加载作业失败(chapterId=${task?.chapter.id}):`, result.reason)
+                    return
+                }
+
+                const { courseTitle, data } = result.value
+                if (!data) return
+
+                data.forEach((hw) => {
+                    const item: HomeworkListItem = {
+                        id: Number(hw.homework?.id || 0),
+                        title: hw.homework?.title || '未命名作业',
+                        course: courseTitle,
+                        type: hw.homework?.homeworkType || 'objective',
+                        daysLeft: hw.homework?.deadline ? Math.ceil((new Date(hw.homework.deadline).getTime() - Date.now()) / (86400000)) : null,
+                        submitTime: hw.submission?.submittedAt || null,
+                        totalScore: typeof hw.submission?.totalScore === 'number' ? hw.submission.totalScore : null,
+                        status: hw.submission?.submitStatus === 'graded' ? 'graded' :
+                            (hw.submission ? 'submitted' : 'pending'),
+                        unlocked: true
+                    }
+
+                    if (hw.submitted && hw.submission) {
+                        completed.push(item)
+                    } else {
+                        pending.push(item)
+                    }
+                })
+            })
 
             pendingHomeworks.value = pending
             completedHomeworks.value = completed
@@ -105,7 +118,6 @@ export function useStudentHomeworks() {
                 urgent: hw.daysLeft !== null && hw.daysLeft <= 1
             }))
 
-            // 由已批改作业生成活动流
             const gradedActivities = completed
                 .filter(hw => hw.status === 'graded')
                 .slice(0, 5)
@@ -119,7 +131,7 @@ export function useStudentHomeworks() {
             activities.value = gradedActivities
 
         } catch (e) {
-            console.error('加载作业列表失败:', e)
+            logger.error('加载作业列表失败:', e)
         } finally {
             loading.value = false
         }

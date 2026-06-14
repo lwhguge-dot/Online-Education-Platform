@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { FileText, Clock, CheckCircle, AlertCircle, ChevronRight, Filter, RotateCcw, AlertTriangle } from 'lucide-vue-next'

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { RouterView } from 'vue-router'
 import { onUnmounted, watch } from 'vue'
 import OfflineNotice from './components/OfflineNotice.vue'
@@ -18,8 +18,8 @@ const confirmStore = useConfirmStore()
 const authStore = useAuthStore()
 const toastStore = useToastStore()
 
-let offForceLogout = null
-let offNotification = null
+let offForceLogout: (() => void) | null = null
+let offNotification: (() => void) | null = null
 
 // 清理 WebSocket 监听器，避免重复注册导致事件重复触发
 const cleanupWebSocketListeners = () => {
@@ -50,8 +50,9 @@ const setupWebSocket = () => {
   })
 
   offNotification = onNotification((payload) => {
-    if (payload?.title) {
-      toastStore.info(payload.title)
+    const title = payload.title
+    if (typeof title === 'string' && title) {
+      toastStore.info(title)
     }
   })
 }

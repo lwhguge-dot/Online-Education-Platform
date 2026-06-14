@@ -160,13 +160,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { announcementAPI, courseAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
 import { useToastStore } from '../../stores/toast'
 import BaseSelect from '../ui/BaseSelect.vue'
 import BaseModal from '../ui/BaseModal.vue'
+import { logger } from '../../utils/logger'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -225,7 +226,7 @@ const loadCourses = async () => {
       courses.value = res.data || []
     }
   } catch (error) {
-    console.error('加载课程失败:', error)
+    logger.error('加载课程失败:', error)
   }
 }
 
@@ -305,7 +306,7 @@ const handleSubmit = async () => {
       toast.error(res.message || '操作失败')
     }
   } catch (error) {
-    console.error('操作失败:', error)
+    logger.error('操作失败:', error)
   } finally {
     submitting.value = false
   }

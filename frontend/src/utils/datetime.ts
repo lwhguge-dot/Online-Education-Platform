@@ -83,3 +83,8 @@ export function formatTimeCN(input: DateInput, fallback = '-'): string {
   }).format(date)
 }
 
+export function parseToTimestamp(input: DateInput): number {
+  const date = parseToDate(input)
+  return date ? date.getTime() : 0
+}
+

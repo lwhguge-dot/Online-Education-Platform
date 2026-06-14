@@ -280,6 +280,7 @@ CREATE TABLE IF NOT EXISTS enrollments (
     last_study_at TIMESTAMP DEFAULT NULL,
     progress INT DEFAULT 0,
     status VARCHAR(20) DEFAULT 'active',
+    version INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uk_student_course UNIQUE (student_id, course_id)

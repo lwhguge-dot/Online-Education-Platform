@@ -24,11 +24,16 @@ spring:
     password: "${SPRING_DATASOURCE_PASSWORD}"
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 50  # 虚拟线程优化：增加连接池大小
-      minimum-idle: 10
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
+      # 虚拟线程优化配置
+      # maximum-pool-size: 虽然虚拟线程可创建数千并发，但 DB 连接池不宜过大
+      # 建议值：CPU 核心数 * 2 + 磁盘数，通常 20-50 足够
+      maximum-pool-size: ${HIKARI_MAXIMUM_POOL_SIZE:50}
+      minimum-idle: ${HIKARI_MINIMUM_IDLE:10}
+      connection-timeout: 30000  # 获取连接超时 30s
+      idle-timeout: 600000       # 空闲连接存活 10 分钟
+      max-lifetime: 1800000      # 连接最大生命周期 30 分钟
+      leak-detection-threshold: 60000  # 连接泄漏检测 60s
+      connection-test-query: SELECT 1  # PostgreSQL 连接测试
 
   # Redis 配置
   data:

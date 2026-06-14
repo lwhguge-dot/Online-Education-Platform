@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * 每日学习目标进度组件
  *

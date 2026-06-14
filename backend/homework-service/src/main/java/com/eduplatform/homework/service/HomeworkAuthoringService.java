@@ -1,5 +1,6 @@
 package com.eduplatform.homework.service;
 
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.homework.dto.HomeworkCreateDTO;
 import com.eduplatform.homework.entity.Homework;
 import com.eduplatform.homework.entity.HomeworkQuestion;
@@ -67,7 +68,7 @@ public class HomeworkAuthoringService {
     public Homework duplicateHomework(Long homeworkId, Long targetChapterId, String newTitle) {
         Homework source = homeworkMapper.selectById(homeworkId);
         if (source == null) {
-            throw new RuntimeException("源作业不存在");
+            throw new BusinessException("源作业不存在");
         }
 
         // 创建新作业，截止日期清空由教师重新设置
@@ -105,7 +106,7 @@ public class HomeworkAuthoringService {
     public Map<String, Object> importQuestions(Long homeworkId, List<HomeworkCreateDTO.QuestionDTO> questions) {
         Homework homework = homeworkMapper.selectById(homeworkId);
         if (homework == null) {
-            throw new RuntimeException("作业不存在");
+            throw new BusinessException("作业不存在");
         }
 
         // 获取当前最大排序号

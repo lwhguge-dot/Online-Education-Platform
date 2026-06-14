@@ -245,9 +245,12 @@ public class HomeworkService {
     }
 
     /**
-     * 教师批改主观题
+     * 教师批改主观题。
+     * 设计说明：本方法不加 @Transactional。
+     * 调用链 HomeworkService.gradeSubjective → HomeworkGradingService.gradeSubjective（取锁）
+     * → doGradeSubjective（@Transactional）。
+     * 锁必须在事务外层获取、事务提交后才释放，避免并发批改脏读。
      */
-    @Transactional
     public void gradeSubjective(Long submissionId, Long questionId, Integer score, String feedback) {
         homeworkGradingService.gradeSubjective(submissionId, questionId, score, feedback);
     }
@@ -316,9 +319,11 @@ public class HomeworkService {
     }
 
     /**
-     * 批量批改提交
+     * 批量批改提交。
+     * 设计说明：同 {@link #gradeSubjective}，不加 @Transactional。
+     * 锁由 HomeworkGradingService.gradeSubmission 在事务外获取，
+     * 由 doGradeSubmission（@Transactional）独立开事务。
      */
-    @Transactional
     public void gradeSubmission(Long submissionId, GradeSubmissionDTO dto) {
         homeworkGradingService.gradeSubmission(submissionId, dto);
     }

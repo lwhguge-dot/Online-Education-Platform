@@ -1,9 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { AlertTriangle, Users, Clock, TrendingDown, ChevronRight, Bell, X, Send, MessageCircle } from 'lucide-vue-next'
 import { useAuthStore } from '../../stores/auth'
 import { enrollmentAPI, notificationAPI } from '../../services/api'
 import GlassCard from '../ui/GlassCard.vue'
+import { logger } from '../../utils/logger'
 
 const props = defineProps({
   maxItems: { type: Number, default: 5 },
@@ -111,7 +112,7 @@ const loadAlertStudents = async () => {
       alertStudents.value = alerts.slice(0, props.maxItems)
     }
   } catch (e) {
-    console.error('加载预警学生失败', e)
+    logger.error('加载预警学生失败', e)
   } finally {
     loading.value = false
   }
@@ -178,7 +179,7 @@ const sendReminder = async () => {
       closeMessageModal()
     }
   } catch (e) {
-    console.error('发送提醒失败', e)
+    logger.error('发送提醒失败', e)
   } finally {
     sendingMessage.value = false
   }
@@ -208,7 +209,7 @@ const quickSendReminder = async (student, event) => {
       emit('messageSent', { student, message: content })
     }
   } catch (e) {
-    console.error('发送提醒失败', e)
+    logger.error('发送提醒失败', e)
   }
 }
 

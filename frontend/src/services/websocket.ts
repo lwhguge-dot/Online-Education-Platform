@@ -1,3 +1,4 @@
+import { logger } from '../utils/logger'
 type UnsubscribeFn = () => void
 
 interface WsAuthMessage {
@@ -76,6 +77,9 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null
 let lastErrorLoggedAt = 0
 let manualDisconnect = false
+let reconnectAttempts = 0
+const RECONNECT_BASE_DELAY = 1000 // 1 second
+const RECONNECT_MAX_DELAY = 60000 // 60 seconds
 
 const listeners: ListenerMap = {
   onForceLogout: [],
@@ -109,16 +113,16 @@ const handleMessage = (data: WsIncomingMessage): void => {
       listeners.onNotification.forEach(fn => fn(data))
       break
     case 'AUTH_OK':
-      console.log('WebSocket 认证成功')
+      logger.info('WebSocket 认证成功')
       break
     case 'AUTH_FAILED':
-      console.warn('WebSocket 认证失败')
+      logger.warn('WebSocket 认证失败')
       disconnectWebSocket()
       break
     case 'PONG':
       break
     default:
-      console.log('未知消息类型:', (data as WsIncomingMessage).type)
+      logger.info('未知消息类型:', (data as WsIncomingMessage).type)
   }
 }
 
@@ -129,7 +133,7 @@ export const connectWebSocket = (): void => {
 
   const token = sessionStorage.getItem('token')
   if (!token) {
-    console.warn('WebSocket 连接失败：缺少登录 token')
+    logger.warn('WebSocket 连接失败：缺少登录 token')
     return
   }
 
@@ -143,7 +147,8 @@ export const connectWebSocket = (): void => {
     ws = new WebSocket(WS_BASE)
 
     ws.onopen = () => {
-      console.log('WebSocket 连接成功')
+      logger.info('WebSocket 连接成功')
+      reconnectAttempts = 0 // Reset on successful connection
 
       const authMsg: WsAuthMessage = {
         type: 'AUTH',
@@ -160,33 +165,38 @@ export const connectWebSocket = (): void => {
         const data = JSON.parse(event.data as string) as WsIncomingMessage
         handleMessage(data)
       } catch (e) {
-        console.error('解析 WebSocket 消息失败:', e)
+        logger.error('解析 WebSocket 消息失败:', e)
       }
     }
 
     ws.onclose = () => {
-      console.log('WebSocket 连接关闭')
+      logger.info('WebSocket 连接关闭')
       stopHeartbeat()
       listeners.onDisconnected.forEach(fn => fn())
 
       if (!manualDisconnect) {
+        // Exponential backoff: 1s, 2s, 4s, 8s, ..., max 60s
+        const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, reconnectAttempts), RECONNECT_MAX_DELAY)
+        reconnectAttempts++
+        logger.info(`WebSocket 将在 ${delay}ms 后重连 (第 ${reconnectAttempts} 次)`)
+
         reconnectTimer = setTimeout(() => {
           if (sessionStorage.getItem('token')) {
             connectWebSocket()
           }
-        }, 5000)
+        }, delay)
       }
     }
 
     ws.onerror = (_error: Event) => {
       const now = Date.now()
       if (now - lastErrorLoggedAt > 30000) {
-        console.warn('WebSocket 连接异常:', _error)
+        logger.warn('WebSocket 连接异常:', _error)
         lastErrorLoggedAt = now
       }
     }
   } catch (e) {
-    console.error('WebSocket 连接失败:', e)
+    logger.error('WebSocket 连接失败:', e)
   }
 }
 
@@ -197,6 +207,7 @@ export const disconnectWebSocket = (): void => {
   }
 
   stopHeartbeat()
+  reconnectAttempts = 0
 
   if (ws) {
     manualDisconnect = true

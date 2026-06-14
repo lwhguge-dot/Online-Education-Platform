@@ -155,7 +155,9 @@ public class UserSessionService {
     }
 
     /**
-     * 内部辅助：序列化并缓存会话对象
+     * 内部辅助：序列化并缓存会话对象。
+     * 缓存写入失败降级为告警而非抛异常，避免 Redis 抖动回滚 DB 事务导致登录/注册失败；
+     * DB 已落地的会话记录仍可被心跳/校验流程拉起 Redis 缓存。
      */
     private void cacheSession(UserSession session) {
         try {
@@ -163,7 +165,8 @@ public class UserSessionService {
             String value = objectMapper.writeValueAsString(session);
             redisTemplate.opsForValue().set(key, value, sessionTimeoutSeconds, TimeUnit.SECONDS);
         } catch (Exception e) {
-            throw new RuntimeException("Redis 会话缓存同步失败", e);
+            // Redis 不可用时仅告警，DB 会话记录仍然有效，由后续心跳触发续期或重建缓存。
+            log.warn("Redis 会话缓存同步失败，本次降级为仅 DB 生效: jti={}", session.getJti(), e);
         }
     }
 

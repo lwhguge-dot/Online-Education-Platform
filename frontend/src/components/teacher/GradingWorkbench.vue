@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { homeworkAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
@@ -9,6 +9,7 @@ import {
 import GlassCard from '../ui/GlassCard.vue'
 import BaseButton from '../ui/BaseButton.vue'
 import { formatDateTimeCN } from '../../utils/datetime'
+import { logger } from '../../utils/logger'
 
 const props = defineProps({
   homeworkId: { type: Number, required: true },
@@ -190,7 +191,7 @@ const parseAnswerOptions = (options) => {
       const parsed = JSON.parse(options)
       return Array.isArray(parsed) ? parsed : []
     } catch (error) {
-      console.warn('答案选项解析失败:', error)
+      logger.warn('答案选项解析失败:', error)
       return []
     }
   }

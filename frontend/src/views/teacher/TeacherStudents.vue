@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { Search, Users, AlertTriangle, Clock, ChevronLeft, ChevronRight, Eye, BookOpen, Download } from 'lucide-vue-next'
 import { useAuthStore } from '../../stores/auth'
@@ -11,6 +11,7 @@ import SkeletonTable from '../../components/ui/SkeletonTable.vue'
 import StudentDetailModal from '../../components/teacher/StudentDetailModal.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import AnimatedNumber from '../../components/ui/AnimatedNumber.vue'
+import { logger } from '../../utils/logger'
 
 defineProps({
   courses: {
@@ -97,7 +98,7 @@ const loadOverview = async () => {
       }
     }
   } catch (e) {
-    console.error('加载概览失败', e)
+    logger.error('加载概览失败', e)
   } finally {
     loading.value = false
   }
@@ -121,7 +122,7 @@ const loadCourseStudents = async () => {
       pagination.value = res.data.pagination || { page: 1, size: 20, total: 0 }
     }
   } catch (e) {
-    console.error('加载学生列表失败', e)
+    logger.error('加载学生列表失败', e)
   } finally {
     loading.value = false
   }

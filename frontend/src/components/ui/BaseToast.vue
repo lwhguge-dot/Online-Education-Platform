@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { useToastStore } from '../../stores/toast'
 import { CheckCircle, AlertCircle, AlertTriangle, Info, X } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'

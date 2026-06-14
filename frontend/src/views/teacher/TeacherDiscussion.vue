@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { Send, Clock, AlertTriangle, Pin, Filter, ChevronDown, ChevronUp } from 'lucide-vue-next'
 import GlassCard from '../../components/ui/GlassCard.vue'
@@ -8,6 +8,7 @@ import EmptyState from '../../components/ui/EmptyState.vue'
 import { discussionAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
 import { formatDateCN } from '../../utils/datetime'
+import { logger } from '../../utils/logger'
 
 const props = defineProps({
   user: {
@@ -120,7 +121,7 @@ const loadDiscussions = async () => {
       })
     }
   } catch (e) {
-    console.error('加载讨论失败:', e)
+    logger.error('加载讨论失败:', e)
   } finally {
     loading.value = false
   }
@@ -167,7 +168,7 @@ const submitReply = async () => {
       toast.error(res.message || '回复失败')
     }
   } catch (e) {
-    console.error('回复失败:', e)
+    logger.error('回复失败:', e)
     toast.error('回复失败')
   } finally {
     submitting.value = false
@@ -186,7 +187,7 @@ const updateStatus = async (discussion, status) => {
       toast.error(res.message || '更新状态失败')
     }
   } catch (e) {
-    console.error('更新状态失败:', e)
+    logger.error('更新状态失败:', e)
   }
 }
 
@@ -200,7 +201,7 @@ const toggleTop = async (discussion) => {
       toast.error(res.message || '置顶操作失败')
     }
   } catch (e) {
-    console.error('置顶操作失败:', e)
+    logger.error('置顶操作失败:', e)
   }
 }
 

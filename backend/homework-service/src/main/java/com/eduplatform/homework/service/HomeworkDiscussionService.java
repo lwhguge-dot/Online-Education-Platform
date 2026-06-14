@@ -1,5 +1,7 @@
 package com.eduplatform.homework.service;
 
+import com.eduplatform.common.exception.BusinessException;
+import com.eduplatform.common.service.ContentModerationService;
 import com.eduplatform.homework.dto.NotificationRequest;
 import com.eduplatform.homework.entity.Homework;
 import com.eduplatform.homework.entity.HomeworkQuestionDiscussion;
@@ -25,15 +27,19 @@ public class HomeworkDiscussionService {
     private final HomeworkMapper homeworkMapper;
     private final HomeworkQuestionDiscussionMapper discussionMapper;
     private final UserServiceClient userServiceClient;
+    private final ContentModerationService contentModerationService;
 
     /**
      * 学生提问。
      */
     @Transactional
     public void askQuestion(Long homeworkId, Long studentId, Long questionId, String content) {
+        // 内容审核
+        contentModerationService.checkOrThrow(content);
+
         Homework homework = homeworkMapper.selectById(homeworkId);
         if (homework == null) {
-            throw new RuntimeException("作业不存在");
+            throw new BusinessException("作业不存在");
         }
 
         HomeworkQuestionDiscussion discussion = new HomeworkQuestionDiscussion();
@@ -59,9 +65,12 @@ public class HomeworkDiscussionService {
      */
     @Transactional
     public void replyQuestion(Long discussionId, Long teacherId, String reply) {
+        // 内容审核
+        contentModerationService.checkOrThrow(reply);
+
         HomeworkQuestionDiscussion discussion = discussionMapper.selectById(discussionId);
         if (discussion == null) {
-            throw new RuntimeException("问题不存在");
+            throw new BusinessException("问题不存在");
         }
 
         discussion.setTeacherReply(reply);
@@ -86,7 +95,7 @@ public class HomeworkDiscussionService {
             userServiceClient.sendNotification(notificationRequest);
         } catch (Exception e) {
             // 通知发送失败不影响回复流程
-            log.error("发送回复通知失败: {}", e.getMessage());
+            log.error("发送回复通知失败: discussionId={}", discussionId, e);
         }
     }
 }

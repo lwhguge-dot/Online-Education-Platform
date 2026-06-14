@@ -123,11 +123,43 @@ public class HomeworkReadService {
 
     /**
      * 获取章节作业列表与提交统计。
+     * 优化：使用批量查询避免 N+1 问题。
      */
     public List<HomeworkWithStatsDTO> getHomeworksByChapterWithStats(Long chapterId) {
         List<Homework> homeworks = homeworkMapper.findByChapterId(chapterId);
-        List<HomeworkWithStatsDTO> result = new ArrayList<>();
+        if (homeworks.isEmpty()) {
+            return new ArrayList<>();
+        }
 
+        List<Long> homeworkIds = homeworks.stream()
+                .map(Homework::getId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        // 批量查询提交统计（避免 N+1）
+        Map<Long, Long> totalCountMap = new HashMap<>();
+        Map<Long, Long> gradedCountMap = new HashMap<>();
+
+        List<HomeworkSubmission> allSubmissions = submissionMapper.selectList(
+                new LambdaQueryWrapper<HomeworkSubmission>()
+                        .in(HomeworkSubmission::getHomeworkId, homeworkIds)
+                        .ne(HomeworkSubmission::getSubmitStatus, "draft"));
+        allSubmissions.stream()
+                .filter(s -> s.getHomeworkId() != null)
+                .collect(Collectors.groupingBy(HomeworkSubmission::getHomeworkId))
+                .forEach((hwId, subs) -> totalCountMap.put(hwId, (long) subs.size()));
+
+        List<HomeworkSubmission> gradedSubmissions = submissionMapper.selectList(
+                new LambdaQueryWrapper<HomeworkSubmission>()
+                        .in(HomeworkSubmission::getHomeworkId, homeworkIds)
+                        .eq(HomeworkSubmission::getSubmitStatus, "graded"));
+        gradedSubmissions.stream()
+                .filter(s -> s.getHomeworkId() != null)
+                .collect(Collectors.groupingBy(HomeworkSubmission::getHomeworkId))
+                .forEach((hwId, subs) -> gradedCountMap.put(hwId, (long) subs.size()));
+
+        // 组装结果
+        List<HomeworkWithStatsDTO> result = new ArrayList<>();
         for (Homework hw : homeworks) {
             HomeworkWithStatsDTO dto = new HomeworkWithStatsDTO();
             dto.setId(hw.getId());
@@ -139,18 +171,8 @@ public class HomeworkReadService {
             dto.setDeadline(hw.getDeadline());
             dto.setCreatedAt(hw.getCreatedAt());
 
-            Long totalSubmissions = submissionMapper.selectCount(
-                    new LambdaQueryWrapper<HomeworkSubmission>()
-                            .eq(HomeworkSubmission::getHomeworkId, hw.getId())
-                            .ne(HomeworkSubmission::getSubmitStatus, "draft"));
-
-            Long gradedSubmissions = submissionMapper.selectCount(
-                    new LambdaQueryWrapper<HomeworkSubmission>()
-                            .eq(HomeworkSubmission::getHomeworkId, hw.getId())
-                            .eq(HomeworkSubmission::getSubmitStatus, "graded"));
-
-            dto.setSubmissionCount(totalSubmissions != null ? totalSubmissions.intValue() : 0);
-            dto.setGradedCount(gradedSubmissions != null ? gradedSubmissions.intValue() : 0);
+            dto.setSubmissionCount(totalCountMap.getOrDefault(hw.getId(), 0L).intValue());
+            dto.setGradedCount(gradedCountMap.getOrDefault(hw.getId(), 0L).intValue());
             result.add(dto);
         }
 
@@ -159,44 +181,59 @@ public class HomeworkReadService {
 
     /**
      * 获取学生在章节下的作业视图。
+     * 优化：使用批量查询避免 N+1 问题。
      */
     public List<StudentHomeworkDTO> getStudentHomeworks(Long studentId, Long chapterId) {
         List<Homework> homeworks = getHomeworksByChapter(chapterId);
+        if (homeworks.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Long> homeworkIds = homeworks.stream()
+                .map(Homework::getId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        // 批量查询提交记录（避免 N+1）
+        Map<Long, HomeworkSubmission> submissionMap = submissionMapper.selectList(
+                new LambdaQueryWrapper<HomeworkSubmission>()
+                        .eq(HomeworkSubmission::getStudentId, studentId)
+                        .in(HomeworkSubmission::getHomeworkId, homeworkIds))
+                .stream()
+                .filter(s -> s.getHomeworkId() != null)
+                .collect(Collectors.toMap(HomeworkSubmission::getHomeworkId, s -> s, (a, b) -> a));
+
+        // 批量查询解锁状态（避免 N+1）
+        Map<Long, HomeworkUnlock> unlockMap = unlockMapper.selectList(
+                new LambdaQueryWrapper<HomeworkUnlock>()
+                        .eq(HomeworkUnlock::getStudentId, studentId)
+                        .in(HomeworkUnlock::getHomeworkId, homeworkIds))
+                .stream()
+                .filter(u -> u.getHomeworkId() != null)
+                .collect(Collectors.toMap(HomeworkUnlock::getHomeworkId, u -> u, (a, b) -> a));
+
+        // 批量查询题目数量（避免 N+1）
+        Map<Long, Integer> questionCountMap = new HashMap<>();
+        List<HomeworkQuestion> allQuestions = questionMapper.selectList(
+                new LambdaQueryWrapper<HomeworkQuestion>()
+                        .in(HomeworkQuestion::getHomeworkId, homeworkIds));
+        allQuestions.stream()
+                .filter(q -> q.getHomeworkId() != null)
+                .collect(Collectors.groupingBy(HomeworkQuestion::getHomeworkId))
+                .forEach((hwId, questions) -> questionCountMap.put(hwId, questions.size()));
+
+        // 组装结果
         List<StudentHomeworkDTO> result = new ArrayList<>();
-
         for (Homework hw : homeworks) {
-            HomeworkSubmission submission = null;
-            try {
-                submission = submissionMapper.selectOne(
-                        new LambdaQueryWrapper<HomeworkSubmission>()
-                                .eq(HomeworkSubmission::getStudentId, studentId)
-                                .eq(HomeworkSubmission::getHomeworkId, hw.getId()));
-            } catch (Exception e) {
-                log.error("查询提交记录失败: studentId={}, homeworkId={}", studentId, hw.getId(), e);
-            }
+            Long hwId = hw.getId();
 
+            HomeworkSubmission submission = submissionMap.get(hwId);
             boolean submitted = submission != null && !"draft".equals(submission.getSubmitStatus());
 
-            // 查询实际的解锁状态
-            boolean unlocked = false;
-            try {
-                HomeworkUnlock unlock = unlockMapper.selectOne(
-                        new LambdaQueryWrapper<HomeworkUnlock>()
-                                .eq(HomeworkUnlock::getStudentId, studentId)
-                                .eq(HomeworkUnlock::getHomeworkId, hw.getId()));
-                unlocked = unlock != null && unlock.getUnlockStatus() != null && unlock.getUnlockStatus() == 1;
-            } catch (Exception e) {
-                log.error("查询解锁状态失败: studentId={}, homeworkId={}", studentId, hw.getId(), e);
-            }
+            HomeworkUnlock unlock = unlockMap.get(hwId);
+            boolean unlocked = unlock != null && unlock.getUnlockStatus() != null && unlock.getUnlockStatus() == 1;
 
-            // 获取题目数量
-            int questionCount = 0;
-            try {
-                List<HomeworkQuestion> questions = questionMapper.findByHomeworkId(hw.getId());
-                questionCount = questions != null ? questions.size() : 0;
-            } catch (Exception e) {
-                log.error("查询题目数量失败: homeworkId={}", hw.getId(), e);
-            }
+            int questionCount = questionCountMap.getOrDefault(hwId, 0);
 
             StudentHomeworkDTO item = new StudentHomeworkDTO();
             item.setHomework(convertToVO(hw));
@@ -365,12 +402,20 @@ public class HomeworkReadService {
 
     /**
      * 获取教师待办事项。
+     * 注意：仅返回该教师负责的作业的待批改提交。
      */
     public List<Map<String, Object>> getTeacherTodos(Long teacherId) {
         List<Map<String, Object>> todos = new ArrayList<>();
 
+        // 先获取该教师的所有作业ID
+        List<Long> teacherHomeworkIds = homeworkMapper.findIdsByTeacherId(teacherId);
+        if (teacherHomeworkIds == null || teacherHomeworkIds.isEmpty()) {
+            return todos;
+        }
+
         List<HomeworkSubmission> pendingSubmissions = submissionMapper.selectList(
                 new LambdaQueryWrapper<HomeworkSubmission>()
+                        .in(HomeworkSubmission::getHomeworkId, teacherHomeworkIds)
                         .eq(HomeworkSubmission::getSubmitStatus, "submitted")
                         .orderByDesc(HomeworkSubmission::getSubmittedAt));
 
@@ -824,10 +869,18 @@ public class HomeworkReadService {
 
     /**
      * 获取教师待回复问题数量。
+     * 注意：仅统计该教师负责的作业的问题。
      */
     public int getTeacherPendingQuestionsCount(Long teacherId) {
+        // 先获取该教师的所有作业ID
+        List<Long> teacherHomeworkIds = homeworkMapper.findIdsByTeacherId(teacherId);
+        if (teacherHomeworkIds == null || teacherHomeworkIds.isEmpty()) {
+            return 0;
+        }
+
         return discussionMapper.selectList(
                 new LambdaQueryWrapper<HomeworkQuestionDiscussion>()
+                        .in(HomeworkQuestionDiscussion::getHomeworkId, teacherHomeworkIds)
                         .eq(HomeworkQuestionDiscussion::getStatus, "pending"))
                 .size();
     }

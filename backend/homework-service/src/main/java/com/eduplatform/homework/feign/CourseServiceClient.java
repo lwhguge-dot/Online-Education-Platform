@@ -1,5 +1,6 @@
 package com.eduplatform.homework.feign;
 
+import com.eduplatform.homework.config.InternalApiFeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,7 +12,7 @@ import java.util.Map;
 /**
  * 课程服务Feign客户端
  */
-@FeignClient(name = "course-service", fallback = CourseServiceClientFallback.class)
+@FeignClient(name = "course-service", fallback = CourseServiceClientFallback.class, configuration = InternalApiFeignConfig.class)
 public interface CourseServiceClient {
 
     @GetMapping("/api/courses/teacher/{teacherId}")

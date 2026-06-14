@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import {
   Search, X, Plus, Edit2, Trash2, Send,
@@ -12,6 +12,7 @@ import { announcementAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
 import { useConfirmStore } from '../../stores/confirm'
 import { formatDateTimeCN } from '../../utils/datetime'
+import { logger } from '../../utils/logger'
 
 const toast = useToastStore()
 const confirmStore = useConfirmStore()
@@ -68,7 +69,7 @@ const fetchAnnouncements = async () => {
     announcements.value = res.data?.records || res.data?.content || res.data || []
     totalCount.value = res.data?.total || res.data?.totalElements || announcements.value.length
   } catch (error) {
-    console.error('获取公告列表失败:', error)
+    logger.error('获取公告列表失败:', error)
     toast.error('获取公告列表失败')
     announcements.value = []
   } finally {
@@ -145,7 +146,7 @@ const saveAnnouncement = async () => {
     showModal.value = false
     fetchAnnouncements()
   } catch (error) {
-    console.error('保存公告失败:', error)
+    logger.error('保存公告失败:', error)
     toast.error('保存失败')
   } finally {
     saving.value = false
@@ -167,7 +168,7 @@ const confirmPublish = async (announcement) => {
     toast.success('公告已发布')
     fetchAnnouncements()
   } catch (error) {
-    console.error('发布公告失败:', error)
+    logger.error('发布公告失败:', error)
     toast.error('发布失败')
   }
 }
@@ -187,7 +188,7 @@ const confirmDelete = async (announcement) => {
     toast.success('公告已删除')
     fetchAnnouncements()
   } catch (error) {
-    console.error('删除公告失败:', error)
+    logger.error('删除公告失败:', error)
     toast.error('删除失败')
   }
 }

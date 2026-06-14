@@ -1,10 +1,13 @@
 package com.eduplatform.course.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.security.RequestContext;
 import com.eduplatform.course.dto.ChapterDTO;
 import com.eduplatform.course.dto.ChapterQuizDTO;
 import com.eduplatform.course.entity.Chapter;
 import com.eduplatform.course.entity.ChapterQuiz;
+import com.eduplatform.course.entity.Course;
+import com.eduplatform.course.mapper.CourseMapper;
 import com.eduplatform.course.service.ChapterService;
 import com.eduplatform.course.vo.ChapterQuizVO;
 import com.eduplatform.course.vo.ChapterVO;
@@ -29,6 +32,8 @@ import java.util.stream.Collectors;
 public class ChapterController {
 
     private final ChapterService chapterService;
+    private final CourseMapper courseMapper;
+    private final RequestContext requestContext;
 
     /**
      * 创建章节。
@@ -37,9 +42,18 @@ public class ChapterController {
     @PostMapping
     public Result<ChapterVO> createChapter(
             @Valid @RequestBody ChapterDTO dto,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         if (!hasTeacherManageRole(currentUserRole)) {
             return Result.failure(403, "权限不足，仅教师或管理员可创建章节");
+        }
+        // 教师需要验证课程归属权
+        if (!"admin".equalsIgnoreCase(currentUserRole) && dto.getCourseId() != null) {
+            Long currentUserId = parseUserId(currentUserIdHeader);
+            Course course = courseMapper.selectById(dto.getCourseId());
+            if (course == null || !course.getTeacherId().equals(currentUserId)) {
+                return Result.failure(403, "无权操作不属于自己的课程");
+            }
         }
         try {
             Chapter chapter = new Chapter();
@@ -60,9 +74,18 @@ public class ChapterController {
     public Result<ChapterVO> updateChapter(
             @PathVariable("id") Long id,
             @Valid @RequestBody ChapterDTO dto,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         if (!hasTeacherManageRole(currentUserRole)) {
             return Result.failure(403, "权限不足，仅教师或管理员可更新章节");
+        }
+        // 教师需要验证课程归属权
+        if (!"admin".equalsIgnoreCase(currentUserRole) && dto.getCourseId() != null) {
+            Long currentUserId = parseUserId(currentUserIdHeader);
+            Course course = courseMapper.selectById(dto.getCourseId());
+            if (course == null || !course.getTeacherId().equals(currentUserId)) {
+                return Result.failure(403, "无权操作不属于自己的课程");
+            }
         }
         try {
             Chapter chapter = new Chapter();
@@ -83,9 +106,22 @@ public class ChapterController {
     @DeleteMapping("/{id}")
     public Result<Void> deleteChapter(
             @PathVariable("id") Long id,
+            @RequestHeader(value = "X-User-Id", required = false) String currentUserIdHeader,
             @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
         if (!hasTeacherManageRole(currentUserRole)) {
             return Result.failure(403, "权限不足，仅教师或管理员可删除章节");
+        }
+        // 教师需要验证课程归属权
+        if (!"admin".equalsIgnoreCase(currentUserRole)) {
+            Long currentUserId = parseUserId(currentUserIdHeader);
+            // 先获取章节信息以找到课程ID
+            Chapter existingChapter = chapterService.getChapterById(id);
+            if (existingChapter != null) {
+                Course course = courseMapper.selectById(existingChapter.getCourseId());
+                if (course == null || !course.getTeacherId().equals(currentUserId)) {
+                    return Result.failure(403, "无权操作不属于自己的课程");
+                }
+            }
         }
         try {
             chapterService.deleteChapter(id);
@@ -207,9 +243,16 @@ public class ChapterController {
 
     /**
      * 判断是否具备教师管理权限（教师或管理员）。
+     * 委托到 RequestContext 统一实现。
      */
     private boolean hasTeacherManageRole(String currentUserRole) {
-        return currentUserRole != null
-                && ("teacher".equalsIgnoreCase(currentUserRole) || "admin".equalsIgnoreCase(currentUserRole));
+        return requestContext.isTeacherOrAdmin();
+    }
+
+    /**
+     * 解析用户ID
+     */
+    private Long parseUserId(String currentUserIdHeader) {
+        return requestContext.parseUserId(currentUserIdHeader);
     }
 }

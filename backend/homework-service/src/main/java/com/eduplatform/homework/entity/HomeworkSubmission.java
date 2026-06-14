@@ -1,10 +1,12 @@
 package com.eduplatform.homework.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
 @TableName("homework_submissions")
 public class HomeworkSubmission {
     @TableId(type = IdType.AUTO)

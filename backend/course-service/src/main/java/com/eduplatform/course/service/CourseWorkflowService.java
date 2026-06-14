@@ -6,6 +6,7 @@ import com.eduplatform.course.entity.Course;
 import com.eduplatform.course.feign.AuditLogClient;
 import com.eduplatform.course.mapper.CourseMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CourseWorkflowService {
 
     private final CourseMapper courseMapper;
@@ -72,7 +74,8 @@ public class CourseWorkflowService {
         try {
             auditLogClient.createAuditLog(auditLog);
         } catch (Exception e) {
-            // 审计失败不影响主流程
+            // 审计失败不影响主流程，但必须记录以便排查审计丢失
+            log.warn("审计日志投递失败: action={}, courseId={}", actionType, id, e);
         }
     }
 
@@ -158,6 +161,7 @@ public class CourseWorkflowService {
                 auditLogClient.createAuditLog(logData);
             } catch (Exception e) {
                 // 审计失败不影响审核结果
+                log.warn("审核审计日志投递失败: action={}, courseId={}", actionType, id, e);
             }
         }
     }
@@ -217,6 +221,7 @@ public class CourseWorkflowService {
                 auditLogClient.createAuditLog(logData);
             } catch (Exception e) {
                 // 审计失败不影响下线主流程
+                log.warn("下线审计日志投递失败: courseId={}", id, e);
             }
         }
     }
@@ -269,6 +274,7 @@ public class CourseWorkflowService {
                         auditLogClient.createAuditLog(logData);
                     } catch (Exception e) {
                         // 审计失败不影响业务成功数
+                        log.warn("批量状态审计投递失败: courseId={}", courseId, e);
                     }
                 }
 

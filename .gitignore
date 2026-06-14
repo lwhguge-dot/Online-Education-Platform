@@ -110,14 +110,14 @@ tools/audit/
 # ==================== jqwik 测试数据库 ====================
 **/.jqwik-database
 
-# ==================== OpenCode 配置（已迁移至 Reasonix） ====================
-.opencode/
-
-# ==================== Reasonix 项目级 MCP 配置（已移至全局 config） ====================
-.reasonix/mcp.json
-
-# ==================== 无关第三方仓库 ====================
-fleetby/
+# ==================== OpenCode 技能产物（已迁移至 DeepSeek，保留兼容） ====================
+.opencode/skills/**/node_modules/
+.opencode/skills/**/__pycache__/
+.opencode/skills/**/.pytest_cache/
+.opencode/skills/**/.temp-execution-*.js
+.opencode/skills/**/design-system/
+.opencode/skills/**/output/
+.opencode/skills/**/.cache/
 
 # ==================== 规划产物（临时文件） ====================
 task_plan.md
@@ -209,3 +209,10 @@ tmp/
 temp/
 .tmp/
 .temp/
+
+# ==================== 代码分析工具 ====================
+.codegraph/
+
+# ==================== ZCode 工作区配置 (含敏感凭据) ====================
+.zcode/
+

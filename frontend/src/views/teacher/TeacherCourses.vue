@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 import {
   Plus, Video, Trash2,
@@ -12,6 +12,7 @@ import BaseButton from '../../components/ui/BaseButton.vue'
 import BaseInput from '../../components/ui/BaseInput.vue'
 import BaseSelect from '../../components/ui/BaseSelect.vue'
 import { courseAPI, chapterAPI, fileAPI } from '../../services/api'
+import { logger } from '../../utils/logger'
 
 const confirmStore = useConfirmStore()
 const authStore = useAuthStore()
@@ -144,7 +145,7 @@ const deleteCoverImage = async () => {
     newCourse.value.coverImage = ''
     toast.success('封面已删除')
   } catch (error) {
-    console.error('删除课程封面失败:', error)
+    logger.error('删除课程封面失败:', error)
     // 即使删除失败也清空本地引用
     newCourse.value.coverImage = ''
     toast.warning('文件可能已被删除')
@@ -199,7 +200,7 @@ const loadChapters = async (courseId) => {
     const res = await chapterAPI.getByCourse(courseId)
     courseChapters.value = res.data || []
   } catch (error) {
-    console.error('加载章节列表失败:', error)
+    logger.error('加载章节列表失败:', error)
     courseChapters.value = []
   }
 }
@@ -238,7 +239,7 @@ const handleVideoUpload = async (event) => {
       toast.success('视频上传成功')
     }
   } catch (error) {
-    console.error('上传章节视频失败:', error)
+    logger.error('上传章节视频失败:', error)
     toast.error('上传失败')
   } finally {
     uploadingVideo.value = false
@@ -275,7 +276,7 @@ const deleteChapterVideo = async () => {
     newChapter.value.duration = 0
     toast.success('视频已删除')
   } catch (error) {
-    console.error('删除章节视频失败:', error)
+    logger.error('删除章节视频失败:', error)
     // 即使删除失败也清空本地引用
     newChapter.value.videoUrl = ''
     newChapter.value.duration = 0
@@ -321,7 +322,7 @@ const deleteChapter = async (id) => {
     await loadChapters(editingCourse.value.id)
     toast.success('章节已删除')
   } catch (error) {
-    console.error('删除章节失败:', error)
+    logger.error('删除章节失败:', error)
     toast.error('删除失败')
   }
 }
@@ -337,7 +338,7 @@ const loadQuizzes = async (chapterId) => {
     const res = await chapterAPI.getQuizzes(chapterId)
     chapterQuizzes.value = res.data || []
   } catch (error) {
-    console.error('加载章节测验失败:', error)
+    logger.error('加载章节测验失败:', error)
     chapterQuizzes.value = []
   } finally {
     loadingQuizzes.value = false

@@ -1,6 +1,7 @@
 package com.eduplatform.homework.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.security.RequestContext;
 import com.eduplatform.homework.dto.DiscussionReplyRequest;
 import com.eduplatform.homework.service.DiscussionService;
 import com.eduplatform.homework.vo.SubjectiveCommentVO;
@@ -13,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -30,12 +32,16 @@ class DiscussionControllerTest {
     @Mock
     private DiscussionService discussionService;
 
+    @Mock
+    private RequestContext requestContext;
+
     @Test
     @DisplayName("回复讨论-学生角色被拒绝")
     void replyShouldDenyStudentRole() {
         DiscussionReplyRequest request = new DiscussionReplyRequest();
         request.setContent("测试回复");
 
+        // 默认 isTeacherOrAdmin() 返回 false（boolean 默认），等价于学生角色
         Result<SubjectiveCommentVO> result = discussionController.reply(1L, request, "10", "student");
 
         assertNotNull(result);
@@ -49,6 +55,10 @@ class DiscussionControllerTest {
     void replyShouldRequireUserIdentity() {
         DiscussionReplyRequest request = new DiscussionReplyRequest();
         request.setContent("测试回复");
+
+        // 教师角色通过权限校验，但用户 id 为 null
+        lenient().when(requestContext.isTeacherOrAdmin()).thenReturn(true);
+        lenient().when(requestContext.parseUserId(null)).thenReturn(null);
 
         Result<SubjectiveCommentVO> result = discussionController.reply(1L, request, null, "teacher");
 
@@ -65,6 +75,10 @@ class DiscussionControllerTest {
         request.setContent("测试回复");
         request.setCourseId(100L);
         request.setChapterId(200L);
+
+        // 教师角色通过权限校验
+        lenient().when(requestContext.isTeacherOrAdmin()).thenReturn(true);
+        lenient().when(requestContext.parseUserId("10")).thenReturn(10L);
 
         SubjectiveCommentVO commentVO = new SubjectiveCommentVO();
         when(discussionService.reply(1L, 10L, "测试回复", 100L, 200L)).thenReturn(commentVO);

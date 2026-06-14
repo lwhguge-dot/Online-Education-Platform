@@ -37,27 +37,27 @@ public class AuthHandshakeInterceptor implements HandshakeInterceptor {
         }
 
         String token = servletRequest.getServletRequest().getParameter("token");
-        if (token != null && !token.isBlank()) {
-            try {
-                if (!jwtUtil.validateToken(token)) {
-                    log.warn("WebSocket 握手失败：token 无效");
-                    return false;
-                }
-                Long userId = jwtUtil.getUserIdFromToken(token);
-                if (userId == null) {
-                    log.warn("WebSocket 握手失败：token 中缺少 userId");
-                    return false;
-                }
-                attributes.put("userId", userId);
-                return true;
-            } catch (Exception e) {
-                log.warn("WebSocket 握手失败：token 解析异常，error={}", e.getMessage());
-                return false;
-            }
+        if (token == null || token.isBlank()) {
+            log.warn("WebSocket 握手失败：缺少 token");
+            return false;
         }
 
-        // 无 token 时放行握手，由消息级 AUTH 协议进行后续认证
-        return true;
+        try {
+            if (!jwtUtil.validateToken(token)) {
+                log.warn("WebSocket 握手失败：token 无效");
+                return false;
+            }
+            Long userId = jwtUtil.getUserIdFromToken(token);
+            if (userId == null) {
+                log.warn("WebSocket 握手失败：token 中缺少 userId");
+                return false;
+            }
+            attributes.put("userId", userId);
+            return true;
+        } catch (Exception e) {
+            log.warn("WebSocket 握手失败：token 解析异常，error={}", e.getMessage());
+            return false;
+        }
     }
 
     @Override

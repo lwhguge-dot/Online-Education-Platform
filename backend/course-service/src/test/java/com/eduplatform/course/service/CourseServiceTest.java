@@ -140,21 +140,21 @@ class CourseServiceTest {
         @Test
         @DisplayName("管理员请求草稿状态时返回空列表")
         void adminDraftQueryShouldReturnEmpty() {
-            when(courseReadService.getAdminVisibleCourses(null, Course.STATUS_DRAFT))
+            when(courseReadService.getAdminVisibleCourses(null, Course.STATUS_DRAFT, null))
                     .thenReturn(java.util.Collections.emptyList());
 
-            assertEquals(0, courseService.getAdminVisibleCourses(null, Course.STATUS_DRAFT).size());
-            verify(courseReadService).getAdminVisibleCourses(null, Course.STATUS_DRAFT);
+            assertEquals(0, courseService.getAdminVisibleCourses(null, Course.STATUS_DRAFT, null).size());
+            verify(courseReadService).getAdminVisibleCourses(null, Course.STATUS_DRAFT, null);
         }
 
         @Test
         @DisplayName("管理员默认查询应委托读模型服务")
         void adminDefaultQueryShouldDelegateToReadService() {
-            when(courseReadService.getAdminVisibleCourses(null, null)).thenReturn(java.util.Collections.emptyList());
+            when(courseReadService.getAdminVisibleCourses(null, null, null)).thenReturn(java.util.Collections.emptyList());
 
-            courseService.getAdminVisibleCourses(null, null);
+            courseService.getAdminVisibleCourses(null, null, null);
 
-            verify(courseReadService).getAdminVisibleCourses(null, null);
+            verify(courseReadService).getAdminVisibleCourses(null, null, null);
         }
     }
 }

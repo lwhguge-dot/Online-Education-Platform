@@ -86,6 +86,8 @@ class HomeworkReadServiceTest {
             pending2.setId(2L);
             pending2.setStatus("pending");
 
+            // 必须先 mock 教师的作业列表，否则 getTeacherPendingQuestionsCount 会因作业列表为空直接返回 0
+            when(homeworkMapper.findIdsByTeacherId(101L)).thenReturn(Arrays.asList(10L, 20L));
             when(discussionMapper.selectList(any(LambdaQueryWrapper.class)))
                     .thenReturn(Arrays.asList(pending1, pending2));
 

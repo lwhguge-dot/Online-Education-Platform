@@ -191,7 +191,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { announcementAPI, courseAPI } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
@@ -200,6 +200,7 @@ import AnnouncementEditor from './AnnouncementEditor.vue'
 import BaseSelect from '../ui/BaseSelect.vue'
 import EmptyState from '../ui/EmptyState.vue'
 import { formatDateTimeCN } from '../../utils/datetime'
+import { logger } from '../../utils/logger'
 
 const authStore = useAuthStore()
 const toast = useToastStore()
@@ -258,7 +259,7 @@ const loadAnnouncements = async () => {
       pagination.pages = res.data.pages || 0
     }
   } catch (error) {
-    console.error('加载公告失败:', error)
+    logger.error('加载公告失败:', error)
   } finally {
     loading.value = false
   }
@@ -273,7 +274,7 @@ const loadCourses = async () => {
       courses.value = res.data || []
     }
   } catch (error) {
-    console.error('加载课程失败:', error)
+    logger.error('加载课程失败:', error)
   }
 }
 
@@ -322,7 +323,7 @@ const togglePin = async (item) => {
       toast.error(res.message || '操作失败')
     }
   } catch (error) {
-    console.error('操作失败:', error)
+    logger.error('操作失败:', error)
   }
 }
 
@@ -366,7 +367,7 @@ const doDelete = async () => {
       toast.error(res.message || '删除失败')
     }
   } catch (error) {
-    console.error('删除失败:', error)
+    logger.error('删除失败:', error)
   } finally {
     deleting.value = false
   }

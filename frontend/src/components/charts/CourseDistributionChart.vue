@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * 课程分布饼图组件
  * 使用纯CSS实现的环形图，展示各学科的课程数量和学生数量。

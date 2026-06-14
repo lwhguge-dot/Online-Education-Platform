@@ -1,6 +1,7 @@
 package com.eduplatform.course.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.security.RequestContext;
 import com.eduplatform.course.dto.AddBlockedWordRequest;
 import com.eduplatform.course.dto.ChapterCommentCreateRequest;
 import com.eduplatform.course.dto.CheckBlockedWordRequest;
@@ -34,6 +35,7 @@ public class ChapterCommentController {
     private final MuteService muteService;
     private final BlockedWordService blockedWordService;
     private final EnrollmentService enrollmentService;
+    private final RequestContext requestContext;
 
     /**
      * 获取章节评论列表。
@@ -268,9 +270,15 @@ public class ChapterCommentController {
 
     /**
      * 获取课程禁言记录列表。
+     * 权限：仅教师或管理员可查看，避免学生隐私（禁言理由、操作人）外泄。
      */
     @GetMapping("/mute-records")
-    public Result<List<Map<String, Object>>> getMuteRecords(@RequestParam(name = "courseId") Long courseId) {
+    public Result<List<Map<String, Object>>> getMuteRecords(
+            @RequestParam(name = "courseId") Long courseId,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+        if (!isTeacherOrAdmin(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可查看禁言记录");
+        }
         log.info("获取禁言记录, courseId={}", courseId);
         List<Map<String, Object>> records = muteService.getMuteRecords(courseId);
         return Result.success(records);
@@ -280,11 +288,17 @@ public class ChapterCommentController {
 
     /**
      * 获取屏蔽词列表。
+     * 权限：仅教师或管理员可查看，避免屏蔽词字典外泄后被构造绕过策略。
      */
     @GetMapping("/blocked-words")
     public Result<List<BlockedWordVO>> getBlockedWords(
             @RequestParam(name = "scope", defaultValue = "global") String scope,
-            @RequestParam(name = "courseId", required = false) Long courseId) {
+            @RequestParam(name = "courseId", required = false) Long courseId,
+            @RequestHeader(value = "X-User-Role", required = false) String currentUserRole) {
+
+        if (!isTeacherOrAdmin(currentUserRole)) {
+            return Result.failure(403, "权限不足，仅教师或管理员可查看屏蔽词");
+        }
 
         log.info("获取屏蔽词列表, scope={}, courseId={}", scope, courseId);
         List<BlockedWordVO> words = blockedWordService.convertToVOList(
@@ -364,12 +378,9 @@ public class ChapterCommentController {
      * 规则：优先使用网关注入身份，其次兼容历史参数。
      */
     private Long resolveUserId(String currentUserIdHeader, Long fallbackUserId) {
-        if (currentUserIdHeader != null && !currentUserIdHeader.isBlank()) {
-            try {
-                return Long.valueOf(currentUserIdHeader);
-            } catch (NumberFormatException ignored) {
-                return null;
-            }
+        Long fromHeader = requestContext.parseUserId(currentUserIdHeader);
+        if (fromHeader != null) {
+            return fromHeader;
         }
         return fallbackUserId;
     }
@@ -378,30 +389,28 @@ public class ChapterCommentController {
      * 判断是否为管理员角色。
      */
     private boolean isAdmin(String role) {
-        return role != null && "admin".equalsIgnoreCase(role);
+        return "admin".equalsIgnoreCase(role);
     }
 
     /**
      * 判断是否为学生角色。
      */
     private boolean isStudent(String role) {
-        return role != null && "student".equalsIgnoreCase(role);
+        return "student".equalsIgnoreCase(role);
     }
 
     /**
      * 判断是否具备教学管理权限（教师或管理员）。
      */
     private boolean isTeacherOrAdmin(String role) {
-        return role != null && ("teacher".equalsIgnoreCase(role) || "admin".equalsIgnoreCase(role));
+        return "teacher".equalsIgnoreCase(role) || "admin".equalsIgnoreCase(role);
     }
 
     /**
      * 学生数据访问控制：学生仅可访问本人，教师和管理员可用于教学管理查询。
+     * 委托到 RequestContext 统一实现。
      */
     private boolean canAccessStudentData(Long targetStudentId, Long currentUserId, String currentUserRole) {
-        if (isTeacherOrAdmin(currentUserRole)) {
-            return true;
-        }
-        return currentUserId != null && currentUserId.equals(targetStudentId);
+        return requestContext.canAccessStudentData(targetStudentId);
     }
 }

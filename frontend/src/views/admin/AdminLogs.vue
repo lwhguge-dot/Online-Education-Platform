@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import {
   Search, X, User, FileText,
@@ -8,6 +8,7 @@ import GlassCard from '../../components/ui/GlassCard.vue'
 import { auditLogAPI } from '../../services/api'
 import { useToastStore } from '../../stores/toast'
 import { formatDateTimeCN } from '../../utils/datetime'
+import { logger } from '../../utils/logger'
 
 const toast = useToastStore()
 
@@ -53,7 +54,7 @@ const fetchLogs = async () => {
     logs.value = res.data?.records || res.data?.content || res.data || []
     totalCount.value = res.data?.total || res.data?.totalElements || logs.value.length
   } catch (error) {
-    console.error('获取审计日志失败:', error)
+    logger.error('获取审计日志失败:', error)
     toast.error('获取审计日志失败')
     logs.value = []
   } finally {

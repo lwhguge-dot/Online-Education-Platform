@@ -1,44 +1,56 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   BookOpen, Clock, FileText, Flame,
   Target, Play, Award,
   MessageSquare, CheckCircle,
-  Sun, Sunrise, Moon, Rocket, Sparkles
+  Sun, Sunrise, Moon, Rocket, Sparkles,
+  Star, Medal, GraduationCap
 } from 'lucide-vue-next'
+import type { Component } from 'vue'
 import GlassCard from '../../components/ui/GlassCard.vue'
 import DailyGoalProgress from '../../components/student/DailyGoalProgress.vue'
 import UrgentHomeworkBanner from '../../components/student/UrgentHomeworkBanner.vue'
 import SkeletonDashboard from '../../components/ui/SkeletonDashboard.vue'
 import { useAuthStore } from '../../stores/auth'
-import { useStudentCourses } from '../../composables/useStudentCourses'
-import { useStudentHomeworks } from '../../composables/useStudentHomeworks'
-import { useStudentStats } from '../../composables/useStudentStats'
+import { useStudentCourseStore } from '../../stores/student-courses'
+import { useStudentHomeworkStore } from '../../stores/student-homeworks'
+import { useStudentStatsStore } from '../../stores/student-stats'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const courseStore = useStudentCourseStore()
+const homeworkStore = useStudentHomeworkStore()
+const statsStore = useStudentStatsStore()
 
-// Composables
-const { enrolledCourses, recentCourses, loadEnrolledCourses, loading: coursesLoading } = useStudentCourses()
-const { todayTasks, activities, loadHomeworks, loading: homeworkLoading } = useStudentHomeworks()
-const { dashboardStats: stats, badges, loadStudentStats, loadBadges, loading: statsLoading } = useStudentStats()
-
-const loading = computed(() => coursesLoading.value || homeworkLoading.value || statsLoading.value)
-const urgentHomeworks = computed(() => todayTasks.value.filter(t => t.urgent))
+const loading = computed(() => courseStore.loading || homeworkStore.loading || statsStore.loading)
+const urgentHomeworks = computed(() => homeworkStore.todayTasks.filter(t => t.urgent))
 const displayName = computed(() => authStore.user?.username || '同学')
+
+// 模板引用别名
+const stats = computed(() => statsStore.dashboardStats)
+const todayTasks = computed(() => homeworkStore.todayTasks)
+const activities = computed(() => homeworkStore.activities)
+const recentCourses = computed(() => courseStore.recentCourses)
+const badges = computed(() => statsStore.badges)
+
+const badgeIconMap: Record<string, Component> = {
+  Star, Flame, Award, Medal, GraduationCap
+}
+const resolveBadgeIcon = (code: string): Component => badgeIconMap[code] || Award
 
 // Load Data
 onMounted(async () => {
    const userId = authStore.user?.id
    if (userId) {
       await Promise.all([
-         loadEnrolledCourses(userId),
-         loadStudentStats(userId),
-         loadBadges(userId)
+         courseStore.loadEnrolledCourses(userId),
+         statsStore.loadStudentStats(userId),
+         statsStore.loadBadges(userId)
       ])
-      if (enrolledCourses.value.length > 0) {
-         await loadHomeworks(userId, enrolledCourses.value)
+      if (courseStore.enrolledCourses.length > 0) {
+         await homeworkStore.loadHomeworks(userId, courseStore.enrolledCourses)
       }
    }
 })
@@ -301,7 +313,7 @@ const greeting = computed(() => {
                  class="w-10 h-10 rounded-full flex items-center justify-center transition-[transform,box-shadow,background-color,opacity] duration-300 transform group-hover:scale-110"
                  :class="badge.unlocked ? 'bg-gradient-to-br from-slate-50 to-white shadow-sm border border-slate-100' : 'bg-slate-100 grayscale opacity-60'"
                >
-                 <component :is="badge.icon" class="w-5 h-5" :class="badge.color" />
+                  <component :is="resolveBadgeIcon(badge.iconCode)" class="w-5 h-5" :class="badge.color" />
                </div>
                
                <!-- Tooltip -->

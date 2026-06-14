@@ -1,11 +1,11 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import BaseInput from '../components/ui/BaseInput.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
 import GlassCard from '../components/ui/GlassCard.vue'
-import PasswordResetModal from '../components/ui/PasswordResetModal.vue'
+import PasswordResetModal from '../components/auth/PasswordResetModal.vue'
 import { 
   GraduationCap, 
   Lock, 
@@ -125,7 +125,7 @@ const handleSubmit = async () => {
       }
     }
   } catch (err) {
-    error.value = err.message || '操作失败，请稍后重试'
+    error.value = err instanceof Error ? err.message : '操作失败，请稍后重试'
   } finally {
     isLoading.value = false
   }

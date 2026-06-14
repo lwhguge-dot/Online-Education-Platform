@@ -1,14 +1,16 @@
 package com.eduplatform.course.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
  * 选课/报名记录实体类
  * 对应数据库表 `enrollments`，记录学生与课程的绑定关系及学习进度。
  */
-@Data
+@Getter
+@Setter
 @TableName("enrollments")
 public class Enrollment {
     /**

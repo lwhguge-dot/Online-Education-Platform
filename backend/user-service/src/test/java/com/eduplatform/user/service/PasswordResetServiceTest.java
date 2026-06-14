@@ -43,9 +43,16 @@ class PasswordResetServiceTest {
     @Mock
     private ValueOperations<String, String> valueOperations;
 
+    @Mock
+    private BCryptPasswordEncoder passwordEncoder;
+
     @BeforeEach
     void setUp() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        // PasswordResetService 改造后通过构造器注入 BCryptPasswordEncoder，
+        // 测试里 mock 它返回固定加密串，避免真实 BCrypt 调用导致的耦合。
+        lenient().when(passwordEncoder.encode(anyString())).thenReturn("encoded-password");
+        lenient().when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
     }
 
     @Test
@@ -88,7 +95,7 @@ class PasswordResetServiceTest {
     void confirmResetByTokenShouldUpdatePasswordAndForceOffline() {
         User user = new User();
         user.setId(1L);
-        user.setPassword(new BCryptPasswordEncoder().encode("oldpass123"));
+        user.setPassword("oldpass-encoded");
         when(valueOperations.increment(startsWith("pwd_reset:confirm:ip:"))).thenReturn(1L);
         when(valueOperations.get("pwd_reset:token:token-123")).thenReturn("1");
         when(userMapper.selectById(1L)).thenReturn(user);
@@ -99,32 +106,10 @@ class PasswordResetServiceTest {
                 "127.0.0.1");
 
         assertEquals(PasswordResetService.PasswordResetStatus.SUCCESS, status);
-        verify(userMapper).updateById(argThat(updated ->
-                new BCryptPasswordEncoder().matches("newpass123", updated.getPassword())));
+        verify(passwordEncoder).encode("newpass123");
+        verify(userMapper).updateById(argThat(updated -> "encoded-password".equals(updated.getPassword())));
         verify(sessionService).forceOfflineUser(1L);
         verify(redisTemplate).delete("pwd_reset:token:token-123");
-    }
-
-    @Test
-    @DisplayName("兼容重置-身份不匹配时静默受理但不更新密码")
-    void resetByIdentityShouldNotUpdatePasswordWhenIdentityMismatched() {
-        User user = new User();
-        user.setId(1L);
-        user.setEmail("user@example.com");
-        user.setName("错误姓名");
-        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(user);
-        when(valueOperations.increment(startsWith("pwd_reset:req:ip:"))).thenReturn(1L);
-        when(valueOperations.increment(startsWith("pwd_reset:req:identity:"))).thenReturn(1L);
-
-        PasswordResetService.PasswordResetStatus status = passwordResetService.resetByIdentity(
-                "user@example.com",
-                "测试用户",
-                "newpass123",
-                "127.0.0.1");
-
-        assertEquals(PasswordResetService.PasswordResetStatus.SUCCESS, status);
-        verify(userMapper, never()).updateById(any(User.class));
-        verify(sessionService, never()).forceOfflineUser(anyLong());
     }
 }
 

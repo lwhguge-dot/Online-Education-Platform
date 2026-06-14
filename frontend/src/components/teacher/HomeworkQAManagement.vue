@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { MessageCircle, CheckCircle, User } from 'lucide-vue-next'
 import { homeworkAPI } from '../../services/api'
@@ -6,6 +6,7 @@ import { useToastStore } from '../../stores/toast'
 import GlassCard from '../ui/GlassCard.vue'
 import BaseButton from '../ui/BaseButton.vue'
 import { formatDateTimeCN } from '../../utils/datetime'
+import { logger } from '../../utils/logger'
 
 const formatDisplayDateTime = (dateStr) => {
   return formatDateTimeCN(dateStr, '未知时间')
@@ -36,7 +37,7 @@ const loadQuestions = async () => {
       questions.value = res.data
     }
   } catch (e) {
-    console.error('加载问答失败', e)
+    logger.error('加载问答失败', e)
   } finally {
     loading.value = false
   }

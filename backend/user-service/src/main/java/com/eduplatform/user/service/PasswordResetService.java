@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,9 +40,7 @@ public class PasswordResetService {
     private final UserMapper userMapper;
     private final UserSessionService sessionService;
     private final StringRedisTemplate redisTemplate;
-
-    @Autowired
-    private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder;
 
     @Value("${security.password-reset.window-seconds:600}")
     private long windowSeconds = 600;
@@ -113,19 +110,6 @@ public class PasswordResetService {
             return PasswordResetStatus.RATE_LIMITED;
         }
         boolean applied = applyResetByToken(resetToken, newPassword);
-        return applied ? PasswordResetStatus.SUCCESS : PasswordResetStatus.TOKEN_INVALID;
-    }
-
-    /**
-     * 兼容旧接口：基于身份信息直接受理重置。
-     * 内部仍使用一次性令牌，确保流程单向且可失效。
-     */
-    public PasswordResetStatus resetByIdentity(String email, String realName, String newPassword, String clientIp) {
-        PasswordResetIssueResult issueResult = issueResetToken(email, realName, clientIp);
-        if (issueResult.getStatus() == PasswordResetStatus.RATE_LIMITED) {
-            return PasswordResetStatus.RATE_LIMITED;
-        }
-        boolean applied = applyResetByToken(issueResult.getToken(), newPassword);
         return applied ? PasswordResetStatus.SUCCESS : PasswordResetStatus.TOKEN_INVALID;
     }
 

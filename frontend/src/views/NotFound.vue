@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { useRouter } from 'vue-router'
 import BaseButton from '../components/ui/BaseButton.vue'
 import GlassCard from '../components/ui/GlassCard.vue'

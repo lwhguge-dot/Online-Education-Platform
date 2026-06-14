@@ -2,14 +2,16 @@ package com.eduplatform.user.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import com.eduplatform.user.mybatis.JsonbTypeHandler;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
  * 学生扩展信息实体
  * 对应数据库表 student_profiles，存储学生的学业统计、学校信息及个性化配置。
  */
-@Data
+@Getter
+@Setter
 @TableName(value = "student_profiles", autoResultMap = true)
 public class StudentProfile {
     /**

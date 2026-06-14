@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import StudentProfileInfoCard from '../../components/student/StudentProfileInfoCard.vue'
 import StudentProfileSettingsPanel from '../../components/student/StudentProfileSettingsPanel.vue'
 

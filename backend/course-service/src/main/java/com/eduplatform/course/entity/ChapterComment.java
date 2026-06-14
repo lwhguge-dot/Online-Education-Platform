@@ -1,7 +1,8 @@
 package com.eduplatform.course.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
@@ -11,7 +12,8 @@ import java.time.LocalDateTime;
  * 章节互动评论实体类
  * 对应数据库表 `chapter_comments`，支持课程章节下的即时评论、回复及置顶功能。
  */
-@Data
+@Getter
+@Setter
 @TableName("chapter_comments")
 public class ChapterComment {
     /**

@@ -1,6 +1,7 @@
 package com.eduplatform.course.controller;
 
 import com.eduplatform.common.result.Result;
+import com.eduplatform.common.security.RequestContext;
 import com.eduplatform.course.service.FileUploadService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,9 +36,13 @@ class FileUploadControllerTest {
     @Mock
     private MultipartFile multipartFile;
 
+    @Mock
+    private RequestContext requestContext;
+
     @Test
     @DisplayName("上传视频-学生角色被拒绝")
     void uploadVideoShouldDenyStudentRole() throws Exception {
+        // 默认 isTeacherOrAdmin() 返回 false（boolean 默认），等价于学生角色
         Result<Map<String, String>> result = fileUploadController.uploadVideo(multipartFile, "student");
 
         assertNotNull(result);
@@ -48,6 +54,9 @@ class FileUploadControllerTest {
     @Test
     @DisplayName("上传视频-异常信息不应外泄")
     void uploadVideoShouldHideInternalExceptionMessage() throws Exception {
+        // 教师角色通过权限校验
+        lenient().when(requestContext.isTeacherOrAdmin()).thenReturn(true);
+
         // 控制器日志已做脱敏，不再依赖原始文件名。
         when(fileUploadService.uploadVideo(multipartFile)).thenThrow(new RuntimeException("minio timeout"));
 

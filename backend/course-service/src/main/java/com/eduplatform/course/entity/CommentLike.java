@@ -1,7 +1,8 @@
 package com.eduplatform.course.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
@@ -9,7 +10,8 @@ import java.time.LocalDateTime;
  * 对应数据库表 `comment_likes`，记录用户对章节评论的低频/高频互动行为。
  * 业务逻辑：单一用户对单一评论仅允许存在一条有效记录。
  */
-@Data
+@Getter
+@Setter
 @TableName("comment_likes")
 public class CommentLike {
     /**

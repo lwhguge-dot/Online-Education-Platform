@@ -46,7 +46,7 @@ class CourseReadServiceTest {
         @Test
         @DisplayName("管理员请求草稿状态时返回空列表")
         void adminDraftQueryShouldReturnEmpty() {
-            assertEquals(0, courseReadService.getAdminVisibleCourses(null, Course.STATUS_DRAFT).size());
+            assertEquals(0, courseReadService.getAdminVisibleCourses(null, Course.STATUS_DRAFT, null).size());
         }
 
         @Test
@@ -55,7 +55,7 @@ class CourseReadServiceTest {
         void adminDefaultQueryShouldExcludeDraft() {
             when(courseMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
 
-            courseReadService.getAdminVisibleCourses(null, null);
+            courseReadService.getAdminVisibleCourses(null, null, null);
 
             verify(courseMapper).selectList(any(LambdaQueryWrapper.class));
         }

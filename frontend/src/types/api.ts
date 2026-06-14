@@ -8,7 +8,7 @@
 /**
  * 统一响应结构
  */
-export interface Result<T = any> {
+export interface Result<T = unknown> {
   code: number
   message: string
   data: T
@@ -109,7 +109,6 @@ export interface UserSettingsDTO {
   notificationEnabled?: boolean
   emailNotification?: boolean
   dailyGoal?: number
-  [key: string]: any
 }
 
 // ==================== 认证相关 ====================
@@ -257,6 +256,7 @@ export interface Homework {
   chapterId: number
   title: string
   description: string
+  homeworkType?: string
   deadline?: string
   createdAt: string
 }
@@ -270,6 +270,8 @@ export interface HomeworkSubmission {
   studentId: number
   content: string
   score?: number
+  totalScore?: number
+  submitStatus?: string
   feedback?: string
   submittedAt: string
   gradedAt?: string

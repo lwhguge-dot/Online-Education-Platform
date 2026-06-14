@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
@@ -9,12 +9,19 @@ import AnimatedNumber from '../components/ui/AnimatedNumber.vue'
 import StudyChapterSidebar from '../components/student/StudyChapterSidebar.vue'
 import StudyChapterInfoCard from '../components/student/StudyChapterInfoCard.vue'
 import { ArrowLeft, Play, Clock, Sparkles } from 'lucide-vue-next'
+import { logger } from '../utils/logger'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const courseId = computed(() => route.params.id)
+const courseId = computed(() => {
+  const id = route.params.id
+  if (!id || !/^\d+$/.test(id as string)) {
+    return null
+  }
+  return id
+})
 const initialChapterId = computed(() => route.query.chapter ? Number(route.query.chapter) : null)
 const initialPosition = computed(() => route.query.t ? Number(route.query.t) : null)
 const fromStudent = computed(() => route.query.from === 'student')
@@ -52,6 +59,10 @@ const clampPercent = (value) => {
 }
 
 const loadCourse = async () => {
+  if (!courseId.value) {
+    router.replace('/404')
+    return
+  }
   try {
     loading.value = true
     const res = await courseAPI.getById(courseId.value)
@@ -95,7 +106,7 @@ const loadCourse = async () => {
           }
         }
       } catch (e) {
-        console.warn('加载进度失败，使用默认状态:', e)
+        logger.warn('加载进度失败，使用默认状态:', e)
       }
       
       // 恢复上次选择的章节（刷新不跳转）
@@ -142,7 +153,7 @@ const loadCourse = async () => {
       }
     }
   } catch (e) {
-    console.error('加载课程失败:', e)
+    logger.error('加载课程失败:', e)
   } finally {
     loading.value = false
   }
@@ -197,7 +208,7 @@ watch(
 const getVideoUrl = (chapter) => {
   if (!chapter?.videoUrl) return null
   if (chapter.videoUrl.startsWith('/')) {
-    const staticBase = import.meta.env.VITE_API_BASE.replace('/api', '') || '';
+    const staticBase = (import.meta.env.VITE_API_BASE || '').replace('/api', '');
     return `${staticBase}/api/course-service${chapter.videoUrl}`;
   }
   return chapter.videoUrl
@@ -235,7 +246,7 @@ const saveProgress = async (progress, isCompleted = 0, currentPosition = 0) => {
     })
     lastSavedProgress.value = safeProgress
   } catch (e) {
-    console.error('保存进度失败:', e)
+    logger.error('保存进度失败:', e)
   }
 }
 

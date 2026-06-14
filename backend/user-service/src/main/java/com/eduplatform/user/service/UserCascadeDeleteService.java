@@ -1,11 +1,13 @@
 package com.eduplatform.user.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.eduplatform.common.exception.BusinessException;
 import com.eduplatform.user.entity.User;
 import com.eduplatform.user.feign.CourseServiceClient;
 import com.eduplatform.user.mapper.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,10 +16,17 @@ import java.util.List;
 /**
  * 用户级联删除服务
  * 删除用户时清除所有相关数据
+ *
+ * <p>事务与 RPC 模型：
+ * <ul>
+ *   <li>跨服务 Feign 调用（course-service）在 <b>本地事务之外</b> 执行，且失败抛 {@link BusinessException}
+ *       终止流程，与 course-service 的 {@code CourseCascadeDeleteService} 保持策略一致，
+ *       避免本地数据已清理但远端残留的分布式不一致。</li>
+ *   <li>本地多表删除在单事务内原子提交。</li>
+ * </ul>
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class UserCascadeDeleteService {
 
     private static final String ROOT_USERNAME = "root";
@@ -31,38 +40,89 @@ public class UserCascadeDeleteService {
     private final AnnouncementReadMapper announcementReadMapper;
     private final CourseServiceClient courseServiceClient;
     private final AuditLogService auditLogService;
+    // 自注入 Spring 代理，用于调用本类的 @Transactional 方法，
+    // 规避同类方法间 this 调用绕过 AOP 代理导致事务失效的问题。
+    private final UserCascadeDeleteService self;
+
+    public UserCascadeDeleteService(
+            UserMapper userMapper,
+            UserSessionMapper userSessionMapper,
+            StudentProfileMapper studentProfileMapper,
+            TeacherProfileMapper teacherProfileMapper,
+            AnnouncementMapper announcementMapper,
+            AnnouncementReadMapper announcementReadMapper,
+            CourseServiceClient courseServiceClient,
+            AuditLogService auditLogService,
+            @Lazy UserCascadeDeleteService self) {
+        this.userMapper = userMapper;
+        this.userSessionMapper = userSessionMapper;
+        this.studentProfileMapper = studentProfileMapper;
+        this.teacherProfileMapper = teacherProfileMapper;
+        this.announcementMapper = announcementMapper;
+        this.announcementReadMapper = announcementReadMapper;
+        this.courseServiceClient = courseServiceClient;
+        this.auditLogService = auditLogService;
+        this.self = self;
+    }
 
     /**
-     * 级联删除用户及其关联的所有数据记录
-     * 
-     * 该操作属于高危操作，逻辑如下：
-     * 1. 安全校验：严禁删除 root 超级管理员账号。
-     * 2. 本地数据清理：删除用户会话 (Redis+DB)、个人扩展资料 (学生/教师)、公告阅读流水。
-     * 3. 关联业务清理：删除用户发布的公告及其产生的所有阅读记录。
-     * 4. 跨服务同步：通过 Feign 强一致性调用课程服务，清理该用户的报名记录、章节进度、测验成绩等。
-     * 5. 账号注销：最后删除 users 表主记录并记录审计日志。
+     * 级联删除用户及其关联的所有数据记录。
+     *
+     * <p>执行顺序（关键）：
+     * <ol>
+     *   <li>安全校验：严禁删除 root 超级管理员。</li>
+     *   <li>跨服务同步：在事务外调用 course-service 清理远端数据；失败抛异常终止。</li>
+     *   <li>本地事务：删除 session/profile/announcement 等本地表。</li>
+     *   <li>审计日志写入。</li>
+     * </ol>
      *
      * @param userId       目标用户ID
      * @param operatorId   操作人ID
      * @param operatorName 操作人用户名
      * @param ipAddress    操作客户端 IP
      */
-    @Transactional
     public void cascadeDeleteUser(Long userId, Long operatorId, String operatorName, String ipAddress) {
         User user = userMapper.selectById(userId);
         if (user == null) {
-            throw new RuntimeException("用户不存在");
+            throw new BusinessException(404, "用户不存在");
         }
 
         // 安全闸门：根管理员受系统级保护
         if (ROOT_USERNAME.equalsIgnoreCase(user.getUsername()) || ROOT_EMAIL.equalsIgnoreCase(user.getEmail())) {
-            throw new RuntimeException("不能删除root管理员账号");
+            throw new BusinessException(403, "不能删除root管理员账号");
         }
 
         String username = user.getUsername();
         String role = user.getRole();
         log.info("开始级联删除用户: userId={}, username={}, role={}", userId, username, role);
 
+        // 1. 跨服务调用：在事务外清理 Course-Service 中的关联业务数据
+        //    失败抛异常终止流程，保持两端策略一致，避免分布式不一致。
+        try {
+            courseServiceClient.deleteUserRelatedData(userId, role);
+            log.info("调用课程服务删除用户相关数据成功");
+        } catch (Exception e) {
+            log.error("调用课程服务删除用户相关数据失败: userId={}", userId, e);
+            throw new BusinessException("级联删除失败：课程服务不可用，请稍后重试");
+        }
+
+        // 2. 本地事务：原子清理所有本地关联表
+        // 通过 self 代理调用，确保 @Transactional 生效。
+        self.doLocalCascadeDelete(userId);
+
+        // 3. 写入管理审计日志（无事务，独立写入）
+        auditLogService.log(operatorId, operatorName, "USER_DELETE", "USER", userId, username,
+                "级联删除用户及所有相关数据", ipAddress);
+
+        log.info("用户级联删除完成: userId={}", userId);
+    }
+
+    /**
+     * 本地多表原子删除（独立事务）。
+     * 必须通过 self 代理调用以触发事务，禁止直接 this 调用。
+     */
+    @Transactional
+    public void doLocalCascadeDelete(Long userId) {
         // 1. 删除用户会话（防止删除后 Token 仍然有效）
         int sessionCount = userSessionMapper.deleteByUserId(userId);
         log.info("删除用户会话: {} 条", sessionCount);
@@ -89,23 +149,8 @@ public class UserCascadeDeleteService {
         int announcementCount = announcementMapper.deleteByCreatedBy(userId);
         log.info("删除用户创建的公告: {} 条", announcementCount);
 
-        // 5. 跨微服务调用：清理 Course-Service 中的关联业务数据
-        try {
-            courseServiceClient.deleteUserRelatedData(userId, role);
-            log.info("调用课程服务删除用户相关数据成功");
-        } catch (Exception e) {
-            // 记录异常但不阻断本地事务提交，后续可通过对账补齐
-            log.error("调用课程服务删除用户相关数据失败: {}", e.getMessage());
-        }
-
-        // 6. 执行物理/逻辑删除
+        // 5. 执行物理/逻辑删除
         userMapper.deleteById(userId);
         log.info("删除用户记录成功");
-
-        // 7. 写入管理审计日志
-        auditLogService.log(operatorId, operatorName, "USER_DELETE", "USER", userId, username,
-                "级联删除用户及所有相关数据", ipAddress);
-
-        log.info("用户级联删除完成: userId={}", userId);
     }
 }

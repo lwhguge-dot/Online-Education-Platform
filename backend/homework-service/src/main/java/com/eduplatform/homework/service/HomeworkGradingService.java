@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,9 +32,15 @@ import java.util.stream.Collectors;
 /**
  * 作业批改写模型服务。
  * 说明：集中承接批改流程与状态流转，降低 HomeworkService 的职责复杂度。
+ *
+ * <p>并发与事务模型：
+ * <ul>
+ *   <li>锁在最外层 {@link #gradeSubjective}/{@link #gradeSubmission} 获取，确保同一 submissionId 串行批改。</li>
+ *   <li>DB 写入通过自注入 {@code self} 调用 {@link #doGradeSubjective}/{@link #doGradeSubmission}
+ *       触发 Spring AOP 代理，使 {@code @Transactional} 真正生效，并保证「事务提交后才释放锁」。</li>
+ * </ul>
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class HomeworkGradingService {
 
@@ -43,32 +50,41 @@ public class HomeworkGradingService {
     private final HomeworkQuestionMapper questionMapper;
     private final UserServiceClient userServiceClient;
     private final RedissonClient redissonClient;
+    // 自注入 Spring 代理，用于在锁内调用本类的 @Transactional 方法，
+    // 规避同类方法间 this 调用绕过 AOP 代理导致事务失效的问题。
+    private final HomeworkGradingService self;
 
     private static final String SUBMISSION_LOCK_PREFIX = "homework:submission:lock:";
 
+    public HomeworkGradingService(
+            HomeworkMapper homeworkMapper,
+            HomeworkSubmissionMapper submissionMapper,
+            HomeworkAnswerMapper answerMapper,
+            HomeworkQuestionMapper questionMapper,
+            UserServiceClient userServiceClient,
+            RedissonClient redissonClient,
+            @Lazy HomeworkGradingService self) {
+        this.homeworkMapper = homeworkMapper;
+        this.submissionMapper = submissionMapper;
+        this.answerMapper = answerMapper;
+        this.questionMapper = questionMapper;
+        this.userServiceClient = userServiceClient;
+        this.redissonClient = redissonClient;
+        this.self = self;
+    }
+
     /**
      * 教师批改单个主观题。
+     * 锁在事务外获取，事务提交后才释放锁，避免并发批改脏读。
      */
-    @Transactional
     public void gradeSubjective(Long submissionId, Long questionId, Integer score, String feedback) {
         RLock lock = redissonClient.getLock(SUBMISSION_LOCK_PREFIX + submissionId);
         try {
             if (!lock.tryLock(5, 30, TimeUnit.SECONDS)) {
                 throw new BusinessException("操作过于频繁，请稍后重试");
             }
-
-            HomeworkAnswer answer = answerMapper.selectOne(
-                    new LambdaQueryWrapper<HomeworkAnswer>()
-                            .eq(HomeworkAnswer::getSubmissionId, submissionId)
-                            .eq(HomeworkAnswer::getQuestionId, questionId));
-
-            if (answer != null) {
-                answer.setScore(score);
-                answer.setTeacherFeedback(feedback);
-                answerMapper.updateById(answer);
-
-                updateSubmissionStatus(submissionId);
-            }
+            // 通过 self 代理调用，确保 doGradeSubjective 的 @Transactional 在新事务中生效。
+            self.doGradeSubjective(submissionId, questionId, score, feedback);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new BusinessException("操作被中断");
@@ -80,42 +96,37 @@ public class HomeworkGradingService {
     }
 
     /**
-     * 批量批改提交。
+     * 实际的批改写入逻辑（独立事务）。
+     * 必须通过 self 代理调用以触发事务，禁止直接 this 调用。
      */
     @Transactional
+    public void doGradeSubjective(Long submissionId, Long questionId, Integer score, String feedback) {
+        HomeworkAnswer answer = answerMapper.selectOne(
+                new LambdaQueryWrapper<HomeworkAnswer>()
+                        .eq(HomeworkAnswer::getSubmissionId, submissionId)
+                        .eq(HomeworkAnswer::getQuestionId, questionId));
+
+        if (answer != null) {
+            answer.setScore(score);
+            answer.setTeacherFeedback(feedback);
+            answerMapper.updateById(answer);
+
+            updateSubmissionStatus(submissionId);
+        }
+    }
+
+    /**
+     * 批量批改提交。
+     * 锁在事务外获取，事务提交后才释放锁，避免并发批改脏读。
+     */
     public void gradeSubmission(Long submissionId, GradeSubmissionDTO dto) {
         RLock lock = redissonClient.getLock(SUBMISSION_LOCK_PREFIX + submissionId);
         try {
             if (!lock.tryLock(5, 30, TimeUnit.SECONDS)) {
                 throw new BusinessException("操作过于频繁，请稍后重试");
             }
-
-            HomeworkSubmission submission = submissionMapper.selectById(submissionId);
-            if (submission == null) {
-                throw new BusinessException("提交记录不存在");
-            }
-
-            if (dto.getGrades() != null) {
-                for (GradeSubmissionDTO.QuestionGrade grade : dto.getGrades()) {
-                    HomeworkAnswer answer = answerMapper.selectOne(
-                            new LambdaQueryWrapper<HomeworkAnswer>()
-                                    .eq(HomeworkAnswer::getSubmissionId, submissionId)
-                                    .eq(HomeworkAnswer::getQuestionId, grade.getQuestionId()));
-
-                    if (answer != null) {
-                        answer.setScore(grade.getScore());
-                        answer.setTeacherFeedback(grade.getFeedback());
-                        answerMapper.updateById(answer);
-                    }
-                }
-            }
-
-            updateSubmissionScoreAndStatus(submissionId, dto.getOverallFeedback(), dto.getGradedBy());
-
-            HomeworkSubmission updatedSubmission = submissionMapper.selectById(submissionId);
-            if (updatedSubmission != null && "graded".equals(updatedSubmission.getSubmitStatus())) {
-                sendGradingNotification(updatedSubmission);
-            }
+            // 通过 self 代理调用，确保 doGradeSubmission 的 @Transactional 在新事务中生效。
+            self.doGradeSubmission(submissionId, dto);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new BusinessException("操作被中断");
@@ -123,6 +134,40 @@ public class HomeworkGradingService {
             if (lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
+        }
+    }
+
+    /**
+     * 实际的批量批改写入逻辑（独立事务）。
+     * 必须通过 self 代理调用以触发事务，禁止直接 this 调用。
+     */
+    @Transactional
+    public void doGradeSubmission(Long submissionId, GradeSubmissionDTO dto) {
+        HomeworkSubmission submission = submissionMapper.selectById(submissionId);
+        if (submission == null) {
+            throw new BusinessException("提交记录不存在");
+        }
+
+        if (dto.getGrades() != null) {
+            for (GradeSubmissionDTO.QuestionGrade grade : dto.getGrades()) {
+                HomeworkAnswer answer = answerMapper.selectOne(
+                        new LambdaQueryWrapper<HomeworkAnswer>()
+                                .eq(HomeworkAnswer::getSubmissionId, submissionId)
+                                .eq(HomeworkAnswer::getQuestionId, grade.getQuestionId()));
+
+                if (answer != null) {
+                    answer.setScore(grade.getScore());
+                    answer.setTeacherFeedback(grade.getFeedback());
+                    answerMapper.updateById(answer);
+                }
+            }
+        }
+
+        updateSubmissionScoreAndStatus(submissionId, dto.getOverallFeedback(), dto.getGradedBy());
+
+        HomeworkSubmission updatedSubmission = submissionMapper.selectById(submissionId);
+        if (updatedSubmission != null && "graded".equals(updatedSubmission.getSubmitStatus())) {
+            sendGradingNotification(updatedSubmission);
         }
     }
 
@@ -265,8 +310,7 @@ public class HomeworkGradingService {
             userServiceClient.sendNotification(notificationRequest);
         } catch (Exception e) {
             // 通知发送失败不影响批改流程
-            // 记录日志但不抛出异常
-            log.error("发送批改通知失败: {}", e.getMessage());
+            log.error("发送批改通知失败", e);
         }
     }
 }

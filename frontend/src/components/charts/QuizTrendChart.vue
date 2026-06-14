@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * 测验分数趋势图表组件
  * 展示学生在特定课程中的测验分数趋势折线图
@@ -7,6 +7,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { TrendingUp, TrendingDown, Minus, Calendar, Award } from 'lucide-vue-next'
 import { progressAPI } from '../../services/api'
 import AnimatedNumber from '../ui/AnimatedNumber.vue'
+import { logger } from '../../utils/logger'
 
 const props = defineProps({
   /** 课程ID */
@@ -62,7 +63,7 @@ const loadTrendData = async () => {
       }
     }
   } catch (e) {
-    console.error('加载测验趋势失败:', e)
+    logger.error('加载测验趋势失败:', e)
     trendData.value = {
       scores: [],
       average: 0,
